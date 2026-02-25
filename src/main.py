@@ -9,6 +9,10 @@ from datetime import datetime
 import numpy as np
 import sounddevice as sd
 
+import json
+
+from vosk import Model as VoskModel, KaldiRecognizer
+
 import openwakeword
 from openwakeword.model import Model
 
@@ -50,6 +54,8 @@ def parse_args():
                         help='Maximum recording duration in seconds (default: 10.0)')
     parser.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                         help='Directory to save command recordings (default: ./recordings)')
+    parser.add_argument('--vosk-model', type=str, default='./vosk-model',
+                        help='Path to Vosk model directory (default: ./vosk-model)')
     return parser.parse_args()
 
 
@@ -128,6 +134,8 @@ def main():
         return
 
     model = Model()
+    vosk_model = VoskModel(args.vosk_model)
+    recognizer = KaldiRecognizer(vosk_model, SAMPLE_RATE)
 
     threshold = float(args.threshold)
     last_trigger = 0.0
@@ -191,6 +199,10 @@ def main():
                 if len(audio) > 0:
                     filename = save_wav(audio, args.output_dir)
                     print(f"Command saved: {filename}")
+                    recognizer.AcceptWaveform(audio.tobytes())
+                    text = json.loads(recognizer.Result())['text']
+                    print(f"Command: {text}")
+                    recognizer.Reset()
                 else:
                     print("No audio captured after wake word.")
 
