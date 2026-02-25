@@ -221,4 +221,4 @@ recordings/
 
 # Vosk models
 
-vosk-model/
+vosk-model*/
