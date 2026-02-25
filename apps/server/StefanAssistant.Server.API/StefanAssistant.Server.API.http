@@ -1,0 +1,6 @@
+@StefanAssistant.Server.API_HostAddress = http://localhost:5285
+
+GET {{StefanAssistant.Server.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

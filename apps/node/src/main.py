@@ -10,6 +10,8 @@ import numpy as np
 import sounddevice as sd
 
 import json
+import io
+import requests
 
 from vosk import Model as VoskModel, KaldiRecognizer
 
@@ -54,7 +56,7 @@ def parse_args():
                         help='Maximum recording duration in seconds (default: 10.0)')
     parser.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                         help='Directory to save command recordings (default: ./recordings)')
-    parser.add_argument('--vosk-model', type=str, default='./vosk-model',
+    parser.add_argument('--vosk-model', type=str, default='./vosk-model-full',
                         help='Path to Vosk model directory (default: ./vosk-model)')
     return parser.parse_args()
 
@@ -197,12 +199,30 @@ def main():
                 )
 
                 if len(audio) > 0:
-                    filename = save_wav(audio, args.output_dir)
-                    print(f"Command saved: {filename}")
-                    recognizer.AcceptWaveform(audio.tobytes())
-                    text = json.loads(recognizer.Result())['text']
-                    print(f"Command: {text}")
-                    recognizer.Reset()
+                    # Save audio to bytes buffer for sending
+                    wav_buffer = io.BytesIO()
+                    with wave.open(wav_buffer, 'wb') as wf:
+                        wf.setnchannels(CHANNELS)
+                        wf.setsampwidth(2)
+                        wf.setframerate(SAMPLE_RATE)
+                        wf.writeframes(audio.tobytes())
+                    wav_buffer.seek(0)
+
+                    # Send to .NET server
+                    try:
+                        files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
+                        response = requests.post('http://localhost:5285/command', files=files)
+                        print(f"Server response: {response.status_code}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"Failed to send to server: {e}")
+
+                    # # Local processing (commented out - server handles it)
+                    # filename = save_wav(audio, args.output_dir)
+                    # print(f"Command saved: {filename}")
+                    # recognizer.AcceptWaveform(audio.tobytes())
+                    # text = json.loads(recognizer.Result())['text']
+                    # print(f"Command: {text}")
+                    # recognizer.Reset()
                 else:
                     print("No audio captured after wake word.")
 
