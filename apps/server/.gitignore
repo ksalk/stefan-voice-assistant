@@ -486,3 +486,7 @@ $RECYCLE.BIN/
 # Vosk models
 
 vosk-model*/
+
+# App Settings
+
+appsettings.Development.json
