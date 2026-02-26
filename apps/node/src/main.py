@@ -13,8 +13,6 @@ import json
 import io
 import requests
 
-from vosk import Model as VoskModel, KaldiRecognizer
-
 import openwakeword
 from openwakeword.model import Model
 
@@ -56,8 +54,7 @@ def parse_args():
                         help='Maximum recording duration in seconds (default: 10.0)')
     parser.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                         help='Directory to save command recordings (default: ./recordings)')
-    parser.add_argument('--vosk-model', type=str, default='./vosk-model-full',
-                        help='Path to Vosk model directory (default: ./vosk-model)')
+
     return parser.parse_args()
 
 
@@ -136,8 +133,6 @@ def main():
         return
 
     model = Model()
-    vosk_model = VoskModel(args.vosk_model)
-    recognizer = KaldiRecognizer(vosk_model, SAMPLE_RATE)
 
     threshold = float(args.threshold)
     last_trigger = 0.0

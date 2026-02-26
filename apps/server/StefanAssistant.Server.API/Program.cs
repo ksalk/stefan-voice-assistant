@@ -23,8 +23,6 @@ app.UseHttpsRedirection();
 app.MapPost("/command", async (IFormFile file) =>
 {
     var timestamp = Stopwatch.GetTimestamp();
-    // write out pwd
-    Console.WriteLine(Directory.GetCurrentDirectory());
     Console.WriteLine($"Received file: {file.FileName}, size: {file.Length} bytes");
     using var fileStream = file.OpenReadStream();
     string result = GetTextFromCommandAudioFile(fileStream, model);
@@ -34,32 +32,25 @@ app.MapPost("/command", async (IFormFile file) =>
     Console.WriteLine($"Processing time: {ms} ms");
     return "OK";
 })
-.DisableAntiforgery()
+.DisableAntiforgery() // TODO: fix in future for security
 .WithName("ProcessCommand");
 
 app.Run();
 
 string GetTextFromCommandAudioFile(Stream fileStream, Model model)
 {
-    VoskRecognizer rec = new VoskRecognizer(model, 16000.0f);
-    rec.SetMaxAlternatives(0);
-    rec.SetWords(true);
+    VoskRecognizer recognizer = new VoskRecognizer(model, 16000.0f);
+    recognizer.SetMaxAlternatives(0);
+    recognizer.SetWords(true);
 
     byte[] buffer = new byte[4096];
     int bytesRead;
     while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
     {
-        rec.AcceptWaveform(buffer, bytesRead);
-        // if (rec.AcceptWaveform(buffer, bytesRead))
-        // {
-        //     Console.WriteLine(rec.Result());
-        // }
-        // else
-        // {
-        //     Console.WriteLine(rec.PartialResult());
-        // }
+        recognizer.AcceptWaveform(buffer, bytesRead);
     }
 
-    Console.WriteLine(rec.FinalResult());
-    return rec.FinalResult();
+    var finalResult = recognizer.FinalResult();
+    Console.WriteLine(finalResult);
+    return finalResult;
 }
