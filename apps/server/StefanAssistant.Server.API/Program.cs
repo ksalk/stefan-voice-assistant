@@ -65,7 +65,9 @@ string GetTextFromCommandAudioFile(Stream fileStream, Model model)
         recognizer.AcceptWaveform(buffer, bytesRead);
     }
 
-    var finalResult = recognizer.FinalResult();
+    var finalResultJson = recognizer.FinalResult();
+    var finalResultObj = JsonDocument.Parse(finalResultJson);
+    var finalResult = finalResultObj.RootElement.GetProperty("text").GetString();
     Console.WriteLine(finalResult);
     return finalResult;
 }
