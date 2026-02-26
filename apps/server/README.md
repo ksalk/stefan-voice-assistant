@@ -49,8 +49,9 @@ The `/command` endpoint expects audio that matches the Vosk model's configuratio
 | Channels | 1 (mono) |
 | Bit depth | 16-bit int |
 
-## Known Limitations
+## To do
 
 - Transcription result is logged to console only — the HTTP response always returns `"OK"` regardless of the transcript.
 - Antiforgery validation is disabled on `/command` (noted as a TODO for future hardening).
 - No authentication or rate limiting.
+- Test scripts 

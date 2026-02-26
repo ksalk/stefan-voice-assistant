@@ -8,7 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
+    <PackageReference Include="OpenAI" Version="2.8.0" />
     <PackageReference Include="Vosk" Version="0.3.38" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StefanAssistant.Server.Tools\StefanAssistant.Server.Tools.csproj" />
   </ItemGroup>
 
 </Project>
