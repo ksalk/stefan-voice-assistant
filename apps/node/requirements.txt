@@ -3,3 +3,4 @@ sounddevice
 openwakeword
 vosk
 requests
+aiohttp
