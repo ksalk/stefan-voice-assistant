@@ -1,6 +1,6 @@
 # Alexa-like Wake Word MVP (openWakeWord)
 
-Listens for the wake word "alexa", then records the command that follows and saves it as a `.wav` file. Uses openWakeWord with the built-in `alexa` model.
+Listens for the wake word "alexa", records the command that follows, sends it to the .NET server for transcription and LLM processing, then speaks the response aloud using piper-tts.
 
 ## License note
 - openWakeWord code: Apache-2.0
@@ -10,6 +10,7 @@ Listens for the wake word "alexa", then records the command that follows and sav
 - Python 3.9+
 - Linux / Raspberry Pi OS
 - Microphone input device
+- Speaker / audio output device
 
 ## System dependencies (Linux/Raspberry Pi)
 ```bash
@@ -24,21 +25,39 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-# Download Vosk model
+## Download Vosk model
 
 Download a Vosk English model (the small one is ~40 MB, good for Pi):
-      
+
+```bash
 wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
 unzip vosk-model-small-en-us-0.15.zip -d vosk-model
+```
 
-Or use the full vosk-model-en-us-0.22 (~1.8 GB) for better accuracy.
+Or use the full `vosk-model-en-us-0.22` (~1.8 GB) for better accuracy.
+
+## Download piper-tts voice model
+
+The app uses [piper-tts](https://github.com/rhasspy/piper) for offline text-to-speech. Voice models must be placed in the `models/` directory.
+
+```bash
+mkdir -p models
+wget -O models/en_US-lessac-medium.onnx \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
+wget -O models/en_US-lessac-medium.onnx.json \
+  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+```
+
+Both the `.onnx` model file and its `.onnx.json` config must be present. Other voices are available at https://huggingface.co/rhasspy/piper-voices — replace the filename in `src/listener.py` (`_PIPER_MODEL`) to switch voices.
+
+The model is loaded lazily on the first response from the server, so startup time is unaffected.
 
 ## Run
 ```bash
 python src/main.py
 ```
 
-Say "alexa" followed by your command. Recording starts automatically after the wake word is detected and stops when silence is detected. The command audio is saved to `./recordings/command_<timestamp>.wav`.
+Say "alexa" followed by your command. The app records your command, sends it to the server, and speaks the response through your speakers.
 
 ## List audio devices
 ```bash
@@ -67,3 +86,4 @@ python src/main.py --device 2 --threshold 0.6
 - Cooldown between detections: 1.5 seconds
 - Recording stops on 1 second of silence (tunable via `--silence-duration`)
 - If `--silence-threshold` is too sensitive for your mic, increase it; if recording never stops, raise it further
+- TTS voice model is loaded once and cached in memory for the lifetime of the process

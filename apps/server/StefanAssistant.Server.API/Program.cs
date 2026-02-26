@@ -45,7 +45,7 @@ app.MapPost("/command", async (IFormFile file) =>
     ms = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
     Console.WriteLine($"LLM processing time: {ms} ms");
 
-    return "OK";
+    return assistantResponse;
 })
 .DisableAntiforgery() // TODO: fix in future for security
 .WithName("ProcessCommand");

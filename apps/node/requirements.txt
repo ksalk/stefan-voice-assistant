@@ -4,3 +4,4 @@ openwakeword
 vosk
 requests
 aiohttp
+piper-tts

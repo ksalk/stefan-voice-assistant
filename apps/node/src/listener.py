@@ -1,4 +1,5 @@
 import io
+import os
 import time
 import wave
 from collections import deque
@@ -7,6 +8,7 @@ import numpy as np
 import requests
 import sounddevice as sd
 from openwakeword.model import Model
+from piper.voice import PiperVoice
 
 from audio import (
     SAMPLE_RATE,
@@ -18,6 +20,24 @@ from state import node_state
 
 COOLDOWN_SECONDS = 1.5
 DEFAULT_THRESHOLD = 0.6
+
+# ---------------------------------------------------------------------------
+# TTS configuration
+# ---------------------------------------------------------------------------
+
+_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-lessac-medium.onnx")
+
+# Lazy-loaded singleton — loaded once on first call to _speak()
+_piper_voice: PiperVoice | None = None
+
+
+def _get_voice() -> PiperVoice:
+    global _piper_voice
+    if _piper_voice is None:
+        print(f"Loading TTS model: {_PIPER_MODEL}")
+        _piper_voice = PiperVoice.load(_PIPER_MODEL)
+    return _piper_voice
 
 # ---------------------------------------------------------------------------
 # Wake word listener
@@ -126,6 +146,8 @@ def run_listener(
 def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
     """
     Encode `audio` as an in-memory WAV and POST it to the .NET server.
+    If the server returns response text, synthesize it via piper-tts and
+    play it through the speakers.
 
     # Future: replace this with a WebSocket send once the server supports it.
     """
@@ -141,13 +163,29 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
         response = requests.post(server_url, files=files)
         print(f"Server response: {response.status_code}")
+        response_text = response.text.strip()
+        if response_text:
+            print(f"Assistant: {response_text}")
+            _speak(response_text)
     except requests.exceptions.RequestException as e:
         print(f"Failed to send to server: {e}")
 
-    # # Local processing (commented out - server handles transcription + LLM)
-    # filename = save_wav(audio, output_dir)
-    # print(f"Command saved: {filename}")
-    # recognizer.AcceptWaveform(audio.tobytes())
-    # text = json.loads(recognizer.Result())['text']
-    # print(f"Command: {text}")
-    # recognizer.Reset()
+
+def _speak(text: str) -> None:
+    """
+    Synthesize `text` via piper-tts and play it through the default output
+    device using sounddevice (blocks until playback is complete).
+    """
+    voice = _get_voice()
+    node_state["speaking"] = True
+    try:
+        chunks = list(voice.synthesize(text))
+        if not chunks:
+            return
+        # Each AudioChunk.audio_float_array is float32 in [-1, 1]
+        audio = np.concatenate([c.audio_float_array for c in chunks])
+        sample_rate = chunks[0].sample_rate
+        sd.play(audio, samplerate=sample_rate)
+        sd.wait()
+    finally:
+        node_state["speaking"] = False

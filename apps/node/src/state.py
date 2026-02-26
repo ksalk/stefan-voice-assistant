@@ -12,4 +12,5 @@
 node_state: dict = {
     "listening": False,   # True when idle wake-word loop is active
     "recording": False,   # True while capturing a command after wake word
+    "speaking": False,    # True while TTS audio is playing back
 }

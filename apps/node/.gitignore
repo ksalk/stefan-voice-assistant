@@ -222,3 +222,7 @@ recordings/
 # Vosk models
 
 vosk-model*/
+
+# Piper TTS models
+
+models/
