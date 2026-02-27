@@ -170,18 +170,16 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
         response_text = response.text.strip()
         if response.status_code == 200 and response_text:
             print(f"[assistant] {response_text}")
-            tts_start = time.time()
-            _speak(response_text)
-            tts_elapsed = time.time() - tts_start
-            total_elapsed = time.time() - op_start
-            print(f"[timing] http: {http_elapsed:.2f}s | tts: {tts_elapsed:.2f}s | total: {total_elapsed:.2f}s")
+            speaking_start = _speak(response_text)
+            time_to_speaking = speaking_start - op_start
+            print(f"[timing] http: {http_elapsed:.2f}s | time to speaking: {time_to_speaking:.2f}s")
         else:
             print(f"[error] Server returned status {response.status_code} with response: {response_text}")
     except requests.exceptions.RequestException as e:
         print(f"[error] Failed to send to server: {e}")
 
 
-def _speak(text: str) -> None:
+def _speak(text: str) -> int:
     """
     Synthesize `text` via piper-tts and play it through the default output
     device using sounddevice (blocks until playback is complete).
@@ -195,7 +193,9 @@ def _speak(text: str) -> None:
         # Each AudioChunk.audio_float_array is float32 in [-1, 1]
         audio = np.concatenate([c.audio_float_array for c in chunks])
         sample_rate = chunks[0].sample_rate
+        speaking_start = time.time()
         sd.play(audio, samplerate=sample_rate)
         sd.wait()
     finally:
         node_state["speaking"] = False
+    return speaking_start

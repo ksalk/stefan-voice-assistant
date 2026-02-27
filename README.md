@@ -83,6 +83,11 @@ python src/main.py
 | `--max-record-duration FLOAT` | `10.0` | Maximum recording length (seconds) |
 | `--output-dir PATH` | `./recordings` | Directory to save command WAV files |
 | `--list-devices` | — | List available audio input devices and exit |
+| `--test-command PATH` | — | Sends audio file at PATH to server and does not continue to listen for wake word - for testing |
+
+## Performance
+
+v0.2.0 - Setting timer takes 3-3.5s
 
 ## Status
 

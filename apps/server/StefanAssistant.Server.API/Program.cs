@@ -97,7 +97,7 @@ string ProcessCommandUsingLLM(string command)
     );
 
     ChatClient client = new(
-        model: "openai/gpt-oss-120b",
+        model: "openai/gpt-oss-safeguard-20b:nitro",
         credential: new ApiKeyCredential(openAIApiKey),
         options: new OpenAIClientOptions()
         {
