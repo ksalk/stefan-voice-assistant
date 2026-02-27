@@ -167,13 +167,15 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
         http_elapsed = time.time() - http_start
 
         response_text = response.text.strip()
-        if response_text:
+        if response.status_code == 200 and response_text:
             print(f"[assistant] {response_text}")
             tts_start = time.time()
             _speak(response_text)
             tts_elapsed = time.time() - tts_start
             total_elapsed = time.time() - op_start
             print(f"[timing] http: {http_elapsed:.2f}s | tts: {tts_elapsed:.2f}s | total: {total_elapsed:.2f}s")
+        else:
+            print(f"[error] Server returned status {response.status_code} with response: {response_text}")
     except requests.exceptions.RequestException as e:
         print(f"[error] Failed to send to server: {e}")
 
