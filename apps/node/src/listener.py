@@ -15,7 +15,9 @@ from audio import (
     CHANNELS,
     FRAME_SAMPLES,
     DEFAULT_WAKEWORD_SKIP_MS,
+    DEFAULT_OUTPUT_DIR,
     record_command,
+    save_wav,
 )
 from state import node_state
 
@@ -155,6 +157,8 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
     """
     print(f"[command] Dispatching command audio to server at {server_url}...")
     op_start = time.time()
+
+    save_wav(audio, DEFAULT_OUTPUT_DIR)
 
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:

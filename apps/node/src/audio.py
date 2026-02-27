@@ -20,7 +20,7 @@ DEFAULT_SILENCE_THRESHOLD = 200       # RMS level (int16) below which audio is s
 DEFAULT_SILENCE_DURATION = 1.0        # seconds of consecutive silence to end recording
 DEFAULT_MAX_RECORD_DURATION = 10.0    # safety cap in seconds
 DEFAULT_OUTPUT_DIR = "./recordings"
-DEFAULT_WAKEWORD_SKIP_MS = 400        # ms of audio to discard after wake word detection
+DEFAULT_WAKEWORD_SKIP_MS = 200        # ms of audio to discard after wake word detection
 
 
 # ---------------------------------------------------------------------------
