@@ -26,7 +26,7 @@ DEFAULT_THRESHOLD = 0.6
 # ---------------------------------------------------------------------------
 
 _MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-lessac-medium.onnx")
+_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-hfc_female-medium.onnx")
 
 # Lazy-loaded singleton — loaded once on first call to _speak()
 _piper_voice: PiperVoice | None = None
@@ -115,7 +115,7 @@ def run_listener(
             now = time.time()
             if score >= threshold and (now - last_trigger) >= COOLDOWN_SECONDS:
                 last_trigger = now
-                print(f"Wake word detected (score={score:.3f}) - recording command...")
+                print(f"[wakeword] Wake word detected (score={score:.3f}) - recording command...")
 
                 node_state["listening"] = False
                 node_state["recording"] = True
@@ -140,7 +140,6 @@ def run_listener(
                 buffer_samples = 0
                 last_trigger = time.time()
                 node_state["listening"] = True
-                print("Listening for wake word: 'alexa'...")
 
 
 def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
@@ -151,6 +150,8 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
 
     # Future: replace this with a WebSocket send once the server supports it.
     """
+    op_start = time.time()
+
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
         wf.setnchannels(CHANNELS)
@@ -161,14 +162,20 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
 
     try:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
+        http_start = time.time()
         response = requests.post(server_url, files=files)
-        print(f"Server response: {response.status_code}")
+        http_elapsed = time.time() - http_start
+
         response_text = response.text.strip()
         if response_text:
-            print(f"Assistant: {response_text}")
+            print(f"[assistant] {response_text}")
+            tts_start = time.time()
             _speak(response_text)
+            tts_elapsed = time.time() - tts_start
+            total_elapsed = time.time() - op_start
+            print(f"[timing] http: {http_elapsed:.2f}s | tts: {tts_elapsed:.2f}s | total: {total_elapsed:.2f}s")
     except requests.exceptions.RequestException as e:
-        print(f"Failed to send to server: {e}")
+        print(f"[error] Failed to send to server: {e}")
 
 
 def _speak(text: str) -> None:

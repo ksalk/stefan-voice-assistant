@@ -31,19 +31,20 @@ app.UseHttpsRedirection();
 app.MapPost("/command", async (IFormFile file) =>
 {
     var timestamp = Stopwatch.GetTimestamp();
-    Console.WriteLine($"Received file: {file.FileName}, size: {file.Length} bytes");
+    Console.WriteLine($"***************************************************************");
+    Console.WriteLine($"[HTTP] Received file: {file.FileName}, size: {file.Length} bytes");
     using var fileStream = file.OpenReadStream();
     string transcriptionResult = GetTextFromCommandAudioFile(fileStream, model);
-    Console.WriteLine($"Transcription result: {transcriptionResult}");
+    Console.WriteLine($"[STT] Transcription result: {transcriptionResult}");
 
     var ms = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-    Console.WriteLine($"Speech processing time: {ms} ms");
+    Console.WriteLine($"[STT] Speech processing time: {ms} ms");
 
     timestamp = Stopwatch.GetTimestamp();
     string assistantResponse = ProcessCommandUsingLLM(transcriptionResult);
-    Console.WriteLine($"Assistant response: {assistantResponse}");
+    Console.WriteLine($"[LLM] Assistant response: {assistantResponse}");
     ms = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-    Console.WriteLine($"LLM processing time: {ms} ms");
+    Console.WriteLine($"[LLM] LLM processing time: {ms} ms");
 
     return assistantResponse;
 })
@@ -68,7 +69,7 @@ string GetTextFromCommandAudioFile(Stream fileStream, Model model)
     var finalResultJson = recognizer.FinalResult();
     var finalResultObj = JsonDocument.Parse(finalResultJson);
     var finalResult = finalResultObj.RootElement.GetProperty("text").GetString();
-    Console.WriteLine(finalResult);
+
     return finalResult;
 }
 
@@ -96,7 +97,7 @@ string ProcessCommandUsingLLM(string command)
     );
 
     ChatClient client = new(
-        model: "minimax/minimax-m2.5",
+        model: "openai/gpt-oss-120b",
         credential: new ApiKeyCredential(openAIApiKey),
         options: new OpenAIClientOptions()
         {
