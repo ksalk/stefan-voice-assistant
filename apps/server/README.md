@@ -1,6 +1,6 @@
 # StefanAssistant Server
 
-ASP.NET Core minimal API that receives a spoken command as a WAV file and transcribes it using [Vosk](https://alphacephei.com/vosk/) — a fully offline, Kaldi-based speech recognition engine. Part of the [Stefan Voice Assistant](../../README.md) project.
+ASP.NET Core minimal API that receives a spoken command as a WAV file and transcribes it using [Whisper.NET](https://github.com/sandrohanea/whisper.net) — a fully offline, .NET wrapper around OpenAI's Whisper model via whisper.cpp. Part of the [Stefan Voice Assistant](../../README.md) project.
 
 ## Endpoint
 
@@ -16,11 +16,11 @@ Returns `"OK"`. Transcription is logged to the console (response body with trans
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Vosk model directory placed at:
+- Whisper GGML model file placed at:
   ```
-  apps/server/StefanAssistant.Server.API/vosk-model-full/
+  apps/server/StefanAssistant.Server.API/ggml-base.bin
   ```
-  Download an English model from https://alphacephei.com/vosk/models. The `vosk-model-en-us-0.42-gigaspeech` (large/accurate) model is recommended.
+  Download the base model from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 
 ## Running
 
@@ -40,7 +40,7 @@ dotnet run --launch-profile https
 
 ## Audio Requirements
 
-The `/command` endpoint expects audio that matches the Vosk model's configuration:
+The `/command` endpoint expects audio that matches Whisper's required format:
 
 | Parameter | Value |
 |-----------|-------|

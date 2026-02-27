@@ -485,7 +485,11 @@ $RECYCLE.BIN/
 
 # Vosk models
 
-vosk-model*/
+vosk-model-*/
+
+# Whisper GGML models
+
+ggml-*.bin
 
 # App Settings
 

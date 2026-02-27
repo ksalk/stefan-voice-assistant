@@ -12,7 +12,7 @@ apps/node  (Python)
   - openWakeWord detects "alexa"
   - records command audio (WAV, 16kHz mono)
   - POST /command  -->  apps/server  (.NET 10 / ASP.NET Core)
-                              - Vosk transcribes the WAV
+                               - Whisper.NET transcribes the WAV
                               - LLM (OpenRouter) generates a response
                               - returns response text in HTTP body
   - piper-tts synthesizes response text
@@ -26,7 +26,7 @@ apps/node  (Python)
 | Component | Language | Key Libraries |
 |-----------|----------|---------------|
 | `apps/node` | Python 3.9+ | openWakeWord, sounddevice, numpy, requests, piper-tts |
-| `apps/server` | .NET 10 (C#) | ASP.NET Core minimal API, Vosk 0.3.38, OpenAI SDK |
+| `apps/server` | .NET 10 (C#) | ASP.NET Core minimal API, Whisper.NET 1.9.0, OpenAI SDK |
 
 ## Prerequisites
 
@@ -34,8 +34,8 @@ apps/node  (Python)
 - `portaudio19-dev` system library (`sudo apt install portaudio19-dev`)
 - .NET 10 SDK
 - Microphone and speaker/audio output device
-- Vosk model directory placed at `apps/server/StefanAssistant.Server.API/vosk-model-full/`
-  - Download a model from https://alphacephei.com/vosk/models
+- Whisper.NET model file placed at `apps/server/StefanAssistant.Server.API/ggml-base.bin`
+  - Download the base model: `dotnet run --project apps/server/StefanAssistant.Server.API -- download-model` or grab it from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 - piper-tts voice model placed at `apps/node/models/` (see below)
 - OpenRouter API key set in `apps/server/StefanAssistant.Server.API/appsettings.json`
 

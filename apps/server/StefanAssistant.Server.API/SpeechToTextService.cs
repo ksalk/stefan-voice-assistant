@@ -1,25 +1,18 @@
-using System.Text.Json;
-using Vosk;
+using Whisper.net;
 
 namespace StefanAssistant.Server.API;
 
-public class SpeechToTextService(Model model)
+public class SpeechToTextService(WhisperProcessor processor)
 {
-    public string Transcribe(Stream audioStream)
+    public async Task<string> TranscribeAsync(Stream audioStream)
     {
-        var recognizer = new VoskRecognizer(model, 16000.0f);
-        recognizer.SetMaxAlternatives(0);
-        recognizer.SetWords(true);
+        var segments = new List<string>();
 
-        byte[] buffer = new byte[4096];
-        int bytesRead;
-        while ((bytesRead = audioStream.Read(buffer, 0, buffer.Length)) > 0)
+        await foreach (var segment in processor.ProcessAsync(audioStream))
         {
-            recognizer.AcceptWaveform(buffer, bytesRead);
+            segments.Add(segment.Text);
         }
 
-        var finalResultJson = recognizer.FinalResult();
-        using var doc = JsonDocument.Parse(finalResultJson);
-        return doc.RootElement.GetProperty("text").GetString() ?? string.Empty;
+        return string.Concat(segments).Trim();
     }
 }

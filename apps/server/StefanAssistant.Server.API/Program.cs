@@ -5,14 +5,21 @@ using OpenAI;
 using OpenAI.Chat;
 using StefanAssistant.Server.API;
 using StefanAssistant.Server.Tools.Timer;
-using Vosk;
+using Whisper.net;
+using Whisper.net.Ggml;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton(_ => new Model("vosk-model-full"));
+builder.Services.AddSingleton(_ =>
+{
+    var factory = WhisperFactory.FromPath("ggml-base.bin");
+    return factory.CreateBuilder()
+        .WithLanguage("en")
+        .Build();
+});
 builder.Services.AddSingleton(_ =>
 {
     string apiKey = configuration["OpenAI:ApiKey"]!;
@@ -53,7 +60,7 @@ app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmComma
 
     using var fileStream = file.OpenReadStream();
     
-    string transcript = stt.Transcribe(fileStream);
+    string transcript = await stt.TranscribeAsync(fileStream);
     Console.WriteLine($"[STT] Transcription result: {transcript}");
     Console.WriteLine($"[STT] Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
