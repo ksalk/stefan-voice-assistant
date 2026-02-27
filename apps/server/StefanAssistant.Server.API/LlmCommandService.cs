@@ -83,7 +83,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
                 {
                     messages.Add(new AssistantChatMessage(completion));
                     var assistantMessage = completion.Content[0].Text;
-                    Console.WriteLine($"[LLM] Assistant response: {assistantMessage}");
+                    ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
                     return assistantMessage;
                 }
 
@@ -93,7 +93,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
 
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
-                        Console.WriteLine($"[LLM] Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
+                        ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
                         var toolResult = DispatchToolCall(toolCall);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
                     }
@@ -145,7 +145,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
                 {
                     messages.Add(new AssistantChatMessage(completion));
                     var assistantMessage = completion.Content[0].Text;
-                    Console.WriteLine($"[LLM] Assistant response: {assistantMessage}");
+                    ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
                     return assistantMessage;
                 }
 
@@ -155,7 +155,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
 
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
-                        Console.WriteLine($"[LLM] Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
+                        ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
                         var toolResult = DispatchToolCall(toolCall);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
                     }

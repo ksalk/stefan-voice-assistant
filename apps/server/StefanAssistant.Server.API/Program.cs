@@ -55,14 +55,14 @@ app.UseHttpsRedirection();
 app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmCommandService llm) =>
 {
     var timestamp = Stopwatch.GetTimestamp();
-    Console.WriteLine($"***************************************************************");
-    Console.WriteLine($"[HTTP] Received file: {file.FileName}, size: {file.Length} bytes");
+    ConsoleLog.WriteSeparator();
+    ConsoleLog.Write(LogCategory.HTTP, $"Received file: {file.FileName}, size: {file.Length} bytes");
 
     using var fileStream = file.OpenReadStream();
     
     string transcript = await stt.TranscribeAsync(fileStream);
-    Console.WriteLine($"[STT] Transcription result: {transcript}");
-    Console.WriteLine($"[STT] Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
+    ConsoleLog.Write(LogCategory.STT, $"Transcription result: {transcript}");
+    ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
     timestamp = Stopwatch.GetTimestamp();
     string response = llm.ProcessCommand(transcript);
@@ -73,7 +73,7 @@ app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmComma
 
     // string response = llm.ProcessAudioCommand(audioBytes);
 
-    Console.WriteLine($"[LLM] LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
+    ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
     return response;
 })
