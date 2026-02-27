@@ -105,6 +105,13 @@ def record_command(
     return audio, buffer_samples
 
 
+def load_wav(path: str) -> np.ndarray:
+    """Load a WAV file from disk and return it as a numpy int16 array."""
+    with wave.open(path, 'rb') as wf:
+        raw = wf.readframes(wf.getnframes())
+    return np.frombuffer(raw, dtype=np.int16)
+
+
 def save_wav(audio: np.ndarray, output_dir: str) -> str:
     """Write a numpy int16 audio array to a timestamped WAV file."""
     os.makedirs(output_dir, exist_ok=True)

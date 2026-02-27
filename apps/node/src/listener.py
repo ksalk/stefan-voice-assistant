@@ -150,6 +150,7 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
 
     # Future: replace this with a WebSocket send once the server supports it.
     """
+    print(f"[command] Dispatching command audio to server at {server_url}...")
     op_start = time.time()
 
     wav_buffer = io.BytesIO()

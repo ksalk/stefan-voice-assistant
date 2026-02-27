@@ -7,8 +7,9 @@ from audio import (
     DEFAULT_MAX_RECORD_DURATION,
     DEFAULT_OUTPUT_DIR,
     list_devices,
+    load_wav,
 )
-from listener import DEFAULT_THRESHOLD, run_listener
+from listener import DEFAULT_THRESHOLD, _dispatch_command, run_listener
 from server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
 
 DEFAULT_SERVER_URL = "http://localhost:5285/command"
@@ -38,6 +39,10 @@ def parse_args():
     parser.add_argument('--server-url', type=str, default=DEFAULT_SERVER_URL,
                         help='URL to POST command audio to (default: %(default)s)')
 
+    # Testing
+    parser.add_argument('--test-command', type=str, default=None, metavar='WAV_FILE',
+                        help='Send a WAV file directly to the server and exit (skips microphone)')
+
     # HTTP server
     parser.add_argument('--http-host', type=str, default=DEFAULT_HTTP_HOST,
                         help='HTTP server bind host (default: %(default)s)')
@@ -52,6 +57,12 @@ def main():
 
     if args.list_devices:
         list_devices()
+        return
+
+    if args.test_command:
+        print(f"[test] Loading {args.test_command}")
+        audio = load_wav(args.test_command)
+        _dispatch_command(audio, args.server_url)
         return
 
     # Start HTTP server before model load so /health returns "initializing"
