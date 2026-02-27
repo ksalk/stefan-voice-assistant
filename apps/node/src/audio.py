@@ -20,6 +20,7 @@ DEFAULT_SILENCE_THRESHOLD = 200       # RMS level (int16) below which audio is s
 DEFAULT_SILENCE_DURATION = 1.0        # seconds of consecutive silence to end recording
 DEFAULT_MAX_RECORD_DURATION = 10.0    # safety cap in seconds
 DEFAULT_OUTPUT_DIR = "./recordings"
+DEFAULT_WAKEWORD_SKIP_MS = 400        # ms of audio to discard after wake word detection
 
 
 # ---------------------------------------------------------------------------
@@ -48,10 +49,14 @@ def record_command(
     silence_threshold: float,
     silence_duration: float,
     max_duration: float,
+    skip_ms: float = DEFAULT_WAKEWORD_SKIP_MS,
 ) -> tuple:
     """
     Drain the shared audio buffer and continue capturing until silence or max
     duration is reached.
+
+    The first `skip_ms` milliseconds of audio are discarded to avoid capturing
+    the tail of the wake word in the command recording.
 
     Returns:
         (audio: np.ndarray[int16], updated_buffer_samples: int)
@@ -63,7 +68,20 @@ def record_command(
     total_recorded = 0
     got_speech = False
 
-    # Drain whatever is already in the buffer (audio right after the wake word)
+    # Discard the first skip_ms ms of audio to drop the wake word tail.
+    # We consume from the buffer (and wait for new chunks if needed) until
+    # skip_samples worth of audio has been thrown away.
+    skip_samples = int(SAMPLE_RATE * skip_ms / 1000)
+    skipped = 0
+    while skipped < skip_samples:
+        if not buffer:
+            time.sleep(0.005)
+            continue
+        chunk = buffer.popleft()
+        buffer_samples -= len(chunk)
+        skipped += len(chunk)
+
+    # Drain whatever is now in the buffer (audio right after the skip window)
     while buffer:
         chunk = buffer.popleft()
         recorded_chunks.append(chunk)

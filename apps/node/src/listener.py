@@ -14,6 +14,7 @@ from audio import (
     SAMPLE_RATE,
     CHANNELS,
     FRAME_SAMPLES,
+    DEFAULT_WAKEWORD_SKIP_MS,
     record_command,
 )
 from state import node_state
@@ -50,6 +51,7 @@ def run_listener(
     max_record_duration: float,
     device: int | None,
     server_url: str,
+    wakeword_skip_ms: float = DEFAULT_WAKEWORD_SKIP_MS,
 ) -> None:
     """
     Loads the wake word model, opens the microphone stream, and runs the
@@ -125,6 +127,7 @@ def run_listener(
                     silence_threshold,
                     silence_duration,
                     max_record_duration,
+                    wakeword_skip_ms,
                 )
 
                 node_state["recording"] = False

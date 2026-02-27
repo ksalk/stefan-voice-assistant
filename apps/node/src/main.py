@@ -6,6 +6,7 @@ from audio import (
     DEFAULT_SILENCE_DURATION,
     DEFAULT_MAX_RECORD_DURATION,
     DEFAULT_OUTPUT_DIR,
+    DEFAULT_WAKEWORD_SKIP_MS,
     list_devices,
     load_wav,
 )
@@ -32,6 +33,8 @@ def parse_args():
                         help='Seconds of consecutive silence to stop recording (default: %(default)s)')
     parser.add_argument('--max-record-duration', type=float, default=DEFAULT_MAX_RECORD_DURATION,
                         help='Maximum recording duration in seconds (default: %(default)s)')
+    parser.add_argument('--wakeword-skip-ms', type=float, default=DEFAULT_WAKEWORD_SKIP_MS,
+                        help='Milliseconds of audio to discard after wake word detection to drop its tail (default: %(default)s)')
     parser.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                         help='Directory for saved recordings (default: %(default)s)')
 
@@ -75,6 +78,7 @@ def main():
         silence_threshold=args.silence_threshold,
         silence_duration=args.silence_duration,
         max_record_duration=args.max_record_duration,
+        wakeword_skip_ms=args.wakeword_skip_ms,
         device=args.device,
         server_url=args.server_url,
     )
