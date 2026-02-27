@@ -1,4 +1,3 @@
-using System.Text.Json;
 using OpenAI.Chat;
 using StefanAssistant.Server.Tools.Timer;
 
@@ -6,52 +5,9 @@ namespace StefanAssistant.Server.API;
 
 public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
 {
-    private static readonly ChatTool AddTimerTool = ChatTool.CreateFunctionTool(
-        functionName: nameof(TimerTools.AddTimer),
-        functionDescription: "Add a timer",
-        functionParameters: BinaryData.FromBytes("""
-        {
-            "type": "object",
-            "properties": {
-                "seconds": {
-                    "type": "integer",
-                    "description": "Number of seconds for the timer."
-                },
-                "label": {
-                    "type": "string",
-                    "description": "A label for the timer if desired."
-                }
-            },
-            "required": [ "seconds" ]
-        }
-        """u8.ToArray())
-    );
-
-    private static readonly ChatTool ListTimersTool = ChatTool.CreateFunctionTool(
-        functionName: nameof(TimerTools.ListTimers),
-        functionDescription: "List active timers"
-    );
-
-    private static readonly ChatTool CancelTimerTool = ChatTool.CreateFunctionTool(
-        functionName: nameof(TimerTools.CancelTimer),
-        functionDescription: "Cancel a timer by its ID",
-        functionParameters: BinaryData.FromBytes("""
-        {
-            "type": "object",
-            "properties": {
-                "timerId": {
-                    "type": "integer",
-                    "description": "The ID of the timer to cancel."
-                }
-            },
-            "required": [ "timerId" ]
-        }
-        """u8.ToArray())
-    );
-
     private static readonly ChatCompletionOptions CompletionOptions = new()
     {
-        Tools = { AddTimerTool, ListTimersTool, CancelTimerTool },
+        Tools = { AddTimerTool.Definition, ListTimersTool.Definition, CancelTimerTool.Definition },
     };
 
     private const string SystemPrompt = """
@@ -185,33 +141,14 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
     {
         switch (toolCall.FunctionName)
         {
-            case nameof(TimerTools.AddTimer):
-            {
-                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
-                bool hasSeconds = argumentsJson.RootElement.TryGetProperty("seconds", out JsonElement seconds);
-                bool hasLabel = argumentsJson.RootElement.TryGetProperty("label", out JsonElement label);
+            case nameof(AddTimerTool):
+                return AddTimerTool.Execute(toolCall, dbContext);
 
-                if (!hasSeconds)
-                    throw new ArgumentNullException(nameof(seconds), "The seconds argument is required.");
+            case nameof(ListTimersTool):
+                return ListTimersTool.Execute(toolCall, dbContext);
 
-                return hasLabel
-                    ? TimerTools.AddTimer(seconds.GetInt32(), label.GetString(), dbContext)
-                    : TimerTools.AddTimer(seconds.GetInt32(), null, dbContext);
-            }
-
-            case nameof(TimerTools.ListTimers):
-                return TimerTools.ListTimers(dbContext);
-
-            case nameof(TimerTools.CancelTimer):
-            {
-                using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
-                bool hasTimerId = argumentsJson.RootElement.TryGetProperty("timerId", out JsonElement timerId);
-
-                if (!hasTimerId)
-                    throw new ArgumentNullException(nameof(timerId), "The timerId argument is required.");
-
-                return TimerTools.CancelTimer(timerId.GetInt32(), dbContext);
-            }
+            case nameof(CancelTimerTool):
+                return CancelTimerTool.Execute(toolCall, dbContext);
 
             default:
                 throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");
