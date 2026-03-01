@@ -7,8 +7,21 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  server:
+    name: Server (.NET)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore dependencies
+        run: dotnet restore apps/server/StefanAssistant.Server.sln
+
+      - name: Build
+        run: dotnet build apps/server/StefanAssistant.Server.sln --no-restore --configuration Release
