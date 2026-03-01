@@ -25,17 +25,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Download Vosk model
-
-Download a Vosk English model (the small one is ~40 MB, good for Pi):
-
-```bash
-wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
-unzip vosk-model-small-en-us-0.15.zip -d vosk-model
-```
-
-Or use the full `vosk-model-en-us-0.22` (~1.8 GB) for better accuracy.
-
 ## Download piper-tts voice model
 
 The app uses [piper-tts](https://github.com/rhasspy/piper) for offline text-to-speech. Voice models must be placed in the `models/` directory.
