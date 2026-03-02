@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StefanAssistant.Server.Tools\StefanAssistant.Server.Tools.csproj" />
     <ProjectReference Include="..\StefanAssistant.Server.AI\StefanAssistant.Server.AI.csproj" />
     <ProjectReference Include="..\StefanAssistant.Server.Common\StefanAssistant.Server.Common.csproj" />
   </ItemGroup>
