@@ -12,6 +12,7 @@ from audio import (
 )
 from listener import DEFAULT_THRESHOLD, _dispatch_command, run_listener
 from server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
+from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 
 DEFAULT_SERVER_URL = "http://localhost:5285/command"
 
@@ -41,6 +42,8 @@ def parse_args():
     # Remote server
     parser.add_argument('--server-url', type=str, default=DEFAULT_SERVER_URL,
                         help='URL to POST command audio to (default: %(default)s)')
+    parser.add_argument('--server-ws-url', type=str, default=DEFAULT_SERVER_WS_URL,
+                        help='WebSocket URL for server connection (default: %(default)s)')
 
     # Testing
     parser.add_argument('--test-command', type=str, default=None, metavar='WAV_FILE',
@@ -71,6 +74,7 @@ def main():
     # Start HTTP server before model load so /health returns "initializing"
     # while the wake word model is being loaded.
     start_http_thread(args.http_host, args.http_port)
+    start_ws_thread(args.server_ws_url)
 
     # Blocking — runs the mic loop forever
     run_listener(

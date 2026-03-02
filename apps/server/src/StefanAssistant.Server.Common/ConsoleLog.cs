@@ -1,6 +1,6 @@
 namespace StefanAssistant.Server.Common;
 
-public enum LogCategory { HTTP, STT, LLM, Tool }
+public enum LogCategory { HTTP, STT, LLM, Tool, WS }
 
 public static class ConsoleLog
 {
@@ -10,6 +10,7 @@ public static class ConsoleLog
         [LogCategory.STT]  = ConsoleColor.Cyan,
         [LogCategory.LLM]  = ConsoleColor.Magenta,
         [LogCategory.Tool] = ConsoleColor.Yellow,
+        [LogCategory.WS]   = ConsoleColor.Green,
     };
 
     public static void Write(LogCategory category, string message)
