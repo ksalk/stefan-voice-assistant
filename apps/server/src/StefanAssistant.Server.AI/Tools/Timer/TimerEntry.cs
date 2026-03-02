@@ -1,4 +1,4 @@
-namespace StefanAssistant.Server.Tools.Timer;
+namespace StefanAssistant.Server.AI.Tools.Timer;
 
 public class TimerEntry
 {

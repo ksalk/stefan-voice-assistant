@@ -1,4 +1,4 @@
-namespace StefanAssistant.Server.API;
+namespace StefanAssistant.Server.Common;
 
 public enum LogCategory { HTTP, STT, LLM, Tool }
 

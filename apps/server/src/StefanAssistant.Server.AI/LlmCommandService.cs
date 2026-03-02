@@ -1,7 +1,8 @@
 using OpenAI.Chat;
-using StefanAssistant.Server.Tools.Timer;
+using StefanAssistant.Server.AI.Tools.Timer;
+using StefanAssistant.Server.Common;
 
-namespace StefanAssistant.Server.API;
+namespace StefanAssistant.Server.AI;
 
 public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
 {
@@ -25,68 +26,6 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
             new SystemChatMessage(SystemPrompt),
             new UserChatMessage(command),
         ];
-
-        bool requiresAction;
-
-        do
-        {
-            requiresAction = false;
-            ChatCompletion completion = chatClient.CompleteChat(messages, CompletionOptions);
-
-            switch (completion.FinishReason)
-            {
-                case ChatFinishReason.Stop:
-                {
-                    messages.Add(new AssistantChatMessage(completion));
-                    var assistantMessage = completion.Content[0].Text;
-                    ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
-                    return assistantMessage;
-                }
-
-                case ChatFinishReason.ToolCalls:
-                {
-                    messages.Add(new AssistantChatMessage(completion));
-
-                    foreach (ChatToolCall toolCall in completion.ToolCalls)
-                    {
-                        ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
-                        var toolResult = DispatchToolCall(toolCall);
-                        messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
-                    }
-
-                    requiresAction = true;
-                    break;
-                }
-
-                case ChatFinishReason.Length:
-                    throw new NotImplementedException("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
-
-                case ChatFinishReason.ContentFilter:
-                    throw new NotImplementedException("Omitted content due to a content filter flag.");
-
-                case ChatFinishReason.FunctionCall:
-                    throw new NotImplementedException("Deprecated in favor of tool calls.");
-
-                default:
-                    throw new NotImplementedException(completion.FinishReason.ToString());
-            }
-        } while (requiresAction);
-
-        return "Error";
-    }
-
-    public string ProcessAudioCommand(byte[] audioBytes)
-    {
-        // Input audio is provided to a request by adding an audio content part to a user message
-        BinaryData audioData = BinaryData.FromBytes(audioBytes);
-
-#pragma warning disable OPENAI001
-        List<ChatMessage> messages =
-        [
-            new SystemChatMessage(SystemPrompt),
-            new UserChatMessage(ChatMessageContentPart.CreateInputAudioPart(audioData, ChatInputAudioFormat.Wav))
-        ];
-#pragma warning restore OPENAI001
 
         bool requiresAction;
 
