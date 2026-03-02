@@ -83,7 +83,7 @@ def main():
     # Start HTTP server before model load so /health returns "initializing"
     # while the wake word model is being loaded.
     start_http_thread(args.http_host, args.http_port)
-    start_ws_thread(args.server_ws_url, args.node_secret, ssl_no_verify=not args.ssl_verify)
+    start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
     # Blocking — runs the mic loop forever
     run_wakeword_listener(
