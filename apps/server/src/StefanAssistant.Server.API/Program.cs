@@ -81,13 +81,24 @@ app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmComma
 .DisableAntiforgery() // TODO: fix in future for security
 .WithName("ProcessCommand");
 
-app.Map("/ws", async (HttpContext context, NodeRegistry nodeRegistry, CancellationToken cancellationToken) =>
+app.Map("/ws", async (HttpContext context, NodeRegistry nodeRegistry, IConfiguration config, CancellationToken cancellationToken) =>
 {
     if (!context.WebSockets.IsWebSocketRequest)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
         return;
     }
+
+    var expectedSecret = config["NodeSecret"];
+    var providedSecret = context.Request.Headers["X-Node-Secret"].FirstOrDefault();
+
+    if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
+    {
+        ConsoleLog.Write(LogCategory.WS, "WebSocket connection rejected: invalid or missing X-Node-Secret");
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
     ConsoleLog.Write(LogCategory.WS, "WebSocket connection request received");
 
     var webSocket = await context.WebSockets.AcceptWebSocketAsync();
