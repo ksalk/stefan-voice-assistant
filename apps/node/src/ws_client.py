@@ -16,16 +16,11 @@ import json
 import argparse
 import os
 import ssl
-import uuid
 import threading
 
 import websockets
 
 DEFAULT_SERVER_WS_URL = "wss://localhost:7036/ws"
-
-# Generated once at startup, stable for the lifetime of this process.
-NODE_ID = str(uuid.uuid4())
-
 
 # ---------------------------------------------------------------------------
 # SSL helpers
@@ -49,11 +44,11 @@ def _build_ssl_context(no_verify: bool) -> ssl.SSLContext:
 # Protocol helpers
 # ---------------------------------------------------------------------------
 
-def _node_ready_msg() -> str:
+def _node_ready_msg(device_id: str) -> str:
     return json.dumps({
         "type": "node_ready",
         "payload": {
-            "nodeId": NODE_ID,
+            "nodeId": device_id,
         },
     })
 
@@ -62,8 +57,8 @@ def _node_ready_msg() -> str:
 # Client
 # ---------------------------------------------------------------------------
 
-async def run(server_ws_url: str, secret: str, ssl_no_verify: bool = False) -> None:
-    print(f"[ws] Node ID: {NODE_ID}")
+async def run(server_ws_url: str, secret: str, device_id: str, ssl_no_verify: bool = False) -> None:
+    print(f"[ws] Node ID: {device_id}")
     print(f"[ws] Connecting to {server_ws_url}...")
 
     ssl_context = _build_ssl_context(ssl_no_verify) if server_ws_url.startswith("wss://") else None
@@ -76,7 +71,7 @@ async def run(server_ws_url: str, secret: str, ssl_no_verify: bool = False) -> N
         print("[ws] Connected.")
 
         # Send handshake
-        msg = _node_ready_msg()
+        msg = _node_ready_msg(device_id)
         await ws.send(msg)
         print(f"[ws] Sent: {msg}")
 
@@ -85,10 +80,10 @@ async def run(server_ws_url: str, secret: str, ssl_no_verify: bool = False) -> N
             print(f"[ws] Received: {raw}")
 
 
-def start_ws_thread(server_ws_url: str, secret: str, ssl_no_verify: bool = False) -> threading.Thread:
+def start_ws_thread(server_ws_url: str, secret: str, device_id: str, ssl_no_verify: bool = False) -> threading.Thread:
     """Run the WebSocket client in a daemon thread with its own event loop."""
     def _target():
-        asyncio.run(run(server_ws_url, secret, ssl_no_verify))
+        asyncio.run(run(server_ws_url, secret, device_id, ssl_no_verify))
 
     thread = threading.Thread(
         target=_target,

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import uuid
 
 from audio import (
     DEFAULT_SILENCE_THRESHOLD,
@@ -10,12 +11,14 @@ from audio import (
     list_devices,
     load_wav,
 )
-from listener import DEFAULT_THRESHOLD, _dispatch_command, run_listener
+from listener import DEFAULT_THRESHOLD, _dispatch_command, run_wakeword_listener
 from server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
 from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 import os
 
 DEFAULT_SERVER_URL = "http://localhost:5285/command"
+# Generated once at startup, stable for the lifetime of this process.
+DEVICE_ID = str(uuid.uuid4())
 
 
 def parse_args():
@@ -74,7 +77,7 @@ def main():
     if args.test_command:
         print(f"[test] Loading {args.test_command}")
         audio = load_wav(args.test_command)
-        _dispatch_command(audio, args.server_url, args.node_secret, ssl_verify=args.ssl_verify)
+        _dispatch_command(audio=audio, server_url=args.server_url, device_id=DEVICE_ID, node_secret=args.node_secret, ssl_verify=args.ssl_verify)
         return
 
     # Start HTTP server before model load so /health returns "initializing"
@@ -83,7 +86,7 @@ def main():
     start_ws_thread(args.server_ws_url, args.node_secret, ssl_no_verify=not args.ssl_verify)
 
     # Blocking — runs the mic loop forever
-    run_listener(
+    run_wakeword_listener(
         threshold=args.threshold,
         silence_threshold=args.silence_threshold,
         silence_duration=args.silence_duration,
@@ -91,6 +94,7 @@ def main():
         wakeword_skip_ms=args.wakeword_skip_ms,
         device=args.device,
         server_url=args.server_url,
+        device_id=DEVICE_ID,
         node_secret=args.node_secret,
         ssl_verify=args.ssl_verify,
     )

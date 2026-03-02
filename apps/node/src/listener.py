@@ -28,13 +28,14 @@ DEFAULT_THRESHOLD = 0.6
 # Wake word listener
 # ---------------------------------------------------------------------------
 
-def run_listener(
+def run_wakeword_listener(
     threshold: float,
     silence_threshold: float,
     silence_duration: float,
     max_record_duration: float,
     device: int | None,
     server_url: str,
+    device_id: str,
     node_secret: str = "",
     ssl_verify: bool = False,
     wakeword_skip_ms: float = DEFAULT_WAKEWORD_SKIP_MS,
@@ -119,7 +120,7 @@ def run_listener(
                 node_state["recording"] = False
 
                 if len(audio) > 0:
-                    _dispatch_command(audio, server_url, node_secret, ssl_verify)
+                    _dispatch_command(audio, server_url, device_id, node_secret, ssl_verify)
                 else:
                     print("No audio captured after wake word.")
 
@@ -131,7 +132,7 @@ def run_listener(
                 node_state["listening"] = True
 
 
-def _dispatch_command(audio: np.ndarray, server_url: str, node_secret: str = "", ssl_verify: bool = False) -> None:
+def _dispatch_command(audio: np.ndarray, server_url: str, device_id: str, node_secret: str = "", ssl_verify: bool = False) -> None:
     """
     Encode `audio` as an in-memory WAV and POST it to the .NET server.
     If the server returns response text, synthesize it via piper-tts and
@@ -154,7 +155,7 @@ def _dispatch_command(audio: np.ndarray, server_url: str, node_secret: str = "",
 
     try:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
-        headers = {"X-Node-Secret": node_secret}
+        headers = {"X-Node-Secret": node_secret, "X-Node-Device-ID": device_id}
         http_start = time.time()
         response = requests.post(server_url, files=files, headers=headers, verify=ssl_verify)
         http_elapsed = time.time() - http_start

@@ -59,8 +59,16 @@ app.UseHttpsRedirection();
 
 app.MapPost("/command", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config) =>
 {
+    var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
+    if(string.IsNullOrEmpty(deviceId))
+    {
+        ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: missing X-Node-Device-ID header");
+        return Results.BadRequest("Missing X-Node-Device-ID header");
+    }
+
     var expectedSecret = config["NodeSecret"];
     var providedSecret = context.Request.Headers["X-Node-Secret"].FirstOrDefault();
+
 
     if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
     {
@@ -79,7 +87,7 @@ app.MapPost("/command", async (HttpContext context, IFormFile file, SpeechToText
     ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
     timestamp = Stopwatch.GetTimestamp();
-    string response = llm.ProcessCommand(transcript);
+    string response = llm.ProcessCommand(transcript, deviceId);
 
     ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 

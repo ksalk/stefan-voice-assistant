@@ -19,7 +19,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         Respond with simple plain confirmation message, ready to be TTS'd, no need for markdown or formatting.
         """;
 
-    public string ProcessCommand(string command)
+    public string ProcessCommand(string command, string deviceId)
     {
         List<ChatMessage> messages =
         [
@@ -51,7 +51,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
-                        var toolResult = DispatchToolCall(toolCall);
+                        var toolResult = DispatchToolCall(toolCall, deviceId);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
                     }
 
@@ -76,12 +76,12 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         return "Error";
     }
 
-    private string DispatchToolCall(ChatToolCall toolCall)
+    private string DispatchToolCall(ChatToolCall toolCall, string deviceId)
     {
         switch (toolCall.FunctionName)
         {
             case nameof(AddTimerTool):
-                return AddTimerTool.Execute(toolCall, dbContext);
+                return AddTimerTool.Execute(toolCall, dbContext, deviceId);
 
             case nameof(ListTimersTool):
                 return ListTimersTool.Execute(toolCall, dbContext);

@@ -51,7 +51,6 @@ The `/command` endpoint expects audio that matches Whisper's required format:
 
 ## To do
 
-- Transcription result is logged to console only — the HTTP response always returns `"OK"` regardless of the transcript.
 - Antiforgery validation is disabled on `/command` (noted as a TODO for future hardening).
 - No authentication or rate limiting.
 - Test scripts 

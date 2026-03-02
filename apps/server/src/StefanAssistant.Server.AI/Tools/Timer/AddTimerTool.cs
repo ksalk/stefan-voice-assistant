@@ -26,7 +26,7 @@ public static class AddTimerTool
         """u8.ToArray())
     );
 
-    public static string Execute(ChatToolCall toolCall, TimerDbContext dbContext)
+    public static string Execute(ChatToolCall toolCall, TimerDbContext dbContext, string deviceId)
     {
         using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
         bool hasSeconds = argumentsJson.RootElement.TryGetProperty("seconds", out JsonElement seconds);
@@ -47,6 +47,8 @@ public static class AddTimerTool
 
         dbContext.Timers.Add(entry);
         dbContext.SaveChanges();
+
+        TimerScheduler.ScheduleTimer(entry, deviceId);
 
         return string.IsNullOrEmpty(labelValue)
             ? $"Timer set for {secondsValue} seconds."
