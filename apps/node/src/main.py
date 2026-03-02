@@ -74,7 +74,7 @@ def main():
     if args.test_command:
         print(f"[test] Loading {args.test_command}")
         audio = load_wav(args.test_command)
-        _dispatch_command(audio, args.server_url)
+        _dispatch_command(audio, args.server_url, args.node_secret, ssl_verify=args.ssl_verify)
         return
 
     # Start HTTP server before model load so /health returns "initializing"
@@ -91,6 +91,8 @@ def main():
         wakeword_skip_ms=args.wakeword_skip_ms,
         device=args.device,
         server_url=args.server_url,
+        node_secret=args.node_secret,
+        ssl_verify=args.ssl_verify,
     )
 
 

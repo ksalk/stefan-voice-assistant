@@ -57,8 +57,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmCommandService llm) =>
+app.MapPost("/command", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config) =>
 {
+    var expectedSecret = config["NodeSecret"];
+    var providedSecret = context.Request.Headers["X-Node-Secret"].FirstOrDefault();
+
+    if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
+    {
+        ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: invalid or missing X-Node-Secret");
+        return Results.Unauthorized();
+    }
+
     var timestamp = Stopwatch.GetTimestamp();
     ConsoleLog.WriteSeparator();
     ConsoleLog.Write(LogCategory.HTTP, $"Received file: {file.FileName}, size: {file.Length} bytes");
@@ -74,7 +83,7 @@ app.MapPost("/command", async (IFormFile file, SpeechToTextService stt, LlmComma
 
     ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
-    return response;
+    return Results.Ok(response);
 })
 .DisableAntiforgery() // TODO: fix in future for security
 .WithName("ProcessCommand");
