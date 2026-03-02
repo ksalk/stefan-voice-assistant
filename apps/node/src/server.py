@@ -3,6 +3,7 @@ import threading
 
 from aiohttp import web
 
+from audio import speak
 from state import node_state
 
 DEFAULT_HTTP_HOST = "0.0.0.0"
@@ -64,7 +65,7 @@ async def handle_text(request):
         return web.Response(status=400, text="Empty text payload")
 
     print(f"[HTTP] Received text: {text}")
-    # TODO: pass `text` to a TTS engine for playback
+    speak(text, node_state)
 
     return web.Response(status=200, text="OK")
 
