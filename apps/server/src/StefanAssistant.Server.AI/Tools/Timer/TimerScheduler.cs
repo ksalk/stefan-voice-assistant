@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using StefanAssistant.Server.Common;
 
 namespace StefanAssistant.Server.AI.Tools.Timer;
 
@@ -19,7 +20,8 @@ public static class TimerScheduler
                 var secondsRemaining = entry.Seconds - (DateTime.UtcNow - entry.CreatedAt).TotalSeconds;
                 await Task.Delay(TimeSpan.FromSeconds(secondsRemaining), cts.Token);
 
-                // TODO: send back to node
+                var notifier = new NodeNotifier();
+                await notifier.SendTextNotification(deviceId, $"Timer {entry.Id} finished!");
 
                 _runningTimers.TryRemove(entry.Id, out _);
             }
