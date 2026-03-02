@@ -6,6 +6,7 @@ from datetime import datetime
 
 import numpy as np
 import sounddevice as sd
+from piper.voice import PiperVoice
 
 # ---------------------------------------------------------------------------
 # Audio constants
@@ -15,6 +16,49 @@ SAMPLE_RATE = 16000
 CHANNELS = 1
 FRAME_MS = 20
 FRAME_SAMPLES = int(SAMPLE_RATE * FRAME_MS / 1000)
+
+# ---------------------------------------------------------------------------
+# TTS configuration
+# ---------------------------------------------------------------------------
+
+_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-hfc_female-medium.onnx")
+
+# Lazy-loaded singleton — loaded once on first call to speak()
+_piper_voice: PiperVoice | None = None
+
+
+def _get_voice() -> PiperVoice:
+    global _piper_voice
+    if _piper_voice is None:
+        print(f"[TTS] Loading TTS model: {_PIPER_MODEL}")
+        _piper_voice = PiperVoice.load(_PIPER_MODEL)
+    return _piper_voice
+
+
+def speak(text: str, node_state: dict) -> float:
+    """
+    Synthesize `text` via piper-tts and play it through the default output
+    device using sounddevice (blocks until playback is complete).
+
+    Returns the timestamp at which playback started.
+    """
+    voice = _get_voice()
+    node_state["speaking"] = True
+    try:
+        chunks = list(voice.synthesize(text))
+        if not chunks:
+            return
+        # Each AudioChunk.audio_float_array is float32 in [-1, 1]
+        audio = np.concatenate([c.audio_float_array for c in chunks])
+        sample_rate = chunks[0].sample_rate
+        speaking_start = time.time()
+        sd.play(audio, samplerate=sample_rate)
+        sd.wait()
+    finally:
+        node_state["speaking"] = False
+    return speaking_start
+
 
 DEFAULT_SILENCE_THRESHOLD = 200       # RMS level (int16) below which audio is silence
 DEFAULT_SILENCE_DURATION = 1.0        # seconds of consecutive silence to end recording

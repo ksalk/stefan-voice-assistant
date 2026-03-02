@@ -8,7 +8,6 @@ import numpy as np
 import requests
 import sounddevice as sd
 from openwakeword.model import Model
-from piper.voice import PiperVoice
 
 from audio import (
     SAMPLE_RATE,
@@ -18,29 +17,12 @@ from audio import (
     DEFAULT_OUTPUT_DIR,
     record_command,
     save_wav,
+    speak,
 )
 from state import node_state
 
 COOLDOWN_SECONDS = 1.5
 DEFAULT_THRESHOLD = 0.6
-
-# ---------------------------------------------------------------------------
-# TTS configuration
-# ---------------------------------------------------------------------------
-
-_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-hfc_female-medium.onnx")
-
-# Lazy-loaded singleton — loaded once on first call to _speak()
-_piper_voice: PiperVoice | None = None
-
-
-def _get_voice() -> PiperVoice:
-    global _piper_voice
-    if _piper_voice is None:
-        print(f"Loading TTS model: {_PIPER_MODEL}")
-        _piper_voice = PiperVoice.load(_PIPER_MODEL)
-    return _piper_voice
 
 # ---------------------------------------------------------------------------
 # Wake word listener
@@ -91,8 +73,8 @@ def run_listener(
         callback=audio_callback,
     )
 
-    print("Listening for wake word: 'alexa'...")
-    print(f"Threshold: {threshold} | Cooldown: {COOLDOWN_SECONDS}s")
+    print("[wakeword] Listening for wake word: 'alexa'...")
+    print(f"[wakeword] Threshold: {threshold} | Cooldown: {COOLDOWN_SECONDS}s")
 
     node_state["listening"] = True
 
@@ -177,32 +159,10 @@ def _dispatch_command(audio: np.ndarray, server_url: str) -> None:
         response_text = response.text.strip()
         if response.status_code == 200 and response_text:
             print(f"[assistant] {response_text}")
-            speaking_start = _speak(response_text)
+            speaking_start = speak(response_text, node_state)
             time_to_speaking = speaking_start - op_start
             print(f"[timing] http: {http_elapsed:.2f}s | time to speaking: {time_to_speaking:.2f}s")
         else:
             print(f"[error] Server returned status {response.status_code} with response: {response_text}")
     except requests.exceptions.RequestException as e:
         print(f"[error] Failed to send to server: {e}")
-
-
-def _speak(text: str) -> int:
-    """
-    Synthesize `text` via piper-tts and play it through the default output
-    device using sounddevice (blocks until playback is complete).
-    """
-    voice = _get_voice()
-    node_state["speaking"] = True
-    try:
-        chunks = list(voice.synthesize(text))
-        if not chunks:
-            return
-        # Each AudioChunk.audio_float_array is float32 in [-1, 1]
-        audio = np.concatenate([c.audio_float_array for c in chunks])
-        sample_rate = chunks[0].sample_rate
-        speaking_start = time.time()
-        sd.play(audio, samplerate=sample_rate)
-        sd.wait()
-    finally:
-        node_state["speaking"] = False
-    return speaking_start
