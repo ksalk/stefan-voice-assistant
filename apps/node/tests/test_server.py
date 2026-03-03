@@ -1,7 +1,7 @@
 import pytest
 from aiohttp import web
 
-from server import build_app
+from http_server import build_app
 from state import node_state
 
 
