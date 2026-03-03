@@ -106,7 +106,7 @@ def start_http_server(host: str, port: int) -> None:
     loop.run_until_complete(_run())
 
 
-def start_http_thread(host: str, port: int) -> threading.Thread:
+def start_http_server_thread(host: str, port: int) -> threading.Thread:
     """Convenience wrapper: creates, starts, and returns the daemon thread."""
     thread = threading.Thread(
         target=start_http_server,

@@ -11,8 +11,8 @@ from audio import (
     list_devices,
     load_wav,
 )
-from listener import DEFAULT_THRESHOLD, _dispatch_command, run_wakeword_listener
-from apps.node.src.http_server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
+from listener import DEFAULT_THRESHOLD, _dispatch_command, start_wakeword_listener
+from apps.node.src.http_server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_server_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 import os
 
@@ -80,13 +80,12 @@ def main():
         _dispatch_command(audio=audio, server_url=args.server_url, device_id=DEVICE_ID, node_secret=args.node_secret, ssl_verify=args.ssl_verify)
         return
 
-    # Start HTTP server before model load so /health returns "initializing"
-    # while the wake word model is being loaded.
-    start_http_thread(args.http_host, args.http_port)
+    start_http_server_thread(args.http_host, args.http_port)
+
     # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
     # Blocking — runs the mic loop forever
-    run_wakeword_listener(
+    start_wakeword_listener(
         threshold=args.threshold,
         silence_threshold=args.silence_threshold,
         silence_duration=args.silence_duration,

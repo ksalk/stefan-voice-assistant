@@ -28,7 +28,7 @@ DEFAULT_THRESHOLD = 0.6
 # Wake word listener
 # ---------------------------------------------------------------------------
 
-def run_wakeword_listener(
+def start_wakeword_listener(
     threshold: float,
     silence_threshold: float,
     silence_duration: float,
