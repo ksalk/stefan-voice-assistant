@@ -1,7 +1,6 @@
 numpy
 sounddevice
 openwakeword
-vosk
 requests
 aiohttp
 piper-tts
