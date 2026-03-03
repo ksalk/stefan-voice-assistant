@@ -13,7 +13,7 @@ from audio import (
 )
 from listener import DEFAULT_THRESHOLD, _dispatch_command, run_wakeword_listener
 from server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
-from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
+# from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 import os
 
 DEFAULT_SERVER_URL = "http://localhost:5285/command"
@@ -46,8 +46,8 @@ def parse_args():
     # Remote server
     parser.add_argument('--server-url', type=str, default=DEFAULT_SERVER_URL,
                         help='URL to POST command audio to (default: %(default)s)')
-    parser.add_argument('--server-ws-url', type=str, default=DEFAULT_SERVER_WS_URL,
-                        help='WebSocket URL for server connection (default: %(default)s)')
+    # parser.add_argument('--server-ws-url', type=str, default=DEFAULT_SERVER_WS_URL,
+    #                     help='WebSocket URL for server connection (default: %(default)s)')
     parser.add_argument('--node-secret', type=str,
                         default=os.environ.get("NODE_SECRET", ""),
                         help='Shared secret for X-Node-Secret header (default: $NODE_SECRET env var)')
@@ -83,7 +83,7 @@ def main():
     # Start HTTP server before model load so /health returns "initializing"
     # while the wake word model is being loaded.
     start_http_thread(args.http_host, args.http_port)
-    start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
+    # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
     # Blocking — runs the mic loop forever
     run_wakeword_listener(

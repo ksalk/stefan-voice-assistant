@@ -36,12 +36,12 @@ builder.Services.AddSingleton<SpeechToTextService>();
 builder.Services.AddDbContext<TimerDbContext>(o =>
     o.UseSqlite(configuration.GetConnectionString("TimerDb")));
 builder.Services.AddScoped<LlmCommandService>();
-builder.Services.AddSingleton<NodeRegistry>();
-builder.Services.AddSingleton<NodeWebSocketHandler>();
+// builder.Services.AddSingleton<NodeRegistry>();
+// builder.Services.AddSingleton<NodeWebSocketHandler>();
 
 var app = builder.Build();
 
-app.UseWebSockets();
+// app.UseWebSockets();
 
 // Ensure the SQLite database and schema exist on startup.
 using (var scope = app.Services.CreateScope())
@@ -96,8 +96,8 @@ app.MapPost("/command", async (HttpContext context, IFormFile file, SpeechToText
 .DisableAntiforgery() // TODO: fix in future for security
 .WithName("ProcessCommand");
 
-app.Map("/ws", (HttpContext context, NodeWebSocketHandler wsHandler, CancellationToken cancellationToken) =>
-    wsHandler.HandleAsync(context, cancellationToken));
+// app.Map("/ws", (HttpContext context, NodeWebSocketHandler wsHandler, CancellationToken cancellationToken) =>
+//     wsHandler.HandleAsync(context, cancellationToken));
 
 
 app.Run();
