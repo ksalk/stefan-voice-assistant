@@ -6,8 +6,10 @@ from aiohttp import web
 from audio import speak
 from state import node_state
 
-DEFAULT_HTTP_HOST = "0.0.0.0"
-DEFAULT_HTTP_PORT = 8080
+import config
+
+DEFAULT_HTTP_HOST = config.HTTP_HOST
+DEFAULT_HTTP_PORT = config.HTTP_PORT
 
 # ---------------------------------------------------------------------------
 # Route handlers

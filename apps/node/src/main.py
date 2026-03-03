@@ -2,6 +2,7 @@
 import argparse
 import uuid
 
+import config
 from audio import (
     DEFAULT_SILENCE_THRESHOLD,
     DEFAULT_SILENCE_DURATION,
@@ -12,11 +13,10 @@ from audio import (
     load_wav,
 )
 from listener import DEFAULT_THRESHOLD, _dispatch_command, start_wakeword_listener
-from apps.node.src.http_server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_server_thread
+from http_server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_server_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
-import os
 
-DEFAULT_SERVER_URL = "http://localhost:5285/command"
+DEFAULT_SERVER_URL = config.SERVER_URL
 # Generated once at startup, stable for the lifetime of this process.
 DEVICE_ID = str(uuid.uuid4())
 
@@ -49,7 +49,7 @@ def parse_args():
     # parser.add_argument('--server-ws-url', type=str, default=DEFAULT_SERVER_WS_URL,
     #                     help='WebSocket URL for server connection (default: %(default)s)')
     parser.add_argument('--node-secret', type=str,
-                        default=os.environ.get("NODE_SECRET", ""),
+                        default=config.NODE_SECRET,
                         help='Shared secret for X-Node-Secret header (default: $NODE_SECRET env var)')
     parser.add_argument('--ssl-verify', action='store_true',
                         help='Enable TLS certificate verification (use with a trusted/production cert)')

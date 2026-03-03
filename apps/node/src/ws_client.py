@@ -20,7 +20,9 @@ import threading
 
 import websockets
 
-DEFAULT_SERVER_WS_URL = "wss://localhost:7036/ws"
+import config
+
+DEFAULT_SERVER_WS_URL = config.SERVER_WS_URL
 
 # ---------------------------------------------------------------------------
 # SSL helpers
@@ -103,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--server-ws-url", default=DEFAULT_SERVER_WS_URL)
     parser.add_argument(
         "--node-secret",
-        default=os.environ.get("NODE_SECRET", ""),
+        default=config.NODE_SECRET,
         help="Shared secret for X-Node-Secret header (default: $NODE_SECRET env var)",
     )
     parser.add_argument(

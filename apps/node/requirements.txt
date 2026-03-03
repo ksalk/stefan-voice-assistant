@@ -5,3 +5,4 @@ vosk
 requests
 aiohttp
 piper-tts
+python-dotenv

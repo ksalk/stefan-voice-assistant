@@ -8,6 +8,8 @@ import numpy as np
 import sounddevice as sd
 from piper.voice import PiperVoice
 
+import config
+
 # ---------------------------------------------------------------------------
 # Audio constants
 # ---------------------------------------------------------------------------
@@ -21,8 +23,7 @@ FRAME_SAMPLES = int(SAMPLE_RATE * FRAME_MS / 1000)
 # TTS configuration
 # ---------------------------------------------------------------------------
 
-_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-_PIPER_MODEL = os.path.join(_MODELS_DIR, "en_US-hfc_female-medium.onnx")
+_PIPER_MODEL = config.PIPER_MODEL
 
 # Lazy-loaded singleton — loaded once on first call to speak()
 _piper_voice: PiperVoice | None = None
@@ -60,11 +61,11 @@ def speak(text: str, node_state: dict) -> float:
     return speaking_start
 
 
-DEFAULT_SILENCE_THRESHOLD = 200       # RMS level (int16) below which audio is silence
-DEFAULT_SILENCE_DURATION = 1.0        # seconds of consecutive silence to end recording
-DEFAULT_MAX_RECORD_DURATION = 10.0    # safety cap in seconds
-DEFAULT_OUTPUT_DIR = "./recordings"
-DEFAULT_WAKEWORD_SKIP_MS = 200        # ms of audio to discard after wake word detection
+DEFAULT_SILENCE_THRESHOLD = config.SILENCE_THRESHOLD
+DEFAULT_SILENCE_DURATION  = config.SILENCE_DURATION
+DEFAULT_MAX_RECORD_DURATION = config.MAX_RECORD_DURATION
+DEFAULT_OUTPUT_DIR        = config.OUTPUT_DIR
+DEFAULT_WAKEWORD_SKIP_MS  = config.WAKEWORD_SKIP_MS
 
 
 # ---------------------------------------------------------------------------

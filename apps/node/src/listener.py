@@ -21,8 +21,10 @@ from audio import (
 )
 from state import node_state
 
-COOLDOWN_SECONDS = 1.5
-DEFAULT_THRESHOLD = 0.6
+import config
+
+COOLDOWN_SECONDS = config.WAKEWORD_COOLDOWN
+DEFAULT_THRESHOLD = config.WAKEWORD_THRESHOLD
 
 # ---------------------------------------------------------------------------
 # Wake word listener
