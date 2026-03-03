@@ -12,7 +12,7 @@ from audio import (
     load_wav,
 )
 from listener import DEFAULT_THRESHOLD, _dispatch_command, run_wakeword_listener
-from server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
+from apps.node.src.http_server import DEFAULT_HTTP_HOST, DEFAULT_HTTP_PORT, start_http_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 import os
 
