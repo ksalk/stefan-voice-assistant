@@ -20,9 +20,7 @@ import threading
 
 import websockets
 
-import config
-
-DEFAULT_SERVER_WS_URL = config.SERVER_WS_URL
+from config import remoteServerConfig, localServerConfig
 
 # ---------------------------------------------------------------------------
 # SSL helpers

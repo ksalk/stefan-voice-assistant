@@ -6,10 +6,7 @@ from aiohttp import web
 from audio import speak
 from state import node_state
 
-import config
-
-DEFAULT_HTTP_HOST = config.HTTP_HOST
-DEFAULT_HTTP_PORT = config.HTTP_PORT
+from config import localServerConfig
 
 # ---------------------------------------------------------------------------
 # Route handlers
@@ -83,7 +80,7 @@ def build_app() -> web.Application:
     return app
 
 
-def start_http_server(host: str, port: int) -> None:
+def start_http_server() -> None:
     """
     Runs the aiohttp server in its own asyncio event loop inside a daemon
     thread. Using a dedicated loop (rather than asyncio.run in the main
@@ -99,20 +96,19 @@ def start_http_server(host: str, port: int) -> None:
 
     async def _run():
         await runner.setup()
-        site = web.TCPSite(runner, host, port)
+        site = web.TCPSite(runner, localServerConfig.HOST, localServerConfig.PORT)
         await site.start()
-        print(f"[HTTP] Server listening on http://{host}:{port}")
+        print(f"[HTTP] Server listening on http://{localServerConfig.HOST}:{localServerConfig.PORT}")
         while True:
             await asyncio.sleep(3600)
 
     loop.run_until_complete(_run())
 
 
-def start_http_server_thread(host: str, port: int) -> threading.Thread:
+def start_http_server_thread() -> threading.Thread:
     """Convenience wrapper: creates, starts, and returns the daemon thread."""
     thread = threading.Thread(
         target=start_http_server,
-        args=(host, port),
         daemon=True,
         name="http-server",
     )

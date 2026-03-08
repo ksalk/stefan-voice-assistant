@@ -8,7 +8,7 @@ import numpy as np
 import sounddevice as sd
 from piper.voice import PiperVoice
 
-import config
+from config import audioConfig, ttsConfig
 
 # ---------------------------------------------------------------------------
 # Audio constants
@@ -19,21 +19,14 @@ CHANNELS = 1
 FRAME_MS = 20
 FRAME_SAMPLES = int(SAMPLE_RATE * FRAME_MS / 1000)
 
-# ---------------------------------------------------------------------------
-# TTS configuration
-# ---------------------------------------------------------------------------
-
-_PIPER_MODEL = config.PIPER_MODEL
-
 # Lazy-loaded singleton — loaded once on first call to speak()
 _piper_voice: PiperVoice | None = None
-
 
 def _get_voice() -> PiperVoice:
     global _piper_voice
     if _piper_voice is None:
-        print(f"[TTS] Loading TTS model: {_PIPER_MODEL}")
-        _piper_voice = PiperVoice.load(_PIPER_MODEL)
+        print(f"[TTS] Loading TTS model: {ttsConfig.PIPER_MODEL_NAME}")
+        _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL_PATH)
     return _piper_voice
 
 
@@ -61,13 +54,6 @@ def speak(text: str, node_state: dict) -> float:
     return speaking_start
 
 
-DEFAULT_SILENCE_THRESHOLD = config.SILENCE_THRESHOLD
-DEFAULT_SILENCE_DURATION  = config.SILENCE_DURATION
-DEFAULT_MAX_RECORD_DURATION = config.MAX_RECORD_DURATION
-DEFAULT_OUTPUT_DIR        = config.OUTPUT_DIR
-DEFAULT_WAKEWORD_SKIP_MS  = config.WAKEWORD_SKIP_MS
-
-
 # ---------------------------------------------------------------------------
 # Device utilities
 # ---------------------------------------------------------------------------
@@ -91,10 +77,6 @@ def list_devices():
 def record_command(
     buffer: deque,
     buffer_samples: int,
-    silence_threshold: float,
-    silence_duration: float,
-    max_duration: float,
-    skip_ms: float = DEFAULT_WAKEWORD_SKIP_MS,
 ) -> tuple:
     """
     Drain the shared audio buffer and continue capturing until silence or max
@@ -108,15 +90,15 @@ def record_command(
     """
     recorded_chunks = []
     silence_samples = 0
-    silence_samples_limit = int(SAMPLE_RATE * silence_duration)
-    max_samples = int(SAMPLE_RATE * max_duration)
+    silence_samples_limit = int(SAMPLE_RATE * audioConfig.END_SILENCE_DURATION)
+    max_samples = int(SAMPLE_RATE * audioConfig.MAX_RECORDING_DURATION)
     total_recorded = 0
     got_speech = False
 
     # Discard the first skip_ms ms of audio to drop the wake word tail.
     # We consume from the buffer (and wait for new chunks if needed) until
     # skip_samples worth of audio has been thrown away.
-    skip_samples = int(SAMPLE_RATE * skip_ms / 1000)
+    skip_samples = int(SAMPLE_RATE * audioConfig.SKIP_MS_AFTER_WAKEWORD / 1000)
     skipped = 0
     while skipped < skip_samples:
         if not buffer:
@@ -152,7 +134,7 @@ def record_command(
 
         rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
 
-        if rms >= silence_threshold:
+        if rms >= audioConfig.END_SILENCE_THRESHOLD:
             got_speech = True
             silence_samples = 0
         else:

@@ -5,3 +5,5 @@ requests
 aiohttp
 piper-tts
 python-dotenv
+pydantic
+pydantic-settings

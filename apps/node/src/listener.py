@@ -13,34 +13,21 @@ from audio import (
     SAMPLE_RATE,
     CHANNELS,
     FRAME_SAMPLES,
-    DEFAULT_WAKEWORD_SKIP_MS,
-    DEFAULT_OUTPUT_DIR,
     record_command,
     save_wav,
     speak,
 )
 from state import node_state
+from config import audioConfig, remoteServerConfig
 
-import config
-
-COOLDOWN_SECONDS = config.WAKEWORD_COOLDOWN
-DEFAULT_THRESHOLD = config.WAKEWORD_THRESHOLD
 
 # ---------------------------------------------------------------------------
 # Wake word listener
 # ---------------------------------------------------------------------------
 
 def start_wakeword_listener(
-    threshold: float,
-    silence_threshold: float,
-    silence_duration: float,
-    max_record_duration: float,
-    device: int | None,
-    server_url: str,
     device_id: str,
-    node_secret: str = "",
     ssl_verify: bool = False,
-    wakeword_skip_ms: float = DEFAULT_WAKEWORD_SKIP_MS,
 ) -> None:
     """
     Loads the wake word model, opens the microphone stream, and runs the
@@ -74,12 +61,12 @@ def start_wakeword_listener(
         channels=CHANNELS,
         dtype='int16',
         blocksize=FRAME_SAMPLES,
-        device=device,
+        device=audioConfig.INPUT_DEVICE,
         callback=audio_callback,
     )
 
     print("[wakeword] Listening for wake word: 'alexa'...")
-    print(f"[wakeword] Threshold: {threshold} | Cooldown: {COOLDOWN_SECONDS}s")
+    print(f"[wakeword] Threshold: {audioConfig.WAKEWORD_THRESHOLD} | Cooldown: {audioConfig.WAKEWORD_COOLDOWN}s")
 
     node_state["listening"] = True
 
@@ -104,7 +91,7 @@ def start_wakeword_listener(
             score = float(prediction.get('alexa', 0.0))
 
             now = time.time()
-            if score >= threshold and (now - last_trigger) >= COOLDOWN_SECONDS:
+            if score >= audioConfig.WAKEWORD_THRESHOLD and (now - last_trigger) >= audioConfig.WAKEWORD_COOLDOWN:
                 last_trigger = now
                 print(f"[wakeword] Wake word detected (score={score:.3f}) - recording command...")
 
@@ -113,16 +100,16 @@ def start_wakeword_listener(
 
                 audio, buffer_samples = record_command(
                     buffer, buffer_samples,
-                    silence_threshold,
-                    silence_duration,
-                    max_record_duration,
-                    wakeword_skip_ms,
+                    audioConfig.SILENCE_THRESHOLD,
+                    audioConfig.SILENCE_DURATION,
+                    audioConfig.MAX_RECORDING_DURATION,
+                    audioConfig.WAKEWORD_SKIP_MS,
                 )
 
                 node_state["recording"] = False
 
                 if len(audio) > 0:
-                    _dispatch_command(audio, server_url, device_id, node_secret, ssl_verify)
+                    _dispatch_command(audio, device_id, ssl_verify)
                 else:
                     print("No audio captured after wake word.")
 
@@ -134,7 +121,7 @@ def start_wakeword_listener(
                 node_state["listening"] = True
 
 
-def _dispatch_command(audio: np.ndarray, server_url: str, device_id: str, node_secret: str = "", ssl_verify: bool = False) -> None:
+def _dispatch_command(audio: np.ndarray, device_id: str, ssl_verify: bool = False) -> None:
     """
     Encode `audio` as an in-memory WAV and POST it to the .NET server.
     If the server returns response text, synthesize it via piper-tts and
@@ -142,10 +129,10 @@ def _dispatch_command(audio: np.ndarray, server_url: str, device_id: str, node_s
 
     # Future: replace this with a WebSocket send once the server supports it.
     """
-    print(f"[command] Dispatching command audio to server at {server_url}...")
+    print(f"[command] Dispatching command audio to server at {remoteServerConfig.URL}...")
     op_start = time.time()
 
-    save_wav(audio, DEFAULT_OUTPUT_DIR)
+    save_wav(audio, audioConfig.RECORDINGS_OUTPUT_DIR)
 
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
@@ -157,9 +144,9 @@ def _dispatch_command(audio: np.ndarray, server_url: str, device_id: str, node_s
 
     try:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
-        headers = {"X-Node-Secret": node_secret, "X-Node-Device-ID": device_id}
+        headers = {"X-Node-Secret": remoteServerConfig.AUTH_SECRET, "X-Node-Device-ID": device_id}
         http_start = time.time()
-        response = requests.post(server_url, files=files, headers=headers, verify=ssl_verify)
+        response = requests.post(remoteServerConfig.URL, files=files, headers=headers, verify=ssl_verify)
         http_elapsed = time.time() - http_start
 
         response_text = response.text.strip()
