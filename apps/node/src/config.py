@@ -12,7 +12,7 @@ class TTSConfig(BaseSettings):
     # Example: models/en_US-hfc_female-medium.onnx
     PIPER_MODEL: str = "models/en_US-hfc_female-medium.onnx"
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="TTS_")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="TTS_", extra="ignore")
 
 class AudioInputConfig(BaseSettings):
     """
@@ -33,7 +33,7 @@ class AudioInputConfig(BaseSettings):
     MAX_RECORDING_DURATION: float = 10.0
     RECORDINGS_OUTPUT_DIR: str = "./recordings"
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="AUDIO_")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="AUDIO_", extra="ignore")
 
 class RemoteServerConfig(BaseSettings):
     """
@@ -44,7 +44,7 @@ class RemoteServerConfig(BaseSettings):
     WS_URL: str = "wss://localhost:7036/ws"
     AUTH_SECRET: str = ""
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="REMOTE_SERVER_")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="REMOTE_SERVER_", extra="ignore")
 
 class LocalServerConfig(BaseSettings):
     """
@@ -54,7 +54,7 @@ class LocalServerConfig(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="LOCAL_SERVER_")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="LOCAL_SERVER_", extra="ignore")
 
 
 ttsConfig = TTSConfig()

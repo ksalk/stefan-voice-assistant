@@ -78,7 +78,7 @@ def main():
     # Blocking — runs the mic loop forever
     start_wakeword_listener(
         device_id=DEVICE_UNIQUE_ID,
-        ssl_verify=args.ssl_verify,
+        ssl_verify=False,
     )
 
 
