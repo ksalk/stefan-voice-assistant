@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 import argparse
-import uuid
 
-from config import audioConfig, localServerConfig, remoteServerConfig 
-from audio import (
-    list_devices,
-    load_wav,
-)
-from listener import _dispatch_command, start_wakeword_listener
+from config import audioConfig, localServerConfig, nodeConfig, remoteServerConfig
+from audio import list_devices, load_wav
+from command_listener import _dispatch_command, start_command_listener
 from http_server import start_http_server_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 
-# Generated once at startup, stable for the lifetime of this process.
-DEVICE_UNIQUE_ID = str(uuid.uuid4()) # TODO: possibly move to config
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Wake word detection node (openWakeWord)")
+
+    # Node configuration
+    parser.add_argument('--node-name', type=str, help='Unique name for this node (default: %(default)s)')
 
     # Wake word / recording
     parser.add_argument('--audio-device', type=int, default=None, help='Input device index')
@@ -44,6 +40,8 @@ def parse_args():
 
 def patch_configs(args):
     # Patch config values with command-line args (if provided)
+    if args.node_name is not None:
+        nodeConfig.NODE_NAME = args.node_name
     if args.audio_max_recording_duration is not None:
         audioConfig.MAX_RECORDING_DURATION = args.audio_max_recording_duration
     if args.output_dir is not None:
@@ -66,7 +64,7 @@ def main():
     if args.test_command:
         print(f"[test] Loading {args.test_command}")
         audio = load_wav(args.test_command)
-        _dispatch_command(audio=audio, device_id=DEVICE_UNIQUE_ID, ssl_verify=args.ssl_verify)
+        _dispatch_command(command_audio=audio, device_id=nodeConfig.NODE_NAME, ssl_verify=args.ssl_verify)
         return
     
     ## --------------------------------
@@ -76,10 +74,7 @@ def main():
     # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
     # Blocking — runs the mic loop forever
-    start_wakeword_listener(
-        device_id=DEVICE_UNIQUE_ID,
-        ssl_verify=False,
-    )
+    start_command_listener()
 
 
 if __name__ == '__main__':

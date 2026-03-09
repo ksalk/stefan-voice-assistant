@@ -18,17 +18,14 @@ from audio import (
     speak,
 )
 from state import node_state
-from config import audioConfig, remoteServerConfig
+from config import audioConfig, remoteServerConfig, nodeConfig
 
 
 # ---------------------------------------------------------------------------
-# Wake word listener
+# Command listener
 # ---------------------------------------------------------------------------
 
-def start_wakeword_listener(
-    device_id: str,
-    ssl_verify: bool = False,
-) -> None:
+def start_command_listener() -> None:
     """
     Loads the wake word model, opens the microphone stream, and runs the
     detection loop indefinitely (blocking).
@@ -109,7 +106,7 @@ def start_wakeword_listener(
                 node_state["recording"] = False
 
                 if len(audio) > 0:
-                    _dispatch_command(audio, device_id, ssl_verify)
+                    _dispatch_command(audio)
                 else:
                     print("No audio captured after wake word.")
 
@@ -121,7 +118,7 @@ def start_wakeword_listener(
                 node_state["listening"] = True
 
 
-def _dispatch_command(audio: np.ndarray, device_id: str, ssl_verify: bool = False) -> None:
+def _dispatch_command(command_audio: np.ndarray) -> None:
     """
     Encode `audio` as an in-memory WAV and POST it to the .NET server.
     If the server returns response text, synthesize it via piper-tts and
@@ -132,21 +129,21 @@ def _dispatch_command(audio: np.ndarray, device_id: str, ssl_verify: bool = Fals
     print(f"[command] Dispatching command audio to server at {remoteServerConfig.URL}...")
     op_start = time.time()
 
-    save_wav(audio, audioConfig.RECORDINGS_OUTPUT_DIR)
+    save_wav(command_audio, audioConfig.RECORDINGS_OUTPUT_DIR)
 
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)  # int16 = 2 bytes
         wf.setframerate(SAMPLE_RATE)
-        wf.writeframes(audio.tobytes())
+        wf.writeframes(command_audio.tobytes())
     wav_buffer.seek(0)
 
     try:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
-        headers = {"X-Node-Secret": remoteServerConfig.AUTH_SECRET, "X-Node-Device-ID": device_id}
+        headers = {"X-Node-Secret": remoteServerConfig.AUTH_SECRET, "X-Node-Device-ID": nodeConfig.NODE_NAME}
         http_start = time.time()
-        response = requests.post(remoteServerConfig.URL, files=files, headers=headers, verify=ssl_verify)
+        response = requests.post(remoteServerConfig.URL, files=files, headers=headers, verify=remoteServerConfig.SSL_VERIFY)
         http_elapsed = time.time() - http_start
 
         response_text = response.text.strip()

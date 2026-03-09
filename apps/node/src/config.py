@@ -3,6 +3,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).parent.parent / ".env"
 
+class NodeConfig(BaseSettings):
+    """
+    Configuration settings for this node instance.
+    """
+
+    # Human-readable name that uniquely identifies this node.
+    NODE_NAME: str = ""
+
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="NODE_", extra="ignore")
+
 class TTSConfig(BaseSettings):
     """
     Configuration settings for text-to-speech synthesis.
@@ -43,6 +53,7 @@ class RemoteServerConfig(BaseSettings):
     URL: str = "http://localhost:5285/command"
     WS_URL: str = "wss://localhost:7036/ws"
     AUTH_SECRET: str = ""
+    SSL_VERIFY: bool = False
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="REMOTE_SERVER_", extra="ignore")
 
@@ -61,3 +72,4 @@ ttsConfig = TTSConfig()
 audioConfig = AudioInputConfig()
 remoteServerConfig = RemoteServerConfig()
 localServerConfig = LocalServerConfig()
+nodeConfig = NodeConfig()
