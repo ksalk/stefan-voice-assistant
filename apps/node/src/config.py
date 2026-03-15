@@ -1,4 +1,5 @@
 from pathlib import Path
+import uuid
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).parent.parent / ".env"
@@ -10,6 +11,7 @@ class NodeConfig(BaseSettings):
 
     # Human-readable name that uniquely identifies this node.
     NODE_NAME: str = ""
+    SESSION_ID: str = str(uuid.uuid4())
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="NODE_", extra="ignore")
 
@@ -50,7 +52,7 @@ class RemoteServerConfig(BaseSettings):
     Configuration settings for the remote server connection.
     """
 
-    URL: str = "http://localhost:5285/command"
+    URL: str = "http://localhost:5285"
     WS_URL: str = "wss://localhost:7036/ws"
     AUTH_SECRET: str = ""
     SSL_VERIFY: bool = False

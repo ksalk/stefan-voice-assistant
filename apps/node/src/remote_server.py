@@ -13,6 +13,31 @@ from audio import (
 )
 from state import node_state
 
+COMMAND_ENDPOINT = "/command"
+REGISTER_NODE_ENDPOINT = "/nodes/register"
+
+def get_headers():
+    return {
+        "X-Node-Secret": remoteServerConfig.AUTH_SECRET, 
+        "X-Node-Device-ID": nodeConfig.NODE_NAME,
+        "X-Node-Session-ID": nodeConfig.SESSION_ID
+    }
+
+def register_node() -> None:
+    """
+    Register this node with the central .NET server by sending a POST to the
+    /nodes/register endpoint with the node's device ID and secret.
+    """
+    print(f"[registration] Registering node '{nodeConfig.NODE_NAME}' with server at {remoteServerConfig.URL}...")
+    try:
+        headers = get_headers()
+        response = requests.post(f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}", headers=headers, verify=remoteServerConfig.SSL_VERIFY)
+        if response.status_code == 200:
+            print("[registration] Node registered successfully.")
+        else:
+            print(f"[registration] Failed to register node. Server returned status {response.status_code} with response: {response.text.strip()}")
+    except requests.exceptions.RequestException as e:
+        print(f"[registration] Failed to register node: {e}")
 
 def dispatch_audio_command(command_audio: np.ndarray) -> None:
     """
@@ -35,9 +60,9 @@ def dispatch_audio_command(command_audio: np.ndarray) -> None:
 
     try:
         files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
-        headers = {"X-Node-Secret": remoteServerConfig.AUTH_SECRET, "X-Node-Device-ID": nodeConfig.NODE_NAME}
+        headers = get_headers()
         http_start = time.time()
-        response = requests.post(remoteServerConfig.URL, files=files, headers=headers, verify=remoteServerConfig.SSL_VERIFY)
+        response = requests.post(f"{remoteServerConfig.URL}{COMMAND_ENDPOINT}", files=files, headers=headers, verify=remoteServerConfig.SSL_VERIFY)
         http_elapsed = time.time() - http_start
 
         response_text = response.text.strip()
