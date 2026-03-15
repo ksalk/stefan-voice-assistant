@@ -16,4 +16,5 @@ public class StefanDbContext : DbContext
     }
 
     public DbSet<Node> Nodes { get; set; }
+    public DbSet<NodeStatusReport> NodeStatusReports { get; set; }
 }
