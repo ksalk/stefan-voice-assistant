@@ -21,10 +21,10 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore dependencies
-        run: dotnet restore apps/server/StefanAssistant.Server.sln
+        run: dotnet restore apps/server/Stefan.Server.sln
 
       - name: Build
-        run: dotnet build apps/server/StefanAssistant.Server.sln --no-restore --configuration Release
+        run: dotnet build apps/server/Stefan.Server.sln --no-restore --configuration Release
 
   node:
     name: Node (Python)

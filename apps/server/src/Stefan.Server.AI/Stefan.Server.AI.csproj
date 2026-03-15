@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StefanAssistant.Server.Common\StefanAssistant.Server.Common.csproj" />
+    <ProjectReference Include="..\Stefan.Server.Common\Stefan.Server.Common.csproj" />
   </ItemGroup>
 
 </Project>

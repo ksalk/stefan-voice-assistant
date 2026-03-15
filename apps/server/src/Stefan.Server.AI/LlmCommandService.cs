@@ -1,8 +1,8 @@
 using OpenAI.Chat;
-using StefanAssistant.Server.AI.Tools.Timer;
-using StefanAssistant.Server.Common;
+using Stefan.Server.AI.Tools.Timer;
+using Stefan.Server.Common;
 
-namespace StefanAssistant.Server.AI;
+namespace Stefan.Server.AI;
 
 public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
 {

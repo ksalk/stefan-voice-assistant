@@ -1,4 +1,4 @@
-# StefanAssistant Server
+# Stefan Server
 
 ASP.NET Core minimal API that receives a spoken command as a WAV file and transcribes it using [Whisper.NET](https://github.com/sandrohanea/whisper.net) — a fully offline, .NET wrapper around OpenAI's Whisper model via whisper.cpp. Part of the [Stefan Voice Assistant](../../README.md) project.
 
@@ -18,14 +18,14 @@ Returns `"OK"`. Transcription is logged to the console (response body with trans
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - Whisper GGML model file placed at:
   ```
-  apps/server/StefanAssistant.Server.API/ggml-base.bin
+  apps/server/Stefan.Server.API/ggml-base.bin
   ```
   Download the base model from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 
 ## Running
 
 ```bash
-cd apps/server/StefanAssistant.Server.API
+cd apps/server/Stefan.Server.API
 dotnet run
 ```
 
@@ -54,3 +54,7 @@ The `/command` endpoint expects audio that matches Whisper's required format:
 - Antiforgery validation is disabled on `/command` (noted as a TODO for future hardening).
 - No authentication or rate limiting.
 - Test scripts 
+
+- Server runs everything
+- stores commands audio and all details - llm calls, device, sessions - all
+- after device registrations, runs health checks periodically and on demand, can send test TTS

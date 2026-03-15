@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using StefanAssistant.Server.Common;
+using Stefan.Server.Common;
 
-namespace StefanAssistant.Server.AI.Tools.Timer;
+namespace Stefan.Server.AI.Tools.Timer;
 
 internal record RunningTimer(Task TimerTask, string DeviceId, CancellationTokenSource Cts);
 

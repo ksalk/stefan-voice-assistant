@@ -1,4 +1,4 @@
-namespace StefanAssistant.Server.Common
+namespace Stefan.Server.Common
 {
     public class NodeNotifier
     {

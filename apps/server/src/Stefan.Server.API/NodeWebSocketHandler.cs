@@ -1,9 +1,9 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using StefanAssistant.Server.Common;
+using Stefan.Server.Common;
 
-namespace StefanAssistant.Server.API;
+namespace Stefan.Server.API;
 
 public class NodeWebSocketHandler(NodeRegistry nodeRegistry, IConfiguration config)
 {

@@ -34,17 +34,17 @@ apps/node  (Python)
 - `portaudio19-dev` system library (`sudo apt install portaudio19-dev`)
 - .NET 10 SDK
 - Microphone and speaker/audio output device
-- Whisper.NET model file placed at `apps/server/StefanAssistant.Server.API/ggml-base.bin`
-  - Download the base model: `dotnet run --project apps/server/StefanAssistant.Server.API -- download-model` or grab it from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+- Whisper.NET model file placed at `apps/server/Stefan.Server.API/ggml-base.bin`
+  - Download the base model: `dotnet run --project apps/server/Stefan.Server.API -- download-model` or grab it from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 - piper-tts voice model placed at `apps/node/models/` (see below)
-- OpenRouter API key set in `apps/server/StefanAssistant.Server.API/appsettings.json`
+- OpenRouter API key set in `apps/server/Stefan.Server.API/appsettings.json`
 
 ## Setup & Running
 
 **Server (`apps/server`):**
 
 ```bash
-cd apps/server/StefanAssistant.Server.API
+cd apps/server/Stefan.Server.API
 dotnet run
 # Listens on http://localhost:5285
 ```

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace StefanAssistant.Server.AI.Tools.Timer;
+namespace Stefan.Server.AI.Tools.Timer;
 
 public class TimerDbContext(DbContextOptions<TimerDbContext> options) : DbContext(options)
 {

@@ -9,8 +9,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StefanAssistant.Server.AI\StefanAssistant.Server.AI.csproj" />
-    <ProjectReference Include="..\StefanAssistant.Server.Common\StefanAssistant.Server.Common.csproj" />
+    <ProjectReference Include="..\Stefan.Server.AI\Stefan.Server.AI.csproj" />
+    <ProjectReference Include="..\Stefan.Server.Common\Stefan.Server.Common.csproj" />
   </ItemGroup>
 
 </Project>

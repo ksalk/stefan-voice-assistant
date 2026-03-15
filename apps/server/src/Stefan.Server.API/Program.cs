@@ -3,10 +3,10 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using OpenAI;
 using OpenAI.Chat;
-using StefanAssistant.Server.AI;
-using StefanAssistant.Server.AI.Tools.Timer;
-using StefanAssistant.Server.API;
-using StefanAssistant.Server.Common;
+using Stefan.Server.AI;
+using Stefan.Server.AI.Tools.Timer;
+using Stefan.Server.API;
+using Stefan.Server.Common;
 using Whisper.net;
 
 var builder = WebApplication.CreateBuilder(args);

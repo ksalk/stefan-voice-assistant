@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StefanAssistant.Server.API", "src\StefanAssistant.Server.API\StefanAssistant.Server.API.csproj", "{0F3DABD4-2D59-4927-AC3D-9FC265FA08DE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.API", "src\Stefan.Server.API\Stefan.Server.API.csproj", "{0F3DABD4-2D59-4927-AC3D-9FC265FA08DE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StefanAssistant.Server.AI", "src\StefanAssistant.Server.AI\StefanAssistant.Server.AI.csproj", "{9144A81B-E797-4037-B228-24EB1C85C9B2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.AI", "src\Stefan.Server.AI\Stefan.Server.AI.csproj", "{9144A81B-E797-4037-B228-24EB1C85C9B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StefanAssistant.Server.Common", "src\StefanAssistant.Server.Common\StefanAssistant.Server.Common.csproj", "{8E888757-0768-405C-85A7-2ED3AB01A90C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.Common", "src\Stefan.Server.Common\Stefan.Server.Common.csproj", "{8E888757-0768-405C-85A7-2ED3AB01A90C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

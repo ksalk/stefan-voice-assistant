@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
-namespace StefanAssistant.Server.API;
+namespace Stefan.Server.API;
 
 public class NodeRegistry
 {

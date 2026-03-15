@@ -1,7 +1,7 @@
 using System.Text.Json;
 using OpenAI.Chat;
 
-namespace StefanAssistant.Server.AI.Tools.Timer;
+namespace Stefan.Server.AI.Tools.Timer;
 
 public static class CancelTimerTool
 {
