@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Stefan.Server.AI;
 using Stefan.Server.AI.Tools.Timer;
 using Stefan.Server.API;
+using Stefan.Server.API.Endpoints;
 using Stefan.Server.Common;
 using Whisper.net;
 
@@ -42,6 +43,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapNodeEndpoints();
 
 app.MapPost("/command", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config) =>
 {

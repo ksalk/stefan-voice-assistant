@@ -7,7 +7,7 @@ public class Node
 
     public string CurrentSessionId { get; private set; }
 
-    public string IpAddress { get; private set; }
+    public string LastKnownIpAddress { get; private set; }
     public int Port { get; private set; }
 
     public NodeStatus Status { get; private set; }
@@ -24,7 +24,7 @@ public class Node
             Id = Guid.NewGuid(),
             Name = name,
             CurrentSessionId = sessionId,
-            IpAddress = ipAddress,
+            LastKnownIpAddress = ipAddress,
             Port = port,
             Status = NodeStatus.Online,
             RegisteredAt = DateTime.UtcNow,
@@ -41,7 +41,7 @@ public class Node
             RestartCount++;
         }
 
-        IpAddress = ipAddress;
+        LastKnownIpAddress = ipAddress;
         Port = port;
         LastSeenAt = DateTime.UtcNow;
         Status = NodeStatus.Online;

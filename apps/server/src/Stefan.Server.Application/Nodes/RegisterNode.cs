@@ -3,7 +3,13 @@ using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Nodes;
 
-public record RegisterNodeRequest(string NodeName, string SessionId, string IpAddress, int Port);
+public class RegisterNodeRequest
+{
+    public string NodeName { get; set; }
+    public string SessionId { get; set; }
+    public string IpAddress { get; set; }
+    public int Port { get; set; }
+}   
 
 public class RegisterNode(StefanDbContext dbContext)
 {

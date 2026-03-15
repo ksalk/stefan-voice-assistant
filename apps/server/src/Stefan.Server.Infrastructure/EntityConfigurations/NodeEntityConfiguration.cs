@@ -11,7 +11,7 @@ public class NodeEntityConfiguration : IEntityTypeConfiguration<Node>
         builder.HasKey(n => n.Id);
 
         builder.Property(n => n.Name).IsRequired();
-        builder.Property(n => n.IpAddress).IsRequired();
+        builder.Property(n => n.LastKnownIpAddress).IsRequired();
         builder.Property(n => n.Port).IsRequired();
         builder.Property(n => n.CurrentSessionId).IsRequired();
         builder.Property(n => n.Status).IsRequired();
