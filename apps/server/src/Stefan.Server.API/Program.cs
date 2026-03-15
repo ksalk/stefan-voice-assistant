@@ -1,8 +1,5 @@
-using System.ClientModel;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using OpenAI;
-using OpenAI.Chat;
 using Stefan.Server.AI;
 using Stefan.Server.AI.Tools.Timer;
 using Stefan.Server.API;
@@ -21,21 +18,10 @@ builder.Services.AddSingleton(_ =>
         .WithLanguage("en")
         .Build();
 });
-builder.Services.AddSingleton(_ =>
-{
-    string apiKey = configuration["OpenAI:ApiKey"]!;
-    string model = configuration["OpenAI:Model"]!;
-    string endpoint = configuration["OpenAI:Endpoint"]!;
-
-    return new ChatClient(
-        model: model,
-        credential: new ApiKeyCredential(apiKey),
-        options: new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
-});
 builder.Services.AddSingleton<SpeechToTextService>();
 builder.Services.AddDbContext<TimerDbContext>(o =>
     o.UseSqlite(configuration.GetConnectionString("TimerDb")));
-builder.Services.AddScoped<LlmCommandService>();
+builder.Services.AddAiServices(configuration);
 // builder.Services.AddSingleton<NodeRegistry>();
 // builder.Services.AddSingleton<NodeWebSocketHandler>();
 
