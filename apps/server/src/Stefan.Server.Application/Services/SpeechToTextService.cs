@@ -1,6 +1,6 @@
 using Whisper.net;
 
-namespace Stefan.Server.API;
+namespace Stefan.Server.Application.Services;
 
 public class SpeechToTextService(WhisperProcessor processor)
 {

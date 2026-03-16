@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Whisper.net" />
+    <PackageReference Include="Whisper.net.Runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Stefan.Server.Infrastructure\Stefan.Server.Infrastructure.csproj" />
     <ProjectReference Include="..\Stefan.Server.Domain\Stefan.Server.Domain.csproj" />
   </ItemGroup>

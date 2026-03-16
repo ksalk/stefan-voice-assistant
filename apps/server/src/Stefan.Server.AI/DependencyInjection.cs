@@ -9,7 +9,7 @@ namespace Stefan.Server.AI;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddAiServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAIServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<OpenAiConfig>(configuration.GetSection(OpenAiConfig.SectionName));
 

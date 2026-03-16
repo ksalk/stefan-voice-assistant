@@ -3,9 +3,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
-    <PackageReference Include="OpenAI" />
-    <PackageReference Include="Whisper.net" />
-    <PackageReference Include="Whisper.net.Runtime" />
   </ItemGroup>
 
   <ItemGroup>

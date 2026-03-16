@@ -1,29 +1,20 @@
-using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Stefan.Server.AI;
 using Stefan.Server.AI.Tools.Timer;
-using Stefan.Server.API;
 using Stefan.Server.API.Endpoints;
-using Stefan.Server.Common;
+using Stefan.Server.Application;
+using Stefan.Server.Application.Services;
 using Stefan.Server.Infrastructure.DependencyInjection;
-using Whisper.net;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton(_ =>
-{
-    var factory = WhisperFactory.FromPath("ggml-base.bin");
-    return factory.CreateBuilder()
-        .WithLanguage("en")
-        .Build();
-});
-builder.Services.AddSingleton<SpeechToTextService>();
 builder.Services.AddDbContext<TimerDbContext>(o =>
     o.UseSqlite(configuration.GetConnectionString("TimerDb")));
-builder.Services.AddAiServices(configuration);
+builder.Services.AddApplication(configuration);
+builder.Services.AddAIServices(configuration);
 builder.Services.AddInfrastructure(configuration);
 // builder.Services.AddSingleton<NodeRegistry>();
 // builder.Services.AddSingleton<NodeWebSocketHandler>();

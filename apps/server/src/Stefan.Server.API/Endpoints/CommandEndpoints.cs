@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Stefan.Server.AI;
+using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Infrastructure;
 
