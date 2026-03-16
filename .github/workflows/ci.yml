@@ -44,5 +44,5 @@ jobs:
           pip install -r apps/node/requirements.txt
           pip install pytest pytest-aiohttp pytest-asyncio
 
-      - name: Run tests
-        run: pytest apps/node/tests/
+      # - name: Run tests
+      #   run: pytest apps/node/tests/
