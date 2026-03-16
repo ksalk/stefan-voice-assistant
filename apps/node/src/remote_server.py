@@ -19,7 +19,7 @@ REGISTER_NODE_ENDPOINT = "/nodes/register"
 def get_headers():
     return {
         "X-Node-Secret": remoteServerConfig.AUTH_SECRET,
-        "X-Node-Device-ID": nodeConfig.NODE_NAME,
+        "X-Node-Device-ID": nodeConfig.NAME,
         "X-Node-Session-ID": nodeConfig.SESSION_ID
     }
 
@@ -28,11 +28,11 @@ def register_node() -> None:
     Register this node with the central .NET server by sending a POST to the
     /nodes/register endpoint with the node's device ID and secret.
     """
-    print(f"[registration] Registering node '{nodeConfig.NODE_NAME}' with server at {remoteServerConfig.URL}...")
+    print(f"[registration] Registering node '{nodeConfig.NAME}' with server at {remoteServerConfig.URL}...")
     try:
         headers = { "X-Node-Secret": remoteServerConfig.AUTH_SECRET }
         response = requests.post(f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}", headers=headers, verify=remoteServerConfig.SSL_VERIFY, json={
-            "NodeName": nodeConfig.NODE_NAME,
+            "NodeName": nodeConfig.NAME,
             "SessionId": nodeConfig.SESSION_ID,
             "Port": localServerConfig.PORT
         })

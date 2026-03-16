@@ -25,8 +25,8 @@ _piper_voice: PiperVoice | None = None
 def _get_voice() -> PiperVoice:
     global _piper_voice
     if _piper_voice is None:
-        print(f"[TTS] Loading TTS model: {ttsConfig.PIPER_MODEL_NAME}")
-        _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL_PATH)
+        print(f"[TTS] Loading TTS model: {ttsConfig.PIPER_MODEL}")
+        _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL)
     return _piper_voice
 
 

@@ -10,7 +10,7 @@ class NodeConfig(BaseSettings):
     """
 
     # Human-readable name that uniquely identifies this node.
-    NODE_NAME: str = ""
+    NAME: str = ""
     SESSION_ID: str = str(uuid.uuid4())
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="NODE_", extra="ignore")

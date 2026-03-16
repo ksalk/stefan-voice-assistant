@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 
+from remote_server import dispatch_audio_command
 from config import audioConfig, localServerConfig, nodeConfig, remoteServerConfig
 from audio import list_devices, load_wav
-from command_listener import _dispatch_command, start_command_listener
+from command_listener import start_command_listener
 from http_server import start_http_server_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
 
@@ -20,6 +21,7 @@ def parse_args():
 
     # Remote server
     parser.add_argument('--remote-server-url', type=str, help='URL to POST command audio to (default: %(default)s)')
+    parser.add_argument('--node-secret', type=str, help='Shared secret for authenticating with the server')
     # parser.add_argument('--server-ws-url', type=str, default=DEFAULT_SERVER_WS_URL,
     #                     help='WebSocket URL for server connection (default: %(default)s)')
     # parser.add_argument('--ssl-verify', action='store_true',
@@ -41,13 +43,15 @@ def parse_args():
 def patch_configs(args):
     # Patch config values with command-line args (if provided)
     if args.node_name is not None:
-        nodeConfig.NODE_NAME = args.node_name
+        nodeConfig.NAME = args.node_name
     if args.audio_max_recording_duration is not None:
         audioConfig.MAX_RECORDING_DURATION = args.audio_max_recording_duration
     if args.output_dir is not None:
         audioConfig.RECORDINGS_OUTPUT_DIR = args.output_dir
     if args.remote_server_url is not None:
         remoteServerConfig.URL = args.remote_server_url
+    if args.node_secret is not None:
+        remoteServerConfig.AUTH_SECRET = args.node_secret
     if args.local_server_host is not None:
         localServerConfig.HOST = args.local_server_host
     if args.local_server_port is not None:
@@ -64,7 +68,7 @@ def main():
     if args.test_command:
         print(f"[test] Loading {args.test_command}")
         audio = load_wav(args.test_command)
-        _dispatch_command(command_audio=audio, device_id=nodeConfig.NODE_NAME, ssl_verify=args.ssl_verify)
+        dispatch_audio_command(command_audio=audio)
         return
     
     ## --------------------------------
@@ -72,6 +76,8 @@ def main():
     start_http_server_thread()
 
     # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
+
+
 
     # Blocking — runs the mic loop forever
     start_command_listener()
