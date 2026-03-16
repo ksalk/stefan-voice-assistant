@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Stefan.Server.AI;
 using Stefan.Server.Common;
+using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.API.Endpoints;
 
@@ -8,7 +10,7 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
-        app.MapPost("api/commands", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config) =>
+        app.MapPost("api/commands", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config, StefanDbContext dbContext) =>
         {
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(deviceId))
@@ -17,13 +19,35 @@ public static class CommandEndpoints
                 return Results.BadRequest("Missing X-Node-Device-ID header");
             }
 
+            var sessionId = context.Request.Headers["X-Node-Session-ID"].FirstOrDefault();
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: missing X-Node-Session-ID header");
+                return Results.BadRequest("Missing X-Node-Session-ID header");
+            }
+
             var expectedSecret = config["NodeSecret"];
             var providedSecret = context.Request.Headers["X-Node-Secret"].FirstOrDefault();
-
 
             if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
             {
                 ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: invalid or missing X-Node-Secret");
+                return Results.Unauthorized();
+            }
+
+            // Check if device is registered in database
+            // TODO: optimize by caching registered nodes in memory to avoid DB hit on every command
+            var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId);
+            if (node == null)
+            {
+                ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{deviceId}' not registered");
+                return Results.Unauthorized();
+            }
+
+            // Verify session ID matches
+            if (node.CurrentSessionId != sessionId)
+            {
+                ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: invalid session ID for device '{deviceId}'");
                 return Results.Unauthorized();
             }
 
