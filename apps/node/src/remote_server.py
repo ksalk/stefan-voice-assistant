@@ -1,4 +1,4 @@
-from config import remoteServerConfig, nodeConfig
+from config import remoteServerConfig, nodeConfig, localServerConfig
 import io
 import time
 import wave
@@ -13,12 +13,12 @@ from audio import (
 )
 from state import node_state
 
-COMMAND_ENDPOINT = "/command"
+COMMAND_ENDPOINT = "/commands"
 REGISTER_NODE_ENDPOINT = "/nodes/register"
 
 def get_headers():
     return {
-        "X-Node-Secret": remoteServerConfig.AUTH_SECRET, 
+        "X-Node-Secret": remoteServerConfig.AUTH_SECRET,
         "X-Node-Device-ID": nodeConfig.NODE_NAME,
         "X-Node-Session-ID": nodeConfig.SESSION_ID
     }
@@ -30,8 +30,13 @@ def register_node() -> None:
     """
     print(f"[registration] Registering node '{nodeConfig.NODE_NAME}' with server at {remoteServerConfig.URL}...")
     try:
-        headers = get_headers()
-        response = requests.post(f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}", headers=headers, verify=remoteServerConfig.SSL_VERIFY)
+        headers = { "X-Node-Secret": remoteServerConfig.AUTH_SECRET }
+        response = requests.post(f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}", headers=headers, verify=remoteServerConfig.SSL_VERIFY, json={
+            "NodeName": nodeConfig.NODE_NAME,
+            "SessionId": nodeConfig.SESSION_ID,
+            "Port": localServerConfig.PORT
+        })
+        
         if response.status_code == 200:
             print("[registration] Node registered successfully.")
         else:

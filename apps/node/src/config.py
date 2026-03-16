@@ -52,7 +52,7 @@ class RemoteServerConfig(BaseSettings):
     Configuration settings for the remote server connection.
     """
 
-    URL: str = "http://localhost:5285"
+    URL: str = "http://localhost:5285/api"
     WS_URL: str = "wss://localhost:7036/ws"
     AUTH_SECRET: str = ""
     SSL_VERIFY: bool = False
