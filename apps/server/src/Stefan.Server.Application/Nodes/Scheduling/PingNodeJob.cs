@@ -4,7 +4,7 @@ using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 using System.Text.Json;
 
-namespace Stefan.Server.Application.Nodes;
+namespace Stefan.Server.Application.Nodes.Scheduling;
 
 public class NodeStatusResponse
 {

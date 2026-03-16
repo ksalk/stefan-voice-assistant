@@ -27,15 +27,6 @@ public static class CommandEndpoints
                 return Results.BadRequest("Missing X-Node-Session-ID header");
             }
 
-            var expectedSecret = config["NodeSecret"];
-            var providedSecret = context.Request.Headers["X-Node-Secret"].FirstOrDefault();
-
-            if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
-            {
-                ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: invalid or missing X-Node-Secret");
-                return Results.Unauthorized();
-            }
-
             // Check if device is registered in database
             // TODO: optimize by caching registered nodes in memory to avoid DB hit on every command
             var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId);
@@ -57,18 +48,20 @@ public static class CommandEndpoints
             ConsoleLog.Write(LogCategory.HTTP, $"Received file: {file.FileName}, size: {file.Length} bytes");
 
             using var fileStream = file.OpenReadStream();
-
             string transcript = await stt.TranscribeAsync(fileStream);
+
             ConsoleLog.Write(LogCategory.STT, $"Transcription result: {transcript}");
             ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
             timestamp = Stopwatch.GetTimestamp();
+
             string response = llm.ProcessCommand(transcript, deviceId);
 
             ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
             return Results.Ok(response);
         })
+        .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery() // TODO: fix in future for security
         .WithName("ProcessCommand");
     }

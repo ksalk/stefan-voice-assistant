@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Quartz;
 using Quartz.Impl.Matchers;
 
-namespace Stefan.Server.Application.Nodes;
+namespace Stefan.Server.Application.Nodes.Scheduling;
 
 public interface INodePingScheduler
 {

@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Stefan.Server.AI;
 using Stefan.Server.AI.Tools.Timer;
+using Stefan.Server.API;
 using Stefan.Server.API.Endpoints;
 using Stefan.Server.Application;
-using Stefan.Server.Application.Nodes;
+using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
+using Stefan.Server.Common;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 using Stefan.Server.Infrastructure.DependencyInjection;
@@ -21,6 +23,27 @@ builder.Services.AddAIServices(configuration);
 builder.Services.AddInfrastructure(configuration);
 // builder.Services.AddSingleton<NodeRegistry>();
 // builder.Services.AddSingleton<NodeWebSocketHandler>();
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthPolicy.NodePolicy, policy =>
+    {
+        policy.RequireAssertion(context =>
+        {
+            var httpContext = context.Resource as HttpContext;
+            if (httpContext == null)
+                return false;   
+
+            var expectedSecret = configuration["NodeSecret"];
+            var providedSecret = httpContext.Request.Headers["X-Node-Secret"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
+            {
+                ConsoleLog.Write(LogCategory.HTTP, "Unauthorized request: invalid or missing X-Node-Secret");
+                return false;
+            }
+            return true;
+        });
+    });
 
 var app = builder.Build();
 

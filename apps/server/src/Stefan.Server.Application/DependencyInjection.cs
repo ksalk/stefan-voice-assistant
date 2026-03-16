@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Stefan.Server.Application.Nodes;
+using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
 using Whisper.net;
 

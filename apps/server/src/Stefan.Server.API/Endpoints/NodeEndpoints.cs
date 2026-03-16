@@ -8,21 +8,22 @@ public static class NodeEndpoints
 {
     public static void MapNodeEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/nodes/register", async (HttpContext context, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
+        app.MapPost("/api/nodes/register", async (HttpContext context, IConfiguration config, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
         {
-            var ipAddress = GetIpAddress(context);
-            if(ipAddress == null)
+            var nodeIpAddress = GetNodeIpAddress(context);
+            if(nodeIpAddress == null)
             {
-                return Results.BadRequest("Unable to determine IP address");
+                return Results.BadRequest("Unable to determine node IP address");
             }
 
-            request.IpAddress = ipAddress;
+            request.IpAddress = nodeIpAddress;
             await registerNode.Handle(request, CancellationToken.None);
             return Results.Ok();
-        });
+        })
+        .RequireAuthorization(AuthPolicy.NodePolicy);
     }
 
-    private static string? GetIpAddress(HttpContext context)
+    private static string? GetNodeIpAddress(HttpContext context)
     {
         var ip = context?.Connection?.RemoteIpAddress;
         if (ip != null && IPAddress.IsLoopback(ip))
