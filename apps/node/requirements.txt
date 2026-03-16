@@ -7,3 +7,4 @@ piper-tts
 python-dotenv
 pydantic
 pydantic-settings
+psutil

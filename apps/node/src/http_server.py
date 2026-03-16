@@ -5,6 +5,7 @@ from aiohttp import web
 
 from audio import speak
 from state import node_state
+from diagnostics import get_system_diagnostics
 
 from config import localServerConfig
 
@@ -12,15 +13,28 @@ from config import localServerConfig
 # Route handlers
 # ---------------------------------------------------------------------------
 
+
 async def handle_health(request):
     """
     GET /health
-    Returns the current node status.
+    Simple health check endpoint.
+
+    Returns 200 OK with plain text "I'm alive".
+    """
+    return web.Response(status=200, text="I'm alive")
+
+
+async def handle_status(request):
+    """
+    GET /status
+    Returns detailed node status including state and system diagnostics.
 
     Response JSON:
         {
-            "status": "ok",
-            "state": "listening" | "recording" | "initializing"
+            "state": "listening" | "recording" | "initializing",
+            "cpuUsage": <float>,
+            "memoryUsage": {...},
+            "diskUsage": {...}
         }
     """
     if node_state["recording"]:
@@ -30,7 +44,9 @@ async def handle_health(request):
     else:
         state = "initializing"
 
-    return web.json_response({"status": "ok", "state": state})
+    diagnostics = get_system_diagnostics()
+
+    return web.json_response({"state": state, **diagnostics})
 
 
 async def handle_text(request):
@@ -73,9 +89,11 @@ async def handle_text(request):
 # App factory + server runner
 # ---------------------------------------------------------------------------
 
+
 def build_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/health", handle_health)
+    app.router.add_get("/status", handle_status)
     app.router.add_post("/text", handle_text)
     return app
 
@@ -98,7 +116,9 @@ def start_http_server() -> None:
         await runner.setup()
         site = web.TCPSite(runner, localServerConfig.HOST, localServerConfig.PORT)
         await site.start()
-        print(f"[HTTP] Server listening on http://{localServerConfig.HOST}:{localServerConfig.PORT}")
+        print(
+            f"[HTTP] Server listening on http://{localServerConfig.HOST}:{localServerConfig.PORT}"
+        )
         while True:
             await asyncio.sleep(3600)
 

@@ -29,7 +29,7 @@ def _get_voice() -> PiperVoice:
         _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL)
     return _piper_voice
 
-
+# TODO: move TTS synthesis to server possibly since its more powerful
 def speak(text: str, node_state: dict) -> float:
     """
     Synthesize `text` via piper-tts and play it through the default output
