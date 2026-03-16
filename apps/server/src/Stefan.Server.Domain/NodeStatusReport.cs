@@ -8,8 +8,7 @@ public class NodeStatusReport
     public DateTime Timestamp { get; set; }
     public NodeStatus Status { get; set; }
 
-    //public double CpuUsage { get; set; }
-    //public double MemoryUsage { get; set; }
-
-    //public string Version { get; set; }
+    public double? CpuUsage { get; set; }
+    public double? MemoryUsage { get; set; }
+    public double? DiskUsage { get; set; }
 }

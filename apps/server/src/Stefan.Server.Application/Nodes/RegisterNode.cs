@@ -11,7 +11,7 @@ public class RegisterNodeRequest
     public int Port { get; set; }
 }   
 
-public class RegisterNode(StefanDbContext dbContext)
+public class RegisterNode(StefanDbContext dbContext, INodePingScheduler pingScheduler)
 {
     public async Task Handle(RegisterNodeRequest request, CancellationToken cancellationToken)
     {
@@ -28,5 +28,8 @@ public class RegisterNode(StefanDbContext dbContext)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Schedule recurring ping job for this node
+        await pingScheduler.SchedulePingAsync(node.Id, cancellationToken);
     }
 }

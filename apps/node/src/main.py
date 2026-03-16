@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 
-from remote_server import dispatch_audio_command
+from remote_server import dispatch_audio_command, register_node
 from config import audioConfig, localServerConfig, nodeConfig, remoteServerConfig
 from audio import list_devices, load_wav
 from command_listener import start_command_listener
@@ -77,7 +77,7 @@ def main():
 
     # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
-
+    register_node()
 
     # Blocking — runs the mic loop forever
     start_command_listener()

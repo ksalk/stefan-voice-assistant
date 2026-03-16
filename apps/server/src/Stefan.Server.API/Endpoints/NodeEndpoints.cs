@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Stefan.Server.Application.Nodes;
 
@@ -9,7 +10,7 @@ public static class NodeEndpoints
     {
         app.MapPost("/api/nodes/register", async (HttpContext context, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
         {
-            var ipAddress = context?.Connection?.RemoteIpAddress?.ToString();
+            var ipAddress = GetIpAddress(context);
             if(ipAddress == null)
             {
                 return Results.BadRequest("Unable to determine IP address");
@@ -19,5 +20,16 @@ public static class NodeEndpoints
             await registerNode.Handle(request, CancellationToken.None);
             return Results.Ok();
         });
+    }
+
+    private static string? GetIpAddress(HttpContext context)
+    {
+        var ip = context?.Connection?.RemoteIpAddress;
+        if (ip != null && IPAddress.IsLoopback(ip))
+        {
+            ip = IPAddress.Loopback;
+        }
+
+        return ip?.ToString();
     }
 }

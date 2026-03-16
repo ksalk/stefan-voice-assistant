@@ -3,7 +3,10 @@ using Stefan.Server.AI;
 using Stefan.Server.AI.Tools.Timer;
 using Stefan.Server.API.Endpoints;
 using Stefan.Server.Application;
+using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Services;
+using Stefan.Server.Domain;
+using Stefan.Server.Infrastructure;
 using Stefan.Server.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +29,26 @@ var app = builder.Build();
 // Ensure the SQLite database and schema exist on startup.
 using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<TimerDbContext>().Database.EnsureCreated();
+
+// Reschedule ping jobs for all online nodes after server restart
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<StefanDbContext>();
+    var pingScheduler = services.GetRequiredService<INodePingScheduler>();
+
+    // Clear any orphaned jobs first, then reschedule online nodes
+    await pingScheduler.RescheduleAllOnlineNodesAsync();
+
+    var onlineNodes = await dbContext.Nodes
+        .Where(n => n.Status == NodeStatus.Online)
+        .ToListAsync();
+
+    foreach (var node in onlineNodes)
+    {
+        await pingScheduler.SchedulePingAsync(node.Id);
+    }
+}
 
 // Eagerly load the STT model so it's ready before the first request.
 app.Services.GetRequiredService<SpeechToTextService>();

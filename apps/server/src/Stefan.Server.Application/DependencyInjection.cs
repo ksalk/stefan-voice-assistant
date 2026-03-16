@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddNodeFeatures();
-        
+
         services.AddSpeechToTextServices();
 
         return services;
@@ -20,6 +20,7 @@ public static class DependencyInjection
     private static IServiceCollection AddNodeFeatures(this IServiceCollection services)
     {
         services.AddScoped<RegisterNode>();
+        services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;
     }
 
