@@ -3,6 +3,7 @@ from collections import deque
 
 import numpy as np
 import sounddevice as sd
+import openwakeword
 from openwakeword.model import Model
 
 from audio import (
@@ -33,6 +34,7 @@ def start_command_listener() -> None:
     State transitions written to `node_state` so that the HTTP health
     endpoint reflects real-time status.
     """
+    openwakeword.utils.download_models()
     model = Model()
 
     last_trigger = 0.0
