@@ -21,6 +21,8 @@ CHANNELS = 1
 FRAME_MS = 20
 FRAME_SAMPLES = int(SAMPLE_RATE * FRAME_MS / 1000)
 
+OUTPUT_SAMPLE_RATE = ttsConfig.OUTPUT_SAMPLE_RATE  # Speaker native sample rate
+
 INPUT_SAMPLE_RATE = audioConfig.INPUT_SAMPLE_RATE  # Mic native sample rate
 INPUT_FRAME_SAMPLES = int(INPUT_SAMPLE_RATE * FRAME_MS / 1000)
 
@@ -68,9 +70,17 @@ def speak(text: str, node_state: dict) -> float:
             return
         # Each AudioChunk.audio_float_array is float32 in [-1, 1]
         audio = np.concatenate([c.audio_float_array for c in chunks])
-        sample_rate = chunks[0].sample_rate
+        tts_rate = chunks[0].sample_rate
+
+        # Resample to the speaker's native rate if they differ
+        if tts_rate != OUTPUT_SAMPLE_RATE:
+            g = gcd(OUTPUT_SAMPLE_RATE, tts_rate)
+            audio = resample_poly(audio, OUTPUT_SAMPLE_RATE // g, tts_rate // g).astype(
+                np.float32
+            )
+
         speaking_start = time.time()
-        sd.play(audio, samplerate=sample_rate)
+        sd.play(audio, samplerate=OUTPUT_SAMPLE_RATE)
         sd.wait()
     finally:
         node_state["speaking"] = False

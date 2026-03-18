@@ -23,6 +23,7 @@ class TTSConfig(BaseSettings):
     # Full (relative or absolute) path to the .onnx model file.
     # Example: models/en_US-hfc_female-medium.onnx
     PIPER_MODEL: str = "models/en_US-hfc_female-medium.onnx"
+    OUTPUT_SAMPLE_RATE: int = 48000  # Speaker playback sample rate
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="TTS_", extra="ignore")
 
