@@ -33,6 +33,9 @@ class AudioInputConfig(BaseSettings):
 
     # General audio input settings
     INPUT_DEVICE: int | None = None  # None means default device
+    INPUT_SAMPLE_RATE: int = (
+        16000  # Mic native sample rate (resampled to 16 kHz for processing)
+    )
 
     # Wake word detection settings
     WAKEWORD_THRESHOLD: float = 0.6

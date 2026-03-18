@@ -9,8 +9,11 @@ from openwakeword.model import Model
 from audio import (
     SAMPLE_RATE,
     CHANNELS,
+    INPUT_SAMPLE_RATE,
+    INPUT_FRAME_SAMPLES,
     FRAME_SAMPLES,
     record_command,
+    resample_to_16k,
 )
 from state import node_state
 from config import audioConfig
@@ -40,7 +43,8 @@ def start_command_listener() -> None:
     last_trigger = 0.0
     buffer: deque = deque()
     buffer_samples = 0
-    target_frame_samples = int(SAMPLE_RATE * 0.08)  # 80 ms window for openWakeWord
+    # 80 ms window for openWakeWord, sized for the input (native) sample rate
+    target_input_frame_samples = int(INPUT_SAMPLE_RATE * 0.08)
 
     def audio_callback(indata, frames, time_info, status):
         nonlocal buffer_samples
@@ -51,38 +55,47 @@ def start_command_listener() -> None:
         buffer_samples += len(audio)
 
     stream = sd.InputStream(
-        samplerate=SAMPLE_RATE,
+        samplerate=INPUT_SAMPLE_RATE,
         channels=CHANNELS,
-        dtype='int16',
-        blocksize=FRAME_SAMPLES,
+        dtype="int16",
+        blocksize=INPUT_FRAME_SAMPLES,
         device=audioConfig.INPUT_DEVICE,
         callback=audio_callback,
     )
 
     print("[wakeword] Listening for wake word: 'alexa'...")
-    print(f"[wakeword] Threshold: {audioConfig.WAKEWORD_THRESHOLD} | Cooldown: {audioConfig.WAKEWORD_COOLDOWN}s")
+    print(
+        f"[wakeword] Threshold: {audioConfig.WAKEWORD_THRESHOLD} | Cooldown: {audioConfig.WAKEWORD_COOLDOWN}s"
+    )
+    if INPUT_SAMPLE_RATE != SAMPLE_RATE:
+        print(
+            f"[wakeword] Mic sample rate: {INPUT_SAMPLE_RATE} Hz -> resampling to {SAMPLE_RATE} Hz"
+        )
 
     node_state["listening"] = True
 
     with stream:
         while True:
-            if buffer_samples < target_frame_samples:
+            if buffer_samples < target_input_frame_samples:
                 time.sleep(0.005)
                 continue
 
-            # Collect one 80 ms frame for the wake word model
+            # Collect one 80 ms frame (at native rate) for the wake word model
             chunks = []
             collected = 0
-            while buffer and collected < target_frame_samples:
+            while buffer and collected < target_input_frame_samples:
                 chunk = buffer.popleft()
                 chunks.append(chunk)
                 collected += len(chunk)
 
             buffer_samples -= collected
-            frame = np.concatenate(chunks)[:target_frame_samples]
+            frame = np.concatenate(chunks)[:target_input_frame_samples]
 
-            prediction = model.predict(frame)
-            score = float(prediction.get('alexa', 0.0))
+            # Resample to 16 kHz before feeding to openWakeWord
+            frame_16k = resample_to_16k(frame)
+
+            prediction = model.predict(frame_16k)
+            score = float(prediction.get("alexa", 0.0))
 
             now = time.time()
             if score >= audioConfig.WAKEWORD_THRESHOLD and (now - last_trigger) >= audioConfig.WAKEWORD_COOLDOWN:
@@ -93,11 +106,8 @@ def start_command_listener() -> None:
                 node_state["recording"] = True
 
                 audio, buffer_samples = record_command(
-                    buffer, buffer_samples,
-                    audioConfig.SILENCE_THRESHOLD,
-                    audioConfig.SILENCE_DURATION,
-                    audioConfig.MAX_RECORDING_DURATION,
-                    audioConfig.WAKEWORD_SKIP_MS,
+                    buffer,
+                    buffer_samples
                 )
 
                 node_state["recording"] = False
