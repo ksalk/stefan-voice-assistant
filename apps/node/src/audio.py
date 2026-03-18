@@ -54,6 +54,12 @@ def _get_voice() -> PiperVoice:
         _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL)
     return _piper_voice
 
+
+def preload_tts_model() -> None:
+    """Load the TTS model eagerly so the first speak() call doesn't block."""
+    _get_voice()
+
+
 # TODO: move TTS synthesis to server possibly since its more powerful
 def speak(text: str, node_state: dict) -> float:
     """

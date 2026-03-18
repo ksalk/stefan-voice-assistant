@@ -3,7 +3,7 @@ import argparse
 
 from remote_server import dispatch_audio_command, register_node
 from config import audioConfig, localServerConfig, nodeConfig, remoteServerConfig
-from audio import list_devices, load_wav
+from audio import list_devices, load_wav, preload_tts_model
 from command_listener import start_command_listener
 from http_server import start_http_server_thread
 # from ws_client import DEFAULT_SERVER_WS_URL, start_ws_thread
@@ -72,6 +72,8 @@ def main():
         return
     
     ## --------------------------------
+
+    preload_tts_model()
 
     start_http_server_thread()
 
