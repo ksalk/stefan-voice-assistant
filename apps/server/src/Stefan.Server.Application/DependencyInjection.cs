@@ -15,6 +15,8 @@ public static class DependencyInjection
 
         services.AddSpeechToTextServices();
 
+        services.AddTextToSpeechServices();
+
         return services;
     }
 
@@ -36,6 +38,13 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<SpeechToTextService>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddTextToSpeechServices(this IServiceCollection services)
+    {
+        services.AddSingleton<TextToSpeechService>();
 
         return services;
     }

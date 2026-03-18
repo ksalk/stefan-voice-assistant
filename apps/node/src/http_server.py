@@ -3,7 +3,7 @@ import threading
 
 from aiohttp import web
 
-from audio import speak
+from audio import play_audio
 from state import node_state
 from diagnostics import get_system_diagnostics
 
@@ -49,10 +49,11 @@ async def handle_status(request):
     return web.json_response({"state": state, **diagnostics})
 
 
-async def handle_text(request):
+async def handle_audio(request):
     """
-    POST /text
-    Receives a text payload (e.g. a TTS response from the server to speak back).
+    POST /audio
+    Receives a WAV audio payload (e.g. a TTS-synthesized notification from the server)
+    and plays it through the speakers.
 
     # Future endpoints to consider:
     #   POST /control  — remote control: {"action": "start"|"stop"|"mute"}
@@ -65,22 +66,13 @@ async def handle_text(request):
     #   and register it with app.router.add_get("/ws", handle_ws).
     #   No changes to build_app or start_http_server are required.
     """
-    content_type = request.content_type or ""
+    audio_data = await request.read()
 
-    if "application/json" in content_type:
-        try:
-            body = await request.json()
-            text = body.get("text", "")
-        except Exception:
-            return web.Response(status=400, text="Invalid JSON body")
-    else:
-        text = await request.text()
+    if not audio_data:
+        return web.Response(status=400, text="Empty audio payload")
 
-    if not text:
-        return web.Response(status=400, text="Empty text payload")
-
-    print(f"[HTTP] Received text: {text}")
-    speak(text, node_state)
+    print(f"[HTTP] Received audio notification: {len(audio_data)} bytes")
+    play_audio(audio_data, node_state)
 
     return web.Response(status=200, text="OK")
 
@@ -94,7 +86,7 @@ def build_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/health", handle_health)
     app.router.add_get("/status", handle_status)
-    app.router.add_post("/text", handle_text)
+    app.router.add_post("/audio", handle_audio)
     return app
 
 

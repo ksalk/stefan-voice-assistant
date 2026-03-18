@@ -15,5 +15,6 @@
     <PackageVersion Include="Quartz.Serialization.SystemTextJson" Version="3.16.1" />
     <PackageVersion Include="Whisper.net" Version="1.9.0" />
     <PackageVersion Include="Whisper.net.Runtime" Version="1.9.0" />
+    <PackageVersion Include="PiperSharp" Version="1.0.6" />
   </ItemGroup>
 </Project>

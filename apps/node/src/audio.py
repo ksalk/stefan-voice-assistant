@@ -1,3 +1,4 @@
+import io
 import os
 import time
 import wave
@@ -6,11 +7,10 @@ from datetime import datetime
 
 import numpy as np
 import sounddevice as sd
-from piper.voice import PiperVoice
 from scipy.signal import resample_poly
 from math import gcd
 
-from config import audioConfig, ttsConfig
+from config import audioConfig, audioOutputConfig
 
 # ---------------------------------------------------------------------------
 # Audio constants
@@ -21,10 +21,10 @@ CHANNELS = 1
 FRAME_MS = 20
 FRAME_SAMPLES = int(SAMPLE_RATE * FRAME_MS / 1000)
 
-OUTPUT_SAMPLE_RATE = ttsConfig.OUTPUT_SAMPLE_RATE  # Speaker native sample rate
-
 INPUT_SAMPLE_RATE = audioConfig.INPUT_SAMPLE_RATE  # Mic native sample rate
 INPUT_FRAME_SAMPLES = int(INPUT_SAMPLE_RATE * FRAME_MS / 1000)
+
+OUTPUT_SAMPLE_RATE = audioOutputConfig.SAMPLE_RATE  # Speaker native sample rate
 
 # Pre-compute resampling ratio (used by resample_to_16k)
 _RESAMPLE_GCD = gcd(INPUT_SAMPLE_RATE, SAMPLE_RATE)
@@ -44,46 +44,51 @@ def resample_to_16k(audio: np.ndarray) -> np.ndarray:
     return np.clip(resampled, -32768, 32767).astype(np.int16)
 
 
-# Lazy-loaded singleton — loaded once on first call to speak()
-_piper_voice: PiperVoice | None = None
-
-def _get_voice() -> PiperVoice:
-    global _piper_voice
-    if _piper_voice is None:
-        print(f"[TTS] Loading TTS model: {ttsConfig.PIPER_MODEL}")
-        _piper_voice = PiperVoice.load(ttsConfig.PIPER_MODEL)
-    return _piper_voice
+# ---------------------------------------------------------------------------
+# Audio playback (for server-synthesized WAV)
+# ---------------------------------------------------------------------------
 
 
-def preload_tts_model() -> None:
-    """Load the TTS model eagerly so the first speak() call doesn't block."""
-    _get_voice()
-
-
-# TODO: move TTS synthesis to server possibly since its more powerful
-def speak(text: str, node_state: dict) -> float:
+def play_audio(wav_data: bytes, node_state: dict) -> float:
     """
-    Synthesize `text` via piper-tts and play it through the default output
-    device using sounddevice (blocks until playback is complete).
+    Play a WAV byte buffer through the default output device using sounddevice.
+    Resamples to OUTPUT_SAMPLE_RATE if the WAV sample rate differs.
+    Blocks until playback is complete.
 
     Returns the timestamp at which playback started.
     """
-    voice = _get_voice()
     node_state["speaking"] = True
     try:
-        chunks = list(voice.synthesize(text))
-        if not chunks:
-            return
-        # Each AudioChunk.audio_float_array is float32 in [-1, 1]
-        audio = np.concatenate([c.audio_float_array for c in chunks])
-        tts_rate = chunks[0].sample_rate
+        buf = io.BytesIO(wav_data)
+        with wave.open(buf, "rb") as wf:
+            sample_rate = wf.getframerate()
+            n_channels = wf.getnchannels()
+            sample_width = wf.getsampwidth()
+            raw_frames = wf.readframes(wf.getnframes())
+
+        # Convert raw bytes to numpy array based on sample width
+        if sample_width == 2:
+            audio = (
+                np.frombuffer(raw_frames, dtype=np.int16).astype(np.float32) / 32768.0
+            )
+        elif sample_width == 4:
+            audio = (
+                np.frombuffer(raw_frames, dtype=np.int32).astype(np.float32)
+                / 2147483648.0
+            )
+        else:
+            raise ValueError(f"Unsupported sample width: {sample_width}")
+
+        # Reshape for multi-channel audio
+        if n_channels > 1:
+            audio = audio.reshape(-1, n_channels)
 
         # Resample to the speaker's native rate if they differ
-        if tts_rate != OUTPUT_SAMPLE_RATE:
-            g = gcd(OUTPUT_SAMPLE_RATE, tts_rate)
-            audio = resample_poly(audio, OUTPUT_SAMPLE_RATE // g, tts_rate // g).astype(
-                np.float32
-            )
+        if sample_rate != OUTPUT_SAMPLE_RATE:
+            g = gcd(OUTPUT_SAMPLE_RATE, sample_rate)
+            audio = resample_poly(
+                audio, OUTPUT_SAMPLE_RATE // g, sample_rate // g
+            ).astype(np.float32)
 
         speaking_start = time.time()
         sd.play(audio, samplerate=OUTPUT_SAMPLE_RATE)
@@ -97,21 +102,23 @@ def speak(text: str, node_state: dict) -> float:
 # Device utilities
 # ---------------------------------------------------------------------------
 
+
 def list_devices():
     devices = sd.query_devices()
     for i, dev in enumerate(devices):
-        io = []
-        if dev['max_input_channels'] > 0:
-            io.append('in')
-        if dev['max_output_channels'] > 0:
-            io.append('out')
-        io_str = '/'.join(io) if io else 'none'
+        caps = []
+        if dev["max_input_channels"] > 0:
+            caps.append("in")
+        if dev["max_output_channels"] > 0:
+            caps.append("out")
+        io_str = "/".join(caps) if caps else "none"
         print(f"{i}: {dev['name']} ({io_str})")
 
 
 # ---------------------------------------------------------------------------
 # Recording
 # ---------------------------------------------------------------------------
+
 
 def record_command(
     buffer: deque,
@@ -156,7 +163,9 @@ def record_command(
         chunk = buffer.popleft()
         recorded_chunks.append(chunk)
         total_recorded += len(chunk)
-    buffer_samples -= total_recorded  # sync the counter (nonlocal update handled by caller)
+    buffer_samples -= (
+        total_recorded  # sync the counter (nonlocal update handled by caller)
+    )
 
     record_start = time.time()
 
@@ -196,7 +205,7 @@ def record_command(
 
 def load_wav(path: str) -> np.ndarray:
     """Load a WAV file from disk and return it as a numpy int16 array."""
-    with wave.open(path, 'rb') as wf:
+    with wave.open(path, "rb") as wf:
         raw = wf.readframes(wf.getnframes())
     return np.frombuffer(raw, dtype=np.int16)
 
@@ -206,7 +215,7 @@ def save_wav(audio: np.ndarray, output_dir: str) -> str:
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join(output_dir, f"command_{timestamp}.wav")
-    with wave.open(filename, 'wb') as wf:
+    with wave.open(filename, "wb") as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)  # int16 = 2 bytes
         wf.setframerate(SAMPLE_RATE)

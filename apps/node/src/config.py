@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).parent.parent / ".env"
 
+
 class NodeConfig(BaseSettings):
     """
     Configuration settings for this node instance.
@@ -13,19 +14,22 @@ class NodeConfig(BaseSettings):
     NAME: str = ""
     SESSION_ID: str = str(uuid.uuid4())
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="NODE_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_prefix="NODE_", extra="ignore"
+    )
 
-class TTSConfig(BaseSettings):
+
+class AudioOutputConfig(BaseSettings):
     """
-    Configuration settings for text-to-speech synthesis.
+    Configuration settings for audio output / speaker playback.
     """
 
-    # Full (relative or absolute) path to the .onnx model file.
-    # Example: models/en_US-hfc_female-medium.onnx
-    PIPER_MODEL: str = "models/en_US-hfc_female-medium.onnx"
-    OUTPUT_SAMPLE_RATE: int = 48000  # Speaker playback sample rate
+    SAMPLE_RATE: int = 48000  # Speaker playback sample rate
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="TTS_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_prefix="AUDIO_OUTPUT_", extra="ignore"
+    )
+
 
 class AudioInputConfig(BaseSettings):
     """
@@ -49,7 +53,10 @@ class AudioInputConfig(BaseSettings):
     MAX_RECORDING_DURATION: float = 10.0
     RECORDINGS_OUTPUT_DIR: str = "./recordings"
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="AUDIO_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_prefix="AUDIO_", extra="ignore"
+    )
+
 
 class RemoteServerConfig(BaseSettings):
     """
@@ -61,7 +68,10 @@ class RemoteServerConfig(BaseSettings):
     AUTH_SECRET: str = ""
     SSL_VERIFY: bool = False
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="REMOTE_SERVER_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_prefix="REMOTE_SERVER_", extra="ignore"
+    )
+
 
 class LocalServerConfig(BaseSettings):
     """
@@ -71,10 +81,12 @@ class LocalServerConfig(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_prefix="LOCAL_SERVER_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE, env_prefix="LOCAL_SERVER_", extra="ignore"
+    )
 
 
-ttsConfig = TTSConfig()
+audioOutputConfig = AudioOutputConfig()
 audioConfig = AudioInputConfig()
 remoteServerConfig = RemoteServerConfig()
 localServerConfig = LocalServerConfig()

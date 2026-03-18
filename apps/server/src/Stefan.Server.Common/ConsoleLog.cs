@@ -1,6 +1,6 @@
 namespace Stefan.Server.Common;
 
-public enum LogCategory { HTTP, STT, LLM, Tool, WS }
+public enum LogCategory { HTTP, STT, TTS, LLM, Tool, WS }
 
 public static class ConsoleLog
 {
@@ -8,6 +8,7 @@ public static class ConsoleLog
     {
         [LogCategory.HTTP] = ConsoleColor.Blue,
         [LogCategory.STT]  = ConsoleColor.Cyan,
+        [LogCategory.TTS]  = ConsoleColor.DarkCyan,
         [LogCategory.LLM]  = ConsoleColor.Magenta,
         [LogCategory.Tool] = ConsoleColor.Yellow,
         [LogCategory.WS]   = ConsoleColor.Green,

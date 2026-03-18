@@ -9,54 +9,68 @@ import requests
 from audio import (
     SAMPLE_RATE,
     CHANNELS,
-    speak,
+    play_audio,
 )
 from state import node_state
 
 COMMAND_ENDPOINT = "/commands"
 REGISTER_NODE_ENDPOINT = "/nodes/register"
 
+
 def get_headers():
     return {
         "X-Node-Secret": remoteServerConfig.AUTH_SECRET,
         "X-Node-Device-ID": nodeConfig.NAME,
-        "X-Node-Session-ID": nodeConfig.SESSION_ID
+        "X-Node-Session-ID": nodeConfig.SESSION_ID,
     }
+
 
 def register_node() -> None:
     """
     Register this node with the central .NET server by sending a POST to the
     /nodes/register endpoint with the node's device ID and secret.
     """
-    print(f"[registration] Registering node '{nodeConfig.NAME}' with server at {remoteServerConfig.URL}...")
+    print(
+        f"[registration] Registering node '{nodeConfig.NAME}' with server at {remoteServerConfig.URL}..."
+    )
     try:
-        headers = { "X-Node-Secret": remoteServerConfig.AUTH_SECRET }
-        response = requests.post(f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}", headers=headers, verify=remoteServerConfig.SSL_VERIFY, json={
-            "NodeName": nodeConfig.NAME,
-            "SessionId": nodeConfig.SESSION_ID,
-            "Port": localServerConfig.PORT
-        })
-        
+        headers = {"X-Node-Secret": remoteServerConfig.AUTH_SECRET}
+        response = requests.post(
+            f"{remoteServerConfig.URL}{REGISTER_NODE_ENDPOINT}",
+            headers=headers,
+            verify=remoteServerConfig.SSL_VERIFY,
+            json={
+                "NodeName": nodeConfig.NAME,
+                "SessionId": nodeConfig.SESSION_ID,
+                "Port": localServerConfig.PORT,
+            },
+        )
+
         if response.status_code == 200:
             print("[registration] Node registered successfully.")
         else:
-            print(f"[registration] Failed to register node. Server returned status {response.status_code} with response: {response.text.strip()}")
+            print(
+                f"[registration] Failed to register node. Server returned status {response.status_code} with response: {response.text.strip()}"
+            )
     except requests.exceptions.RequestException as e:
         print(f"[registration] Failed to register node: {e}")
+
 
 def dispatch_audio_command(command_audio: np.ndarray) -> None:
     """
     Encode `audio` as an in-memory WAV and POST it to the .NET server.
-    If the server returns response text, synthesize it via piper-tts and
-    play it through the speakers.
+    The server performs STT, LLM processing, and TTS, returning a WAV audio
+    response which is played through the speakers.
 
     # Future: replace this with a WebSocket send once the server supports it.
     """
-    print(f"[command] Dispatching command audio to server at {remoteServerConfig.URL}...")
+    print(
+        f"[command] Dispatching command audio to server at {remoteServerConfig.URL}..."
+    )
     op_start = time.time()
 
     wav_buffer = io.BytesIO()
-    with wave.open(wav_buffer, 'wb') as wf:
+    with wave.open(wav_buffer, "wb") as wf:
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)  # int16 = 2 bytes
         wf.setframerate(SAMPLE_RATE)
@@ -64,19 +78,29 @@ def dispatch_audio_command(command_audio: np.ndarray) -> None:
     wav_buffer.seek(0)
 
     try:
-        files = {'file': ('command.wav', wav_buffer, 'audio/wav')}
+        files = {"file": ("command.wav", wav_buffer, "audio/wav")}
         headers = get_headers()
         http_start = time.time()
-        response = requests.post(f"{remoteServerConfig.URL}{COMMAND_ENDPOINT}", files=files, headers=headers, verify=remoteServerConfig.SSL_VERIFY)
+        response = requests.post(
+            f"{remoteServerConfig.URL}{COMMAND_ENDPOINT}",
+            files=files,
+            headers=headers,
+            verify=remoteServerConfig.SSL_VERIFY,
+        )
         http_elapsed = time.time() - http_start
 
-        response_text = response.text.strip()
-        if response.status_code == 200 and response_text:
-            print(f"[assistant] {response_text}")
-            speaking_start = speak(response_text, node_state)
+        response_text = response.headers.get("X-Response-Text", "")
+        if response.status_code == 200 and len(response.content) > 0:
+            if response_text:
+                print(f"[assistant] {response_text}")
+            speaking_start = play_audio(response.content, node_state)
             time_to_speaking = speaking_start - op_start
-            print(f"[timing] http: {http_elapsed:.2f}s | time to speaking: {time_to_speaking:.2f}s")
+            print(
+                f"[timing] http: {http_elapsed:.2f}s | time to speaking: {time_to_speaking:.2f}s"
+            )
         else:
-            print(f"[error] Server returned status {response.status_code} with response: {response_text}")
+            print(
+                f"[error] Server returned status {response.status_code} with response: {response.text.strip()}"
+            )
     except requests.exceptions.RequestException as e:
         print(f"[error] Failed to send to server: {e}")

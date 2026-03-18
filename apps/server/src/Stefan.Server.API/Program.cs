@@ -76,6 +76,12 @@ using (var scope = app.Services.CreateScope())
 // Eagerly load the STT model so it's ready before the first request.
 app.Services.GetRequiredService<SpeechToTextService>();
 
+// Eagerly load the TTS engine (downloads piper/model if missing) so it's ready before the first request.
+var ttsService = app.Services.GetRequiredService<TextToSpeechService>();
+
+// Wire up TTS for timer notifications (TimerScheduler is static, so we use a callback)
+TimerScheduler.SynthesizeAudio = ttsService.SynthesizeAsync;
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

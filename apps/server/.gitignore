@@ -494,3 +494,6 @@ ggml-*.bin
 # App Settings
 
 appsettings.Development.json
+
+# Piper TTS models
+piper/

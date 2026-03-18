@@ -11,7 +11,7 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
-        app.MapPost("api/commands", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, IConfiguration config, StefanDbContext dbContext) =>
+        app.MapPost("api/commands", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, TextToSpeechService tts, IConfiguration config, StefanDbContext dbContext) =>
         {
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(deviceId))
@@ -59,7 +59,16 @@ public static class CommandEndpoints
 
             ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
-            return Results.Ok(response);
+            // Synthesize TTS audio from the LLM response
+            timestamp = Stopwatch.GetTimestamp();
+
+            byte[] audioBytes = await tts.SynthesizeAsync(response);
+
+            ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms, size: {audioBytes.Length} bytes");
+
+            // Return the audio as a WAV file, with the text response in a header for node-side logging
+            context.Response.Headers["X-Response-Text"] = response;
+            return Results.File(audioBytes, "audio/wav", "response.wav");
         })
         .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery() // TODO: fix in future for security
