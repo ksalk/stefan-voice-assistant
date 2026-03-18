@@ -76,3 +76,15 @@ python src/main.py --device 2 --threshold 0.6
 - Recording stops on 1 second of silence (tunable via `--silence-duration`)
 - If `--silence-threshold` is too sensitive for your mic, increase it; if recording never stops, raise it further
 - TTS voice model is loaded once and cached in memory for the lifetime of the process
+
+## First run on Pi notes
+
+- install uv
+- uv pip install -r requirements.txt
+- sudo apt update
+- sudo apt install libportaudio2 portaudio19-dev
+- run it with --python 3.11 flag
+- numpy <2
+- verify mic sample rate and set it in .env
+
+- possibly dockerize for easy deployment on nodes
