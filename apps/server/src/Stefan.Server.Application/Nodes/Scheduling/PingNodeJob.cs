@@ -119,12 +119,12 @@ public class PingNodeJob : IJob
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to ping node {NodeName}", node.Name);
+            _logger.LogWarning("Failed to ping node {NodeName}", node.Name);
             await HandlePingFailure(context, node, failureCount);
         }
     }
 
-    private async Task HandlePingFailure(IJobExecutionContext context, Domain.Node node, int failureCount)
+    private async Task HandlePingFailure(IJobExecutionContext context, Node node, int failureCount)
     {
         failureCount++;
 
