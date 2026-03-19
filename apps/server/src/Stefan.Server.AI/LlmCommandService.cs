@@ -16,7 +16,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         You can respond to user requests to set timers and use the provided tool to create timers. 
         If the user asks you to set a timer, you should call the tool with the appropriate arguments. 
         Always use the tool to manage timers instead of trying to keep track of them yourself.
-        Respond with simple plain confirmation message, ready to be TTS'd, no need for markdown or formatting.
+        Respond with simple plain confirmation message, one short sentence is best - ready to be TTS'd, no need for markdown or formatting.
         """;
 
     public string ProcessCommand(string command, string deviceId)
