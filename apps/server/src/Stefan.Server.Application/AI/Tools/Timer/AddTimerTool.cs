@@ -1,9 +1,9 @@
 using System.Text.Json;
 using OpenAI.Chat;
 
-namespace Stefan.Server.AI.Tools.Timer;
+namespace Stefan.Server.Application.AI.Tools.Timer;
 
-public static class AddTimerTool
+public class AddTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler)
 {
     public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
         functionName: nameof(AddTimerTool),
@@ -26,7 +26,7 @@ public static class AddTimerTool
         """u8.ToArray())
     );
 
-    public static string Execute(ChatToolCall toolCall, TimerDbContext dbContext, string deviceId)
+    public async Task<string> ExecuteAsync(ChatToolCall toolCall, string deviceId, CancellationToken cancellationToken = default)
     {
         using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
         bool hasSeconds = argumentsJson.RootElement.TryGetProperty("seconds", out JsonElement seconds);
@@ -38,7 +38,7 @@ public static class AddTimerTool
         int secondsValue = seconds.GetInt32();
         string? labelValue = hasLabel ? label.GetString() : null;
 
-        TimerEntry entry = new()
+        var entry = new TimerEntry
         {
             Seconds = secondsValue,
             Label = labelValue,
@@ -46,9 +46,9 @@ public static class AddTimerTool
         };
 
         dbContext.Timers.Add(entry);
-        dbContext.SaveChanges();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        TimerScheduler.ScheduleTimer(entry, deviceId);
+        await timerScheduler.ScheduleTimerAsync(entry, deviceId, cancellationToken);
 
         return string.IsNullOrEmpty(labelValue)
             ? $"Timer set for {secondsValue} seconds."

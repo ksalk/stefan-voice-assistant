@@ -1,5 +1,13 @@
+using System.ClientModel;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using OpenAI;
+using OpenAI.Chat;
+using Quartz;
+using Stefan.Server.Application.AI;
+using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
@@ -16,6 +24,8 @@ public static class DependencyInjection
         services.AddSpeechToTextServices();
 
         services.AddTextToSpeechServices();
+
+        services.AddAIServices(configuration);
 
         return services;
     }
@@ -45,6 +55,32 @@ public static class DependencyInjection
     private static IServiceCollection AddTextToSpeechServices(this IServiceCollection services)
     {
         services.AddSingleton<TextToSpeechService>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddAIServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OpenAiConfig>(configuration.GetSection(OpenAiConfig.SectionName));
+
+        services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IOptions<OpenAiConfig>>().Value;
+
+            return new ChatClient(
+                model: config.Model,
+                credential: new ApiKeyCredential(config.ApiKey),
+                options: new OpenAIClientOptions { Endpoint = new Uri(config.Endpoint) });
+        });
+
+        services.AddDbContext<TimerDbContext>(options =>
+        {
+            options.UseSqlite(configuration.GetConnectionString("TimerDb"));
+        });
+
+        services.AddScoped<ITimerScheduler, TimerScheduler>();
+        services.AddTransient<FireTimerJob>();
+        services.AddScoped<LlmCommandService>();
 
         return services;
     }

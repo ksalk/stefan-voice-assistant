@@ -1,9 +1,9 @@
 using System.Text.Json;
 using OpenAI.Chat;
 
-namespace Stefan.Server.AI.Tools.Timer;
+namespace Stefan.Server.Application.AI.Tools.Timer;
 
-public static class CancelTimerTool
+public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler)
 {
     public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
         functionName: nameof(CancelTimerTool),
@@ -22,7 +22,7 @@ public static class CancelTimerTool
         """u8.ToArray())
     );
 
-    public static string Execute(ChatToolCall toolCall, TimerDbContext dbContext)
+    public async Task<string> ExecuteAsync(ChatToolCall toolCall, CancellationToken cancellationToken = default)
     {
         using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
         bool hasTimerId = argumentsJson.RootElement.TryGetProperty("timerId", out JsonElement timerId);
@@ -30,12 +30,17 @@ public static class CancelTimerTool
         if (!hasTimerId)
             throw new ArgumentNullException(nameof(timerId), "The timerId argument is required.");
 
-        var timer = dbContext.Timers.Find(timerId.GetInt32());
+        int timerIdValue = timerId.GetInt32();
+
+        var timer = await dbContext.Timers.FindAsync(timerIdValue, cancellationToken);
         if (timer == null)
-            return $"No timer found with ID {timerId.GetInt32()}.";
+            return $"No timer found with ID {timerIdValue}.";
 
         dbContext.Timers.Remove(timer);
-        dbContext.SaveChanges();
-        return $"Timer with ID {timerId.GetInt32()} cancelled.";
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await timerScheduler.CancelTimerAsync(timerIdValue, cancellationToken);
+
+        return $"Timer with ID {timerIdValue} cancelled.";
     }
 }

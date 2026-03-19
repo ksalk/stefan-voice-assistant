@@ -1,10 +1,13 @@
 using OpenAI.Chat;
-using Stefan.Server.AI.Tools.Timer;
+using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Common;
 
-namespace Stefan.Server.AI;
+namespace Stefan.Server.Application.Services;
 
-public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
+public class LlmCommandService(
+    ChatClient chatClient,
+    TimerDbContext dbContext,
+    ITimerScheduler timerScheduler)
 {
     private static readonly ChatCompletionOptions CompletionOptions = new()
     {
@@ -19,7 +22,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         Respond with simple plain confirmation message, one short sentence is best - ready to be TTS'd, no need for markdown or formatting.
         """;
 
-    public string ProcessCommand(string command, string deviceId)
+    public async Task<string> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
         List<ChatMessage> messages =
         [
@@ -32,7 +35,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         do
         {
             requiresAction = false;
-            ChatCompletion completion = chatClient.CompleteChat(messages, CompletionOptions);
+            ChatCompletion completion = await chatClient.CompleteChatAsync(messages, CompletionOptions, cancellationToken);
 
             switch (completion.FinishReason)
             {
@@ -51,7 +54,7 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
-                        var toolResult = DispatchToolCall(toolCall, deviceId);
+                        var toolResult = await DispatchToolCallAsync(toolCall, deviceId, cancellationToken);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
                     }
 
@@ -76,18 +79,18 @@ public class LlmCommandService(ChatClient chatClient, TimerDbContext dbContext)
         return "Error";
     }
 
-    private string DispatchToolCall(ChatToolCall toolCall, string deviceId)
+    private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, string deviceId, CancellationToken cancellationToken)
     {
         switch (toolCall.FunctionName)
         {
             case nameof(AddTimerTool):
-                return AddTimerTool.Execute(toolCall, dbContext, deviceId);
+                return await new AddTimerTool(dbContext, timerScheduler).ExecuteAsync(toolCall, deviceId, cancellationToken);
 
             case nameof(ListTimersTool):
                 return ListTimersTool.Execute(toolCall, dbContext);
 
             case nameof(CancelTimerTool):
-                return CancelTimerTool.Execute(toolCall, dbContext);
+                return await new CancelTimerTool(dbContext, timerScheduler).ExecuteAsync(toolCall, cancellationToken);
 
             default:
                 throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");

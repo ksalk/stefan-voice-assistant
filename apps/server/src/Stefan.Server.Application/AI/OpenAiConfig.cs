@@ -1,4 +1,4 @@
-namespace Stefan.Server.AI;
+namespace Stefan.Server.Application.AI;
 
 public class OpenAiConfig
 {

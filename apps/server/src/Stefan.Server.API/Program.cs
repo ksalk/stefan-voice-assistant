@@ -1,9 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using Stefan.Server.AI;
-using Stefan.Server.AI.Tools.Timer;
 using Stefan.Server.API;
 using Stefan.Server.API.Endpoints;
 using Stefan.Server.Application;
+using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
@@ -16,10 +15,7 @@ var configuration = builder.Configuration;
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddDbContext<TimerDbContext>(o =>
-    o.UseSqlite(configuration.GetConnectionString("TimerDb")));
 builder.Services.AddApplication(configuration);
-builder.Services.AddAIServices(configuration);
 builder.Services.AddInfrastructure(configuration);
 // builder.Services.AddSingleton<NodeRegistry>();
 // builder.Services.AddSingleton<NodeWebSocketHandler>();
@@ -77,10 +73,7 @@ using (var scope = app.Services.CreateScope())
 app.Services.GetRequiredService<SpeechToTextService>();
 
 // Eagerly load the TTS engine (downloads piper/model if missing) so it's ready before the first request.
-var ttsService = app.Services.GetRequiredService<TextToSpeechService>();
-
-// Wire up TTS for timer notifications (TimerScheduler is static, so we use a callback)
-TimerScheduler.SynthesizeAudio = ttsService.SynthesizeAsync;
+app.Services.GetRequiredService<TextToSpeechService>();
 
 if (app.Environment.IsDevelopment())
 {

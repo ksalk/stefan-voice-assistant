@@ -1,6 +1,6 @@
 using OpenAI.Chat;
 
-namespace Stefan.Server.AI.Tools.Timer;
+namespace Stefan.Server.Application.AI.Tools.Timer;
 
 public static class ListTimersTool
 {
@@ -22,7 +22,7 @@ public static class ListTimersTool
             if (timeLeft.TotalSeconds > 0)
             {
                 string labelPart = string.IsNullOrEmpty(timer.Label) ? "" : $" ({timer.Label})";
-                response += $"- {timeLeft:mm\\:ss} remaining{labelPart}\n";
+                response += $"- Timer {timer.Id}: {timeLeft:mm\\:ss} remaining{labelPart}\n";
             }
         }
 

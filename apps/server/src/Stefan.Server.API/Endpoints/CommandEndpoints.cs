@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Stefan.Server.AI;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Infrastructure;
@@ -55,7 +54,7 @@ public static class CommandEndpoints
 
             timestamp = Stopwatch.GetTimestamp();
 
-            string response = llm.ProcessCommand(transcript, deviceId);
+            string response = await llm.ProcessCommandAsync(transcript, deviceId);
 
             ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
 
