@@ -7,9 +7,9 @@ RUN dotnet publish src/Stefan.Server.API/Stefan.Server.API.csproj \
     --configuration Release \
     --output /app/publish
 
-# Copy model files that are not part of the publish output
-RUN cp src/Stefan.Server.API/ggml-base.bin /app/publish/ && \
-    cp -r src/Stefan.Server.API/vosk-model-full /app/publish/
+# Download the Whisper base model
+RUN wget -q -O /app/publish/ggml-base.bin \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
