@@ -36,6 +36,7 @@ public static class DependencyInjection
     private static IServiceCollection AddNodeFeatures(this IServiceCollection services)
     {
         services.AddScoped<RegisterNode>();
+        services.AddScoped<PingNode>();
         services.AddScoped<ProcessCommand>();
         services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;

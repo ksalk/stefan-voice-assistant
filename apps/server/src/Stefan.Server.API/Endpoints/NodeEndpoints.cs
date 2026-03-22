@@ -21,6 +21,25 @@ public static class NodeEndpoints
             return Results.Ok();
         })
         .RequireAuthorization(AuthPolicy.NodePolicy);
+
+        app.MapPost("/api/nodes/{nodeId:guid}/ping", async (Guid nodeId, [FromServices] PingNode pingNode) =>
+        {
+            var result = await pingNode.Handle(new PingNodeRequest { NodeId = nodeId }, CancellationToken.None);
+
+            if (result.ErrorMessage == "Node not found")
+                return Results.NotFound(result.ErrorMessage);
+
+            if (!result.Success)
+                return Results.BadRequest(result.ErrorMessage);
+
+            return Results.Ok(new
+            {
+                result.StatusReport!.CpuUsage,
+                result.StatusReport.MemoryUsage,
+                result.StatusReport.DiskUsage,
+                result.StatusReport.Status
+            });
+        });
     }
 
     private static string? GetNodeIpAddress(HttpContext context)
