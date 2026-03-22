@@ -6,6 +6,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="OpenAI" />
     <PackageReference Include="Quartz" />
+    <PackageReference Include="Vosk" />
     <PackageReference Include="Whisper.net" />
     <PackageReference Include="Whisper.net.Runtime" />
     <PackageReference Include="PiperSharp" />

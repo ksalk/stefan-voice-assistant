@@ -2,7 +2,7 @@ using Whisper.net;
 
 namespace Stefan.Server.Application.Services;
 
-public class SpeechToTextService(WhisperProcessor processor)
+public class WhisperSpeechToTextService(WhisperProcessor processor) : ISpeechToTextService
 {
     public async Task<string> TranscribeAsync(Stream audioStream)
     {

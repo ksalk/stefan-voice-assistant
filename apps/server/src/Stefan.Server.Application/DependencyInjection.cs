@@ -21,7 +21,7 @@ public static class DependencyInjection
     {
         services.AddNodeFeatures();
 
-        services.AddSpeechToTextServices();
+        services.AddSpeechToTextServices(configuration);
 
         services.AddTextToSpeechServices();
 
@@ -37,17 +37,27 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddSpeechToTextServices(this IServiceCollection services)
+    private static IServiceCollection AddSpeechToTextServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton(_ =>
-        {
-            var factory = WhisperFactory.FromPath("ggml-base.bin");
-            return factory.CreateBuilder()
-                .WithLanguage("en")
-                .Build();
-        });
+        var provider = configuration["SttProvider"] ?? "Whisper";
 
-        services.AddSingleton<SpeechToTextService>();
+        if (provider.Equals("Vosk", StringComparison.OrdinalIgnoreCase))
+        {
+            var voskModelPath = configuration["Vosk:ModelPath"] ?? "stt-models/vosk-model-en-us-0.22";
+            services.AddSingleton<ISpeechToTextService>(new VoskSpeechToTextService(voskModelPath));
+        }
+        else
+        {
+            services.AddSingleton(_ =>
+            {
+                var factory = WhisperFactory.FromPath("ggml-base.bin");
+                return factory.CreateBuilder()
+                    .WithLanguage("en")
+                    .Build();
+            });
+
+            services.AddSingleton<ISpeechToTextService, WhisperSpeechToTextService>();
+        }
 
         return services;
     }

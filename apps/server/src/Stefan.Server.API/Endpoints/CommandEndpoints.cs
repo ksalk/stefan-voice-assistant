@@ -10,7 +10,7 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
-        app.MapPost("api/commands", async (HttpContext context, IFormFile file, SpeechToTextService stt, LlmCommandService llm, TextToSpeechService tts, IConfiguration config, StefanDbContext dbContext) =>
+        app.MapPost("api/commands", async (HttpContext context, IFormFile file, ISpeechToTextService stt, LlmCommandService llm, TextToSpeechService tts, IConfiguration config, StefanDbContext dbContext) =>
         {
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(deviceId))

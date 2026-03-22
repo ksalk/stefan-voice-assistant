@@ -70,7 +70,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Eagerly load the STT model so it's ready before the first request.
-app.Services.GetRequiredService<SpeechToTextService>();
+app.Services.GetRequiredService<ISpeechToTextService>();
 
 // Eagerly load the TTS engine (downloads piper/model if missing) so it's ready before the first request.
 app.Services.GetRequiredService<TextToSpeechService>();
