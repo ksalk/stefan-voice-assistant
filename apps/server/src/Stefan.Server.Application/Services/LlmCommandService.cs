@@ -22,13 +22,19 @@ public class LlmCommandService(
         Respond with simple plain confirmation message, one short sentence is best - ready to be TTS'd, no need for markdown or formatting.
         """;
 
-    public async Task<string> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
+    public async Task<LlmCommandResult> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
         List<ChatMessage> messages =
         [
             new SystemChatMessage(SystemPrompt),
             new UserChatMessage(command),
         ];
+
+        var conversationMessages = new List<ConversationMessage>
+        {
+            new("system", SystemPrompt, null),
+            new("user", command, null),
+        };
 
         bool requiresAction;
 
@@ -44,19 +50,27 @@ public class LlmCommandService(
                     messages.Add(new AssistantChatMessage(completion));
                     var assistantMessage = completion.Content[0].Text;
                     ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
-                    return assistantMessage;
+                    conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
+                    return new LlmCommandResult(assistantMessage, conversationMessages);
                 }
 
                 case ChatFinishReason.ToolCalls:
                 {
                     messages.Add(new AssistantChatMessage(completion));
 
+                    var toolCalls = new List<ToolCallRecord>();
+
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
                         var toolResult = await DispatchToolCallAsync(toolCall, deviceId, cancellationToken);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
+
+                        toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
+                        conversationMessages.Add(new ConversationMessage("tool", toolResult, null));
                     }
+
+                    conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
 
                     requiresAction = true;
                     break;
@@ -76,7 +90,7 @@ public class LlmCommandService(
             }
         } while (requiresAction);
 
-        return "Error";
+        return new LlmCommandResult("Error", conversationMessages);
     }
 
     private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, string deviceId, CancellationToken cancellationToken)

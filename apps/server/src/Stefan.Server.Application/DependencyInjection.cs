@@ -28,6 +28,8 @@ public static class DependencyInjection
 
         services.AddAIServices(configuration);
 
+        services.AddSingleton<AudioConverterService>();
+
         return services;
     }
 
