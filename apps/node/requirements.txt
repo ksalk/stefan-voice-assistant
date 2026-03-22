@@ -1,6 +1,6 @@
-numpy
+numpy<2
 sounddevice
-openwakeword
+openwakeword==0.6.0
 requests
 aiohttp
 python-dotenv
