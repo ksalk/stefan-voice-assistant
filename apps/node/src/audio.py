@@ -199,6 +199,13 @@ def record_command(
         return np.array([], dtype=np.int16), buffer_samples
 
     audio = np.concatenate(recorded_chunks)
+
+    # Trim trailing silence from the end to avoid sending long silent tails to the server.
+    trim_samples = int(silence_samples_limit * 0.9)
+    if trim_samples > 0 and len(audio) > trim_samples:
+        audio = audio[:-trim_samples]
+
+    # Resample to 16 kHz for the server
     audio = resample_to_16k(audio)
     return audio, buffer_samples
 
