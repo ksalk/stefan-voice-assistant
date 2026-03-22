@@ -8,6 +8,7 @@ using OpenAI.Chat;
 using Quartz;
 using Stefan.Server.Application.AI;
 using Stefan.Server.Application.AI.Tools.Timer;
+using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
@@ -33,6 +34,7 @@ public static class DependencyInjection
     private static IServiceCollection AddNodeFeatures(this IServiceCollection services)
     {
         services.AddScoped<RegisterNode>();
+        services.AddScoped<ProcessCommand>();
         services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;
     }

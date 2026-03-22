@@ -1,8 +1,6 @@
-using System.Diagnostics;
-using Microsoft.EntityFrameworkCore;
-using Stefan.Server.Application.Services;
+using Microsoft.AspNetCore.Mvc;
+using Stefan.Server.Application.Commands;
 using Stefan.Server.Common;
-using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.API.Endpoints;
 
@@ -10,7 +8,7 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
-        app.MapPost("api/commands", async (HttpContext context, IFormFile file, ISpeechToTextService stt, LlmCommandService llm, TextToSpeechService tts, IConfiguration config, StefanDbContext dbContext) =>
+        app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
         {
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(deviceId))
@@ -26,48 +24,25 @@ public static class CommandEndpoints
                 return Results.BadRequest("Missing X-Node-Session-ID header");
             }
 
-            // Check if device is registered in database
-            // TODO: optimize by caching registered nodes in memory to avoid DB hit on every command
-            var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId);
-            if (node == null)
-            {
-                ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{deviceId}' not registered");
-                return Results.Unauthorized();
-            }
-
-            // Verify session ID matches
-            if (node.CurrentSessionId != sessionId)
-            {
-                ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: invalid session ID for device '{deviceId}'");
-                return Results.Unauthorized();
-            }
-
-            var timestamp = Stopwatch.GetTimestamp();
             ConsoleLog.WriteSeparator();
             ConsoleLog.Write(LogCategory.HTTP, $"Received file: {file.FileName}, size: {file.Length} bytes");
 
-            using var fileStream = file.OpenReadStream();
-            string transcript = await stt.TranscribeAsync(fileStream);
+            await using var fileStream = file.OpenReadStream();
 
-            ConsoleLog.Write(LogCategory.STT, $"Transcription result: {transcript}");
-            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
+            var result = await processCommand.Handle(new ProcessCommandRequest
+            {
+                DeviceId = deviceId,
+                SessionId = sessionId,
+                AudioStream = fileStream,
+            }, CancellationToken.None);
 
-            timestamp = Stopwatch.GetTimestamp();
+            if (result == null)
+            {
+                return Results.Unauthorized();
+            }
 
-            string response = await llm.ProcessCommandAsync(transcript, deviceId);
-
-            ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms");
-
-            // Synthesize TTS audio from the LLM response
-            timestamp = Stopwatch.GetTimestamp();
-
-            byte[] audioBytes = await tts.SynthesizeAsync(response);
-
-            ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds} ms, size: {audioBytes.Length} bytes");
-
-            // Return the audio as a WAV file, with the text response in a header for node-side logging
-            context.Response.Headers["X-Response-Text"] = response;
-            return Results.File(audioBytes, "audio/wav", "response.wav");
+            context.Response.Headers["X-Response-Text"] = result.ResponseText;
+            return Results.File(result.AudioBytes, "audio/wav", "response.wav");
         })
         .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery() // TODO: fix in future for security
