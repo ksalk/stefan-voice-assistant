@@ -16,5 +16,8 @@
     <PackageVersion Include="Whisper.net" Version="1.9.0" />
     <PackageVersion Include="Whisper.net.Runtime" Version="1.9.0" />
     <PackageVersion Include="PiperSharp" Version="1.0.6" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="Vosk" Version="0.3.38" />
+    <PackageVersion Include="Fastenshtein" Version="1.0.12" />
   </ItemGroup>
 </Project>

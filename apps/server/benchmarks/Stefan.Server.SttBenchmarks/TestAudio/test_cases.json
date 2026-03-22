@@ -1,0 +1,5 @@
+[
+  { "audioFile": "how_much_longer.wav", "expectedText": "how much longer" },
+  { "audioFile": "set_timer_for_ten_minutes.wav", "expectedText": "set timer for ten minutes" },
+  { "audioFile": "tell_me_my_timers.wav", "expectedText": "tell me my timers" }
+]
