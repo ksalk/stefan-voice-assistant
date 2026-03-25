@@ -22,6 +22,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddNodeFeatures();
+        services.AddCommandFeatures();
 
         services.AddSpeechToTextServices(configuration);
 
@@ -38,9 +39,14 @@ public static class DependencyInjection
     {
         services.AddScoped<RegisterNode>();
         services.AddScoped<PingNode>();
+        services.AddScoped<INodePingScheduler, NodePingScheduler>();
+        return services;
+    }
+
+    private static IServiceCollection AddCommandFeatures(this IServiceCollection services)
+    {
         services.AddScoped<ProcessCommand>();
         services.AddScoped<GetCommands>();
-        services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;
     }
 
