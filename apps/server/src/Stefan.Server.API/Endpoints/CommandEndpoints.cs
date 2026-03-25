@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Stefan.Server.Application.Commands;
+using Stefan.Server.Application.Queries;
 using Stefan.Server.Common;
 
 namespace Stefan.Server.API.Endpoints;
@@ -8,6 +9,18 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
+        app.MapGet("api/commands", async ([FromQuery] int page, [FromQuery] int pageSize, [FromServices] GetCommands getCommands) =>
+        {
+            var result = await getCommands.Handle(new GetCommandsRequest
+            {
+                Page = page,
+                PageSize = pageSize,
+            }, CancellationToken.None);
+
+            return Results.Ok(result);
+        })
+        .WithName("GetCommands");
+
         app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
         {
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();

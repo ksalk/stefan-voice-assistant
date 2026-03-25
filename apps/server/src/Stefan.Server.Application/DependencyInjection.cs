@@ -11,6 +11,7 @@ using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Nodes.Scheduling;
+using Stefan.Server.Application.Queries;
 using Stefan.Server.Application.Services;
 using Whisper.net;
 
@@ -38,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<RegisterNode>();
         services.AddScoped<PingNode>();
         services.AddScoped<ProcessCommand>();
+        services.AddScoped<GetCommands>();
         services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;
     }
