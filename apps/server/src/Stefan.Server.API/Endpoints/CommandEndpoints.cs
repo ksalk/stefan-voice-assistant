@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Queries;
 using Stefan.Server.Common;
+using Stefan.Server.Domain;
 
 namespace Stefan.Server.API.Endpoints;
 
@@ -60,5 +61,22 @@ public static class CommandEndpoints
         .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery() // TODO: fix in future for security
         .WithName("ProcessCommand");
+
+        app.MapGet("api/commands/{commandId:guid}/audio", async (Guid commandId, [FromQuery] AudioType type, [FromServices] GetCommandAudio getCommandAudio) =>
+        {
+            var result = await getCommandAudio.Handle(new GetCommandAudioRequest
+            {
+                CommandId = commandId,
+                Type = type,
+            }, CancellationToken.None);
+
+            if (result == null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.File(result.AudioBytes, result.ContentType, result.FileName);
+        })
+        .WithName("GetCommandAudio");
     }
 }
