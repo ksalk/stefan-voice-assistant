@@ -38,6 +38,7 @@ public static class DependencyInjection
     private static IServiceCollection AddNodeFeatures(this IServiceCollection services)
     {
         services.AddScoped<RegisterNode>();
+        services.AddScoped<GetNodes>();
         services.AddScoped<PingNode>();
         services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;
@@ -56,7 +57,7 @@ public static class DependencyInjection
 
         if (provider.Equals("Vosk", StringComparison.OrdinalIgnoreCase))
         {
-            var voskModelPath = configuration["Vosk:ModelPath"] ?? "stt-models/vosk-model-en-us-0.22";
+            var voskModelPath = configuration["Vosk:ModelPath"] ?? "../../stt-models/vosk-model-en-us-0.22";
             services.AddSingleton<ISpeechToTextService>(new VoskSpeechToTextService(voskModelPath));
         }
         else

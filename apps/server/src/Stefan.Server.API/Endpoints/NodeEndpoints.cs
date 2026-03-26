@@ -40,6 +40,12 @@ public static class NodeEndpoints
                 result.StatusReport.Status
             });
         });
+
+        app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
+        {
+            var result = await getNodes.Handle(new GetNodesRequest(), CancellationToken.None);
+            return Results.Ok(result);
+        });
     }
 
     private static string? GetNodeIpAddress(HttpContext context)
