@@ -39,7 +39,10 @@ async function send({
 
 export const api = {
 	getNodes: (customFetch?: typeof fetch) =>
-		send({ method: 'GET', path: 'nodes', fetch: customFetch })
+		send({ method: 'GET', path: 'nodes', fetch: customFetch }),
+
+	pingNode: (id: string, customFetch?: typeof fetch) =>
+		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch })
 
 	// getPost: (id: string) => send({ method: 'GET', path: `posts/${id}` }),
 
