@@ -42,6 +42,13 @@ public static class NodeEndpoints
         })
         .RequireCors("DashboardPolicy");
 
+        app.MapGet("/api/nodes/{nodeId:guid}", async (Guid nodeId, [FromServices] GetNodeDetails getNodeDetails) =>
+        {
+            var result = await getNodeDetails.Handle(new GetNodeDetailsRequest { NodeId = nodeId }, CancellationToken.None);
+            return Results.Ok(result);
+        })
+        .RequireCors("DashboardPolicy");
+
         app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
         {
             var result = await getNodes.Handle(new GetNodesRequest(), CancellationToken.None);
