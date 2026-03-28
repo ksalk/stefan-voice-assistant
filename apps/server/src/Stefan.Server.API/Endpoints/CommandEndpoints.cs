@@ -20,7 +20,8 @@ public static class CommandEndpoints
 
             return Results.Ok(result);
         })
-        .WithName("GetCommands");
+        .WithName("GetCommands")
+        .RequireCors("DashboardPolicy");
 
         app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
         {
@@ -77,6 +78,7 @@ public static class CommandEndpoints
 
             return Results.File(result.AudioBytes, result.ContentType, result.FileName);
         })
-        .WithName("GetCommandAudio");
+        .WithName("GetCommandAudio")
+        .RequireCors("DashboardPolicy");
     }
 }

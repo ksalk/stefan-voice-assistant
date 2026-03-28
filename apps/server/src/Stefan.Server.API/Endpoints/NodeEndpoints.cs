@@ -8,7 +8,7 @@ public static class NodeEndpoints
 {
     public static void MapNodeEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/nodes/register", async (HttpContext context, IConfiguration config, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
+        app.MapPost("/api/nodes/register", async (HttpContext context, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
         {
             var nodeIpAddress = GetNodeIpAddress(context);
             if(nodeIpAddress == null)
@@ -39,13 +39,15 @@ public static class NodeEndpoints
                 result.StatusReport.DiskUsage,
                 result.StatusReport.Status
             });
-        });
+        })
+        .RequireCors("DashboardPolicy");
 
         app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
         {
             var result = await getNodes.Handle(new GetNodesRequest(), CancellationToken.None);
             return Results.Ok(result);
-        });
+        })
+        .RequireCors("DashboardPolicy");
     }
 
     private static string? GetNodeIpAddress(HttpContext context)

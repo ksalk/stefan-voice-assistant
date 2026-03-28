@@ -20,6 +20,16 @@ builder.Services.AddInfrastructure(configuration);
 // builder.Services.AddSingleton<NodeRegistry>();
 // builder.Services.AddSingleton<NodeWebSocketHandler>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DashboardPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthPolicy.NodePolicy, policy =>
     {
@@ -44,6 +54,7 @@ builder.Services.AddAuthorizationBuilder()
 var app = builder.Build();
 
 // app.UseWebSockets();
+app.UseCors();
 
 // Ensure the SQLite database and schema exist on startup.
 using (var scope = app.Services.CreateScope())
