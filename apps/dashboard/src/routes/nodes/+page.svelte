@@ -40,8 +40,6 @@
 	<div class="mt-4 rounded border border-red-200 bg-red-50 p-4 text-red-700">
 		<p>Error loading nodes: {error}</p>
 	</div>
-{:else if nodes.length === 0}
-	<p class="mt-4 text-slate-600">No nodes registered.</p>
 {:else}
 	<Table.Root class="mt-4">
 		<Table.Caption>Nodes registered in the system.</Table.Caption>

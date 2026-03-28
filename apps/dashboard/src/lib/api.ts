@@ -43,11 +43,4 @@ export const api = {
 
 	pingNode: (id: string, customFetch?: typeof fetch) =>
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch })
-
-	// getPost: (id: string) => send({ method: 'GET', path: `posts/${id}` }),
-
-	// createPost: (data: { title: string; content: string }) =>
-	//     send({ method: 'POST', path: 'posts', data }),
-
-	// deletePost: (id: string) => send({ method: 'DELETE', path: `posts/${id}` })
 };
