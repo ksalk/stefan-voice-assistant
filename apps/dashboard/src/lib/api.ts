@@ -41,6 +41,9 @@ export const api = {
 	getNodes: (customFetch?: typeof fetch) =>
 		send({ method: 'GET', path: 'nodes', fetch: customFetch }),
 
+	getNode: (id: string, customFetch?: typeof fetch) =>
+		send({ method: 'GET', path: `nodes/${id}`, fetch: customFetch }),
+
 	pingNode: (id: string, customFetch?: typeof fetch) =>
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch })
 };

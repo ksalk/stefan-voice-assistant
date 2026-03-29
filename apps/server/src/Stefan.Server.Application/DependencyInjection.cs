@@ -39,6 +39,7 @@ public static class DependencyInjection
     {
         services.AddScoped<RegisterNode>();
         services.AddScoped<GetNodes>();
+        services.AddScoped<GetNodeDetails>();
         services.AddScoped<PingNode>();
         services.AddScoped<INodePingScheduler, NodePingScheduler>();
         return services;

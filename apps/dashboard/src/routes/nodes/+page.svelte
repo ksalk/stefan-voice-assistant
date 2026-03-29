@@ -56,7 +56,7 @@
 		<Table.Body>
 			{#each nodes as node (node.id)}
 				<Table.Row>
-					<Table.Cell class="font-medium">{node.name}</Table.Cell>
+					<Table.Cell class="font-medium"><a href={`/nodes/${node.id}`}>{node.name}</a></Table.Cell>
 					<Table.Cell>{node.status}</Table.Cell>
 					<Table.Cell>{node.lastKnownIpAddress}:{node.port}</Table.Cell>
 					<Table.Cell>{formatDateTime(node.registeredAt)}</Table.Cell>
