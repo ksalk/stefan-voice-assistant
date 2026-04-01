@@ -60,7 +60,7 @@ public static class CommandEndpoints
             return Results.File(result.AudioBytes, "audio/wav", "response.wav");
         })
         .RequireAuthorization(AuthPolicy.NodePolicy)
-        .DisableAntiforgery() // TODO: fix in future for security
+        .DisableAntiforgery()
         .WithName("ProcessCommand");
 
         app.MapGet("api/commands/{commandId:guid}/audio", async (Guid commandId, [FromQuery] AudioType type, [FromServices] GetCommandAudio getCommandAudio) =>

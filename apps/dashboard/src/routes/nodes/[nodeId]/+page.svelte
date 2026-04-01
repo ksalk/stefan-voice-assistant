@@ -1,9 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as Table from '$lib/components/ui/table';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import CirclePlay from '@lucide/svelte/icons/circle-play';
-	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import { formatDateTime } from '$lib/utils/date';
 	import { api } from '$lib/api';
 	import type { PageProps } from '../$types';
@@ -15,7 +12,6 @@
     let nodeId: string = $derived(params.nodeId);
 
 	onMount(async () => {
-        // fetch Id from Route param
 		await fetchNode(nodeId);
 	});
 
