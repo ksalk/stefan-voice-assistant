@@ -8,6 +8,7 @@ using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
+using Stefan.Server.Infrastructure.Authentication;
 using Stefan.Server.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,31 +31,23 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddAuthentication(NodeSecretAuthenticationOptions.DefaultScheme)
+    .AddScheme<NodeSecretAuthenticationOptions, NodeSecretAuthenticationHandler>(
+        NodeSecretAuthenticationOptions.DefaultScheme,
+        options => { });
+
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthPolicy.NodePolicy, policy =>
     {
-        policy.RequireAssertion(context =>
-        {
-            var httpContext = context.Resource as HttpContext;
-            if (httpContext == null)
-                return false;   
-
-            var expectedSecret = configuration["NodeSecret"];
-            var providedSecret = httpContext.Request.Headers["X-Node-Secret"].FirstOrDefault();
-
-            if (string.IsNullOrEmpty(expectedSecret) || providedSecret != expectedSecret)
-            {
-                ConsoleLog.Write(LogCategory.HTTP, "Unauthorized request: invalid or missing X-Node-Secret");
-                return false;
-            }
-            return true;
-        });
+        policy.AddAuthenticationSchemes(NodeSecretAuthenticationOptions.DefaultScheme);
+        policy.RequireAuthenticatedUser();
     });
 
 var app = builder.Build();
 
 // app.UseWebSockets();
 app.UseCors();
+app.UseAuthentication();
 
 // Ensure the SQLite database and schema exist on startup.
 using (var scope = app.Services.CreateScope())
