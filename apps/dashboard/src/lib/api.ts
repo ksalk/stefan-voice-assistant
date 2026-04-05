@@ -45,5 +45,8 @@ export const api = {
 		send({ method: 'GET', path: `nodes/${id}`, fetch: customFetch }),
 
 	pingNode: (id: string, customFetch?: typeof fetch) =>
-		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch })
+		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch }),
+
+	getCommands: (page: number, pageSize: number, customFetch?: typeof fetch) =>
+		send({ method: 'GET', path: `commands?page=${page}&pageSize=${pageSize}`, fetch: customFetch })
 };
