@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import sys
 
 from remote_server import dispatch_audio_command, register_node
 from config import audioConfig, localServerConfig, nodeConfig, remoteServerConfig
@@ -57,6 +58,7 @@ def patch_configs(args):
     if args.local_server_port is not None:
         localServerConfig.PORT = args.local_server_port
 
+
 def main():
     args = parse_args()
     patch_configs(args)
@@ -65,23 +67,25 @@ def main():
         list_devices()
         return
 
+    if not register_node():
+        print("[fatal] Node registration failed. Exiting.")
+        sys.exit(1)
+
     if args.test_command:
         print(f"[test] Loading {args.test_command}")
         audio = load_wav(args.test_command)
         dispatch_audio_command(command_audio=audio)
         return
-    
+
     ## --------------------------------
 
     start_http_server_thread()
 
     # start_ws_thread(args.server_ws_url, args.node_secret, DEVICE_ID, ssl_no_verify=not args.ssl_verify)
 
-    register_node()
-
     # Blocking — runs the mic loop forever
     start_command_listener()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

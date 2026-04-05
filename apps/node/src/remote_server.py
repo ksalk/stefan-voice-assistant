@@ -25,7 +25,7 @@ def get_headers():
     }
 
 
-def register_node() -> None:
+def register_node() -> bool:
     """
     Register this node with the central .NET server by sending a POST to the
     /nodes/register endpoint with the node's device ID and secret.
@@ -48,12 +48,15 @@ def register_node() -> None:
 
         if response.status_code == 200:
             print("[registration] Node registered successfully.")
+            return True
         else:
             print(
                 f"[registration] Failed to register node. Server returned status {response.status_code} with response: {response.text.strip()}"
             )
+            return False
     except requests.exceptions.RequestException as e:
         print(f"[registration] Failed to register node: {e}")
+        return False
 
 
 def dispatch_audio_command(command_audio: np.ndarray) -> None:
