@@ -3,7 +3,7 @@ using Stefan.Server.Application.Services;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.Queries;
+namespace Stefan.Server.Application.Commands;
 
 public class GetCommandAudioRequest
 {

@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.Queries;
+namespace Stefan.Server.Application.Commands;
 
 public class GetCommandsRequest
 {
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+    public Guid? NodeId { get; set; }
 }
 
 public class CommandSummaryDto
@@ -48,8 +48,14 @@ public class GetCommands(StefanDbContext dbContext)
         var pageSize = Math.Min(MaxPageSize, Math.Max(1, request.PageSize));
 
         var query = dbContext.CommandRecords
-            .AsNoTracking()
-            .OrderByDescending(r => r.ReceivedAt);
+            .AsNoTracking();
+
+        if (request.NodeId.HasValue)
+        {
+            query = query.Where(r => r.NodeId == request.NodeId.Value);
+        }
+
+        query = query.OrderByDescending(r => r.ReceivedAt);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
