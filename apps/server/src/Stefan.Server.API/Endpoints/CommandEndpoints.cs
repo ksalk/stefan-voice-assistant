@@ -55,7 +55,7 @@ public static class CommandEndpoints
                 return Results.Unauthorized();
             }
 
-            context.Response.Headers["X-Response-Text"] = result.ResponseText;
+            context.Response.Headers["X-Response-Text"] = Uri.EscapeDataString(result.ResponseText);
             return Results.File(result.AudioBytes, "audio/wav", "response.wav");
         })
         .RequireAuthorization(AuthPolicy.NodePolicy)
