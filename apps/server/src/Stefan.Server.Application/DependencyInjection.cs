@@ -5,13 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
-using Quartz;
 using Stefan.Server.Application.AI;
 using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Nodes.Scheduling;
-using Stefan.Server.Application.Queries;
 using Stefan.Server.Application.Services;
 using Whisper.net;
 
