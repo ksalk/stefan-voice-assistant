@@ -14,25 +14,36 @@ public class LlmCommandService(
         Tools = { AddTimerTool.Definition, ListTimersTool.Definition, CancelTimerTool.Definition },
     };
 
-    private const string SystemPrompt = """
-        You are a helpful assistant for managing timers. 
-        You can respond to user requests to set timers and use the provided tool to create timers. 
-        If the user asks you to set a timer, you should call the tool with the appropriate arguments. 
-        Always use the tool to manage timers instead of trying to keep track of them yourself.
-        Respond with simple plain confirmation message, one short sentence is best - ready to be TTS'd, no need for markdown or formatting.
+    private static string BuildSystemPrompt() => $"""
+        You are Stefan, a voice home assistant that manages timers using the provided tools.
+
+        Rules:
+        - Always use tools to create, list, and cancel timers — never track state yourself.
+        - To cancel a timer by name, first call ListTimersTool to find its ID, then call CancelTimerTool.
+        - If the user asks to set a timer but does not specify a duration, ask them how long.
+        - You have access to the current time. You can convert absolute times (e.g. "6pm", "in 20 minutes") to seconds from now.
+
+        Response format (critical — this is spoken aloud via TTS):
+        - One short, natural sentence. No lists, markdown, symbols, or abbreviations.
+        - Confirm the exact duration in human-friendly terms (e.g. "5 minutes", not "300 seconds").
+        - Examples: "Sure, 5 minute timer started." / "You have two active timers." / "Your pasta timer has been cancelled."
+
+        The current date and time is {DateTime.Now:dddd, MMMM d, yyyy h:mm tt}.
         """;
 
     public async Task<LlmCommandResult> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
+        var systemPrompt = BuildSystemPrompt();
+        
         List<ChatMessage> messages =
         [
-            new SystemChatMessage(SystemPrompt),
+            new SystemChatMessage(systemPrompt),
             new UserChatMessage(command),
         ];
 
         var conversationMessages = new List<ConversationMessage>
         {
-            new("system", SystemPrompt, null),
+            new("system", systemPrompt, null),
             new("user", command, null),
         };
 
