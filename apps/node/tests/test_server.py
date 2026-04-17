@@ -1,29 +1,29 @@
+import asyncio
 import pytest
 from aiohttp import web
 
-from http_server import build_app
-from state import node_state
+from server.http_server import build_app
+from state import AppState
 
 
 @pytest.fixture
-async def client(aiohttp_client):
-    """Create a test client for the aiohttp app."""
-    app = build_app()
+def state():
+    """Fresh AppState for each test."""
+    return AppState()
+
+
+@pytest.fixture
+async def client(aiohttp_client, state):
+    """Create a test client for the aiohttp app with a dummy play queue."""
+    play_queue: asyncio.Queue = asyncio.Queue()
+    app = build_app(state, play_queue)
     return await aiohttp_client(app)
-
-
-@pytest.fixture(autouse=True)
-def reset_state():
-    """Reset node_state to defaults before each test."""
-    node_state["listening"] = False
-    node_state["recording"] = False
-    node_state["speaking"] = False
-    yield
 
 
 # ---------------------------------------------------------------------------
 # GET /health
 # ---------------------------------------------------------------------------
+
 
 class TestHealth:
     async def test_returns_200(self, client):
@@ -36,71 +36,63 @@ class TestHealth:
         assert data["status"] == "ok"
         assert data["state"] == "initializing"
 
-    async def test_listening_state(self, client):
-        node_state["listening"] = True
+    async def test_listening_state(self, client, state):
+        state.listening = True
         resp = await client.get("/health")
         data = await resp.json()
         assert data["state"] == "listening"
 
-    async def test_recording_state(self, client):
-        node_state["recording"] = True
+    async def test_recording_state(self, client, state):
+        state.recording = True
         resp = await client.get("/health")
         data = await resp.json()
         assert data["state"] == "recording"
 
-    async def test_recording_takes_priority_over_listening(self, client):
-        node_state["listening"] = True
-        node_state["recording"] = True
+    async def test_recording_takes_priority_over_listening(self, client, state):
+        state.listening = True
+        state.recording = True
         resp = await client.get("/health")
         data = await resp.json()
         assert data["state"] == "recording"
 
 
 # ---------------------------------------------------------------------------
-# POST /text
+# POST /audio
 # ---------------------------------------------------------------------------
 
-# class TestText:
-#     async def test_json_body(self, client):
-#         resp = await client.post("/text", json={"text": "hello world"})
-#         assert resp.status == 200
 
-#     async def test_plain_text_body(self, client):
-#         resp = await client.post(
-#             "/text",
-#             data="hello world",
-#             headers={"Content-Type": "text/plain"},
-#         )
-#         assert resp.status == 200
+class TestAudio:
+    async def test_empty_payload_returns_400(self, client):
+        resp = await client.post("/audio", data=b"")
+        assert resp.status == 400
 
-#     async def test_empty_json_text_returns_400(self, client):
-#         resp = await client.post("/text", json={"text": ""})
-#         assert resp.status == 400
+    async def test_valid_payload_returns_200_and_enqueues(self, aiohttp_client, state):
+        """Audio data should be enqueued without blocking."""
+        play_queue: asyncio.Queue = asyncio.Queue()
+        app = build_app(state, play_queue)
+        cl = await aiohttp_client(app)
 
-#     async def test_missing_text_key_returns_400(self, client):
-#         resp = await client.post("/text", json={"foo": "bar"})
-#         assert resp.status == 400
+        dummy_wav = b"\x00" * 64
+        resp = await cl.post("/audio", data=dummy_wav)
+        assert resp.status == 200
+        assert play_queue.qsize() == 1
+        assert play_queue.get_nowait() == dummy_wav
 
-#     async def test_empty_plain_text_returns_400(self, client):
-#         resp = await client.post(
-#             "/text",
-#             data="",
-#             headers={"Content-Type": "text/plain"},
-#         )
-#         assert resp.status == 400
+    async def test_full_queue_returns_503(self, aiohttp_client, state):
+        """When the play queue is full the server should return 503."""
+        play_queue: asyncio.Queue = asyncio.Queue(maxsize=1)
+        play_queue.put_nowait(b"already full")
+        app = build_app(state, play_queue)
+        cl = await aiohttp_client(app)
 
-#     async def test_invalid_json_returns_400(self, client):
-#         resp = await client.post(
-#             "/text",
-#             data="{bad json",
-#             headers={"Content-Type": "application/json"},
-#         )
-#         assert resp.status == 400
+        resp = await cl.post("/audio", data=b"\x00" * 64)
+        assert resp.status == 503
 
 
 # ---------------------------------------------------------------------------
 # Unknown routes
 # ---------------------------------------------------------------------------
+
 
 class TestRouting:
     async def test_unknown_route_returns_404(self, client):
