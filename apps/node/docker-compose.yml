@@ -1,7 +1,7 @@
 services:
   node:
     build: .
-    env_file: .env
+    env_file: .env.docker
     restart: unless-stopped
 
     # Pass host sound devices into the container
