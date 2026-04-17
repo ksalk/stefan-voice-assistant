@@ -6,6 +6,9 @@ dbup:
 runserver:
     dotnet run --project apps/server/src/Stefan.Server.API
 
+runui:
+    pnpm --prefix apps/dashboard run dev
+
 runnode:
     uv pip install -r apps/node/requirements.txt 
     uv run apps/node/src/main.py
