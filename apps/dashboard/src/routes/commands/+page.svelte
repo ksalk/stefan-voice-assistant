@@ -92,6 +92,20 @@
 				return 'text-slate-600';
 		}
 	}
+
+	async function playAudio(commandId: string, type: 'Request' | 'Response') {
+		try {
+			const blob = await api.getCommandAudio(commandId, type);
+			const url = URL.createObjectURL(blob);
+			const audio = new Audio(url);
+			audio.onended = () => URL.revokeObjectURL(url);
+			audio.onerror = () => URL.revokeObjectURL(url);
+			await audio.play();
+		} catch (e) {
+			console.error('Failed to play audio:', e);
+			alert('Failed to play audio: ' + (e instanceof Error ? e.message : 'Unknown error'));
+		}
+	}
 </script>
 
 <h1>Commands</h1>
@@ -134,17 +148,24 @@
 						<Table.Cell>{truncate(command.responseText, 40)}</Table.Cell>
 						<Table.Cell>{formatDuration(command.totalDurationMs)}</Table.Cell>
 						<Table.Cell>
-							<Button
-								variant="outline"
-								size="icon"
-								aria-label="Play audio"
-								onclick={() => {
-									// Audio playback logic to be implemented
-									console.log('Play audio for command:', command.id);
-								}}
-							>
-								<CirclePlay />
-							</Button>
+							<div class="flex gap-1">
+								<Button
+									variant="outline"
+									size="icon"
+									aria-label="Play request audio"
+									onclick={() => playAudio(command.id, 'Request')}
+								>
+									<CirclePlay />
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									aria-label="Play response audio"
+									onclick={() => playAudio(command.id, 'Response')}
+								>
+									<CirclePlay />
+								</Button>
+							</div>
 						</Table.Cell>
 					</Table.Row>
 				{/each}

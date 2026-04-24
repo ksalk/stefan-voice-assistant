@@ -48,5 +48,14 @@ export const api = {
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch }),
 
 	getCommands: (page: number, pageSize: number, customFetch?: typeof fetch) =>
-		send({ method: 'GET', path: `commands?page=${page}&pageSize=${pageSize}`, fetch: customFetch })
+		send({ method: 'GET', path: `commands?page=${page}&pageSize=${pageSize}`, fetch: customFetch }),
+
+	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
+		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);
+		if (!res.ok) {
+			const errorData = await res.json().catch(() => ({}));
+			throw new Error(errorData.message || 'Failed to load audio');
+		}
+		return res.blob();
+	}
 };
