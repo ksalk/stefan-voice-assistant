@@ -59,6 +59,10 @@ public static class DependencyInjection
             var voskModelPath = configuration["Vosk:ModelPath"] ?? "../../stt-models/vosk-model-en-us-0.22";
             services.AddSingleton<ISpeechToTextService>(new VoskSpeechToTextService(voskModelPath));
         }
+        else if (provider.Equals("XAi", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<ISpeechToTextService, XAiSpeechToTextService>();
+        }
         else
         {
             services.AddSingleton(_ =>
