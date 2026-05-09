@@ -4,16 +4,16 @@ dbup:
     docker compose --profile db up -d
 
 runserver:
-    dotnet run --project apps/server/src/Stefan.Server.API
+    dotnet run --project src/server/Stefan.Server.API
 
 runui:
-    pnpm --prefix apps/dashboard run dev
+    pnpm --prefix apps/dashboard/stefan-ui run dev
 
-runnode:
-    uv pip install -r apps/node/requirements.txt 
-    uv run apps/node/src/main.py
+runnodepython:
+    uv pip install -r src/node-python/requirements.txt 
+    uv run src/node-python/src/main.py
 
-runnodetest:
+runnodepythontest:
     uv venv --clear
-    uv pip install -r apps/node/requirements.txt 
-    uv run apps/node/src/main.py --test-command apps/node/test_commands/how_much_longer.wav
+    uv pip install -r src/node-python/requirements.txt 
+    uv run src/node-python/src/main.py --test-command src/node-python/test_commands/how_much_longer.wav
