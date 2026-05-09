@@ -21,10 +21,10 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore dependencies
-        run: dotnet restore apps/server/Stefan.Server.sln
+        run: dotnet restore src/server/Stefan.Server.API/Stefan.Server.API.csproj
 
       - name: Build
-        run: dotnet build apps/server/Stefan.Server.sln --no-restore --configuration Release
+        run: dotnet build src/server/Stefan.Server.API/Stefan.Server.API.csproj --no-restore --configuration Release
 
   node:
     name: Node (.NET)
@@ -40,7 +40,7 @@ jobs:
           dotnet-quality: 'preview'
 
       - name: Restore dependencies
-        run: dotnet restore apps/node/Stefan.Node.sln
+        run: dotnet restore src/node/Stefan.Node/Stefan.Node.csproj
 
       - name: Build
-        run: dotnet build apps/node/Stefan.Node.sln --no-restore --configuration Release
+        run: dotnet build src/node/Stefan.Node/Stefan.Node.csproj --no-restore --configuration Release

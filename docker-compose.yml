@@ -30,8 +30,8 @@ services:
 
   api:
     build:
-      context: ./apps/server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/server/Dockerfile
     profiles: [full]
     ports:
       - "5285:8080"

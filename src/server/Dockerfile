@@ -1,9 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+WORKDIR /app
+COPY src/server .
 
-COPY . .
-
-RUN dotnet publish src/Stefan.Server.API/Stefan.Server.API.csproj \
+RUN dotnet publish Stefan.Server.API/Stefan.Server.API.csproj \
     --configuration Release \
     --output /app/publish
 
