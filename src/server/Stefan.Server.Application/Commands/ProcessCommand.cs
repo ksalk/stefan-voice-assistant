@@ -10,9 +10,9 @@ namespace Stefan.Server.Application.Commands;
 
 public class ProcessCommandRequest
 {
-    public string DeviceId { get; set; }
-    public string SessionId { get; set; }
-    public Stream AudioStream { get; set; }
+    public required string DeviceId { get; set; }
+    public required string SessionId { get; set; }
+    public required Stream AudioStream { get; set; }
 }
 
 public class ProcessCommand(
@@ -224,6 +224,6 @@ public class ProcessCommand(
 
 public class ProcessCommandResponse
 {
-    public byte[] AudioBytes { get; set; }
-    public string ResponseText { get; set; }
+    public required byte[] AudioBytes { get; set; }
+    public required string ResponseText { get; set; }
 }

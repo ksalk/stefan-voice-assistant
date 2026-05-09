@@ -6,10 +6,10 @@ namespace Stefan.Server.Application.Nodes;
 
 public class RegisterNodeRequest
 {
-    public string NodeName { get; set; }
-    public string SessionId { get; set; }
-    public string IpAddress { get; set; }
-    public int Port { get; set; }
+    public required string NodeName { get; set; }
+    public required string SessionId { get; set; }
+    public required string IpAddress { get; set; }
+    public required int Port { get; set; }
 }   
 
 public class RegisterNode(StefanDbContext dbContext, INodePingScheduler pingScheduler)
