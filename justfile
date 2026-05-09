@@ -6,6 +6,9 @@ dbup:
 runserver:
     dotnet run --project src/server/Stefan.Server.API
 
+runnode:
+    dotnet run --project src/node/Stefan.Node
+
 runui:
     pnpm --prefix apps/dashboard/stefan-ui run dev
 

@@ -3,11 +3,11 @@
 public class Node
 {
     public Guid Id { get; private set; }
-    public string Name { get; private set; }
+    public required string Name { get; private set; }
 
-    public string CurrentSessionId { get; private set; }
+    public required string CurrentSessionId { get; private set; }
 
-    public string LastKnownIpAddress { get; private set; }
+    public required string LastKnownIpAddress { get; private set; }
     public int Port { get; private set; }
 
     public NodeStatus Status { get; private set; }
