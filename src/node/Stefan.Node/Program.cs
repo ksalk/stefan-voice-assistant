@@ -2,6 +2,11 @@
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+// builder.Services.Configure<KeywordSpotterOptions>(
+//     builder.Configuration.GetSection("KeywordSpotter"));
+
 builder.Services.AddHostedService<VoiceCommandDispatcher>();
 
 var app = builder.Build();
