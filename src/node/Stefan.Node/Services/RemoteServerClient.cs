@@ -5,11 +5,11 @@ using Stefan.Node.Options;
 
 namespace Stefan.Node.Services;
 
-public class NodeRegistrationService(
+public class RemoteServerClient(
     HttpClient httpClient,
     IOptions<ServerOptions> serverOptions,
     IOptions<RemoteServerOptions> remoteServerOptions,
-    ILogger<NodeRegistrationService> logger)
+    ILogger<RemoteServerClient> logger)
 {
     private readonly string _sessionId = Guid.NewGuid().ToString();
 
@@ -29,36 +29,47 @@ public class NodeRegistrationService(
             Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
         };
 
+        logger.LogInformation(
+            "Registering node with server at {ServerUrl}...",
+            request.RequestUri);
+
+        var response = await SendAsync(request);
+
+        if (response is not null)
+        {
+            logger.LogInformation("Node registered successfully.");
+            return true;
+        }
+
+        return false;
+    }
+
+    private async Task<HttpResponseMessage?> SendAsync(HttpRequestMessage request)
+    {
         try
         {
-            logger.LogInformation(
-                "Registering node with server at {ServerUrl}...",
-                request.RequestUri);
-
             var response = await httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
-            {
-                logger.LogInformation("Node registered successfully.");
-                return true;
-            }
+                return response;
 
             var body = await response.Content.ReadAsStringAsync();
             logger.LogError(
-                "Node registration failed: server returned {StatusCode} — {Body}",
+                "Request to {Url} failed: server returned {StatusCode} — {Body}",
+                request.RequestUri,
                 (int)response.StatusCode,
                 body.Trim());
-            return false;
+            return null;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Node registration failed: {Message}", ex.Message);
-            return false;
+            logger.LogError(ex, "Request to {Url} failed: {Message}", request.RequestUri, ex.Message);
+            return null;
         }
         catch (TaskCanceledException)
         {
-            logger.LogError("Node registration timed out after 10s.");
-            return false;
+            logger.LogError("Request to {Url} timed out after 10s.", request.RequestUri);
+            return null;
         }
     }
 }

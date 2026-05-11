@@ -167,6 +167,7 @@ public class VoiceCommandDispatcher : BackgroundService
             {
                 try
                 {
+                    // Need to copy the bytes since AlsaDevice reuses the same buffer for each callback
                     writer.TryWrite(audioBytes.ToArray());
                 }
                 catch (Exception ex)

@@ -11,7 +11,7 @@ builder.Services.AddHostedService<VoiceCommandDispatcher>();
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
 
-builder.Services.AddHttpClient<NodeRegistrationService>((sp, client) =>
+builder.Services.AddHttpClient<RemoteServerClient>((sp, client) =>
 {
     var remoteOptions = sp.GetRequiredService<IOptions<RemoteServerOptions>>().Value;
     client.BaseAddress = new Uri(remoteOptions.Url.TrimEnd('/') + "/");
@@ -21,7 +21,7 @@ builder.Services.AddHttpClient<NodeRegistrationService>((sp, client) =>
 
 var app = builder.Build();
 
-var registrationService = app.Services.GetRequiredService<NodeRegistrationService>();
+var registrationService = app.Services.GetRequiredService<RemoteServerClient>();
 if (!await registrationService.RegisterNodeAsync())
 {
     Console.Error.WriteLine("[fatal] Node registration failed. Exiting.");
