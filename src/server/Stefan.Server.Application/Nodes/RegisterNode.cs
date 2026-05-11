@@ -8,7 +8,7 @@ public class RegisterNodeRequest
 {
     public required string NodeName { get; set; }
     public required string SessionId { get; set; }
-    public required string IpAddress { get; set; }
+    public string IpAddress { get; set; } = null!;
     public required int Port { get; set; }
 }   
 
