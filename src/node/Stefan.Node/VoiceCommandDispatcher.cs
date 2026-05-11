@@ -6,29 +6,11 @@ using SherpaOnnx;
 public class VoiceCommandDispatcher : BackgroundService
 {
     const int InputSampleRate = 16_000;
-    const int BufferSeconds = 3;
-    const int SnapshotWindowSeconds = 1;
-    // const int LogEveryNCallbacks = 200;
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var soundDeviceSettings = new SoundDeviceSettings()
-            {
-                RecordingDeviceName = "plughw:0,0", // software resampling if hw doesn't support 16kHz natively
-                RecordingSampleRate = InputSampleRate,
-                RecordingChannels = 2,
-                RecordingBitsPerSample = 16
-            };
-
-            using var alsaDevice = AlsaDeviceBuilder.Create(soundDeviceSettings);
-
-            var buffer = new SlidingAudioBuffer(InputSampleRate * BufferSeconds);
-            var latestWindowBytes = new byte[InputSampleRate * SnapshotWindowSeconds * sizeof(short)];
-            using var keywordSpotter = CreateKeywordSpotter();
-            var keywordStream = keywordSpotter.CreateStream();
-
             var audioChannel = Channel.CreateBounded<float[]>(
                 new BoundedChannelOptions(100)
                 {
@@ -39,38 +21,33 @@ public class VoiceCommandDispatcher : BackgroundService
 
             var inferenceTask = RunInferenceAsync(
                 audioChannel.Reader,
-                keywordSpotter,
-                keywordStream,
+                keyword => Console.WriteLine($"Keyword detected: {keyword}"),
                 cancellationToken);
 
             var recordTask = Task.Run(() =>
             {
+                // TODO: Make sound device settings configurable and discover devices
+                var soundDeviceSettings = new SoundDeviceSettings()
+                {
+                    RecordingDeviceName = "plughw:1,0", // software resampling if hw doesn't support 16kHz natively
+                    RecordingSampleRate = InputSampleRate,
+                    RecordingChannels = 2,
+                    RecordingBitsPerSample = 16
+                };
+
+                using var alsaDevice = AlsaDeviceBuilder.Create(soundDeviceSettings);
+                
                 try
                 {
-                    // var callbackCount = 0;
-
                     alsaDevice.Record(audioBytes =>
                     {
                         try
                         {
-                            buffer.AppendInterleavedStereoPcm16(audioBytes);
-
                             var monoSamples = ConvertInterleavedStereoPcm16ToMonoFloat(audioBytes);
                             if (monoSamples.Length > 0)
                             {
                                 audioChannel.Writer.TryWrite(monoSamples);
                             }
-
-                            // callbackCount++;
-                            // if (callbackCount % LogEveryNCallbacks != 0)
-                            // {
-                            //     return;
-                            // }
-
-                            // var copiedBytes = buffer.CopyLatestBytesTo(latestWindowBytes);
-                            // var bufferedSamples = buffer.CountSamples;
-                            // Console.WriteLine(
-                            //     $"Buffered {bufferedSamples} mono samples ({bufferedSamples / (double)InputSampleRate:F2}s) - latest window {copiedBytes} bytes");
                         }
                         catch (Exception ex)
                         {
@@ -105,12 +82,14 @@ public class VoiceCommandDispatcher : BackgroundService
         }
     }
 
-    private static async Task RunInferenceAsync(
+    private async Task RunInferenceAsync(
         ChannelReader<float[]> reader,
-        KeywordSpotter keywordSpotter,
-        OnlineStream keywordStream,
+        Action<string> onKeywordDetected,
         CancellationToken cancellationToken)
     {
+        using var keywordSpotter = CreateKeywordSpotter();
+            var keywordStream = keywordSpotter.CreateStream();
+
         try
         {
             await foreach (var monoSamples in reader.ReadAllAsync(cancellationToken))
@@ -126,7 +105,8 @@ public class VoiceCommandDispatcher : BackgroundService
                         var keywordResult = keywordSpotter.GetResult(keywordStream);
                         if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
                         {
-                            Console.WriteLine($"Detected keyword: {keywordResult.Keyword}");
+                            //Console.WriteLine($"Detected keyword: {keywordResult.Keyword}");
+                            onKeywordDetected(keywordResult.Keyword);
                             keywordSpotter.Reset(keywordStream);
                         }
                     }
