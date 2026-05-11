@@ -3,11 +3,11 @@
 public class Node
 {
     public Guid Id { get; private set; }
-    public required string Name { get; private set; }
+    public string Name { get; private set; } = string.Empty;
 
-    public required string CurrentSessionId { get; private set; }
+    public string CurrentSessionId { get; private set; } = string.Empty;
 
-    public required string LastKnownIpAddress { get; private set; }
+    public string LastKnownIpAddress { get; private set; } = string.Empty;
     public int Port { get; private set; }
 
     public NodeStatus Status { get; private set; }
@@ -19,6 +19,7 @@ public class Node
 
     public static Node Create(string name, string sessionId, string ipAddress, int port)
     {
+        // TODO: validate inputs
         return new Node
         {
             Id = Guid.NewGuid(),
