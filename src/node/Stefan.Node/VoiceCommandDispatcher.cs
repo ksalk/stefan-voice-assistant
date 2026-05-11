@@ -5,13 +5,22 @@ using SherpaOnnx;
 
 public class VoiceCommandDispatcher : BackgroundService
 {
-    const int InputSampleRate = 16_000;
+    private const int InputSampleRate = 16_000;
+    private const float SilenceThreshold = 0.02f;
+    private const int SilenceTimeoutMs = 1000;
+    private const int MaxRecordingMs = 10_000;
+
+    private State _state = State.ListeningForWakeWord;
+    private readonly List<byte[]> _commandAudioBuffer = [];
+    private float _silentDurationMs;
+    private DateTime _recordingStartTime = DateTime.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        _state = State.ListeningForWakeWord;
         try
         {
-            var audioChannel = Channel.CreateBounded<float[]>(
+            var audioChannel = Channel.CreateBounded<byte[]>(
                 new BoundedChannelOptions(100)
                 {
                     FullMode = BoundedChannelFullMode.DropOldest,
@@ -19,9 +28,9 @@ public class VoiceCommandDispatcher : BackgroundService
                     SingleWriter = true
                 });
 
-            var wakeWordDetectionTask = RunWakeWordDetectionAsync(
+            var audioProcessingTask = RunAudioProcessingAsync(
                 audioChannel.Reader,
-                keyword => Console.WriteLine($"Keyword detected: {keyword}"),
+                keyword => Console.WriteLine($"Keyword detected: {keyword} \nStarting command recording..."),
                 cancellationToken);
 
             var recordMicTask = Task.Factory.StartNew(
@@ -30,7 +39,9 @@ public class VoiceCommandDispatcher : BackgroundService
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
 
-            await Task.WhenAll(recordMicTask, wakeWordDetectionTask);
+            Console.WriteLine("VoiceCommandDispatcher started. Listening for wake word...");
+
+            await Task.WhenAll(recordMicTask, audioProcessingTask);
         }
         catch (OperationCanceledException)
         {
@@ -43,38 +54,83 @@ public class VoiceCommandDispatcher : BackgroundService
         }
     }
 
-    private async Task RunWakeWordDetectionAsync(
-        ChannelReader<float[]> reader,
+    private async Task RunAudioProcessingAsync(
+        ChannelReader<byte[]> reader,
         Action<string> onKeywordDetected,
         CancellationToken cancellationToken)
     {
         using var keywordSpotter = CreateKeywordSpotter();
-            var keywordStream = keywordSpotter.CreateStream();
+        var keywordStream = keywordSpotter.CreateStream();
+
+        // fields moved to class level
 
         try
         {
-            await foreach (var monoSamples in reader.ReadAllAsync(cancellationToken))
+            await foreach (var audioBytes in reader.ReadAllAsync(cancellationToken))
             {
-                try
+                if (_state == State.ListeningForWakeWord)
                 {
-                    keywordStream.AcceptWaveform(InputSampleRate, monoSamples);
-
-                    while (keywordSpotter.IsReady(keywordStream))
+                    try
                     {
-                        keywordSpotter.Decode(keywordStream);
-
-                        var keywordResult = keywordSpotter.GetResult(keywordStream);
-                        if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
+                        var monoSamples = ConvertInterleavedStereoPcm16ToMonoFloat(audioBytes);
+                        if (monoSamples.Length == 0)
                         {
-                            //Console.WriteLine($"Detected keyword: {keywordResult.Keyword}");
-                            onKeywordDetected(keywordResult.Keyword);
-                            keywordSpotter.Reset(keywordStream);
+                            continue;
+                        }
+
+                        //Console.WriteLine($"Received audio chunk: {audioBytes.Length} bytes, {monoSamples.Length} mono samples");
+
+                        keywordStream.AcceptWaveform(InputSampleRate, monoSamples);
+
+                        while (keywordSpotter.IsReady(keywordStream))
+                        {
+                            keywordSpotter.Decode(keywordStream);
+
+                            var keywordResult = keywordSpotter.GetResult(keywordStream);
+                            if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
+                            {
+                                _state = State.RecordingCommand;
+                                _commandAudioBuffer.Clear();
+                                _silentDurationMs = 0f;
+                                _recordingStartTime = DateTime.UtcNow;
+
+                                onKeywordDetected(keywordResult.Keyword);
+                                keywordSpotter.Reset(keywordStream);
+                            }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during keyword inference: {ex}");
+                    }
                 }
-                catch (Exception ex)
+
+                if (_state == State.RecordingCommand)
                 {
-                    Console.WriteLine($"Error during keyword inference: {ex}");
+                    _commandAudioBuffer.Add(audioBytes);
+
+                    var chunkDurationMs = audioBytes.Length / 64f;
+                    var rms = ComputeRms(audioBytes);
+
+                    if (rms < SilenceThreshold)
+                    {
+                        _silentDurationMs += chunkDurationMs;
+                    }
+                    else
+                    {
+                        _silentDurationMs = 0f;
+                    }
+
+                    var elapsedMs = (DateTime.UtcNow - _recordingStartTime).TotalMilliseconds;
+
+                    if (_silentDurationMs >= SilenceTimeoutMs || elapsedMs >= MaxRecordingMs)
+                    {
+                        await SaveRecordingAsync(_commandAudioBuffer);
+                        _commandAudioBuffer.Clear();
+                        _silentDurationMs = 0f;
+                        _state = State.ListeningForWakeWord;
+                        Console.WriteLine("Finished recording command. Returning to wake word detection.");
+                    }
                 }
             }
         }
@@ -92,7 +148,8 @@ public class VoiceCommandDispatcher : BackgroundService
         }
     }
 
-    private Task RunMicRecording(ChannelWriter<float[]> writer, CancellationToken cancellationToken)
+    // TODO: extract to IAudioInputProvider or sth
+    private Task RunMicRecording(ChannelWriter<byte[]> writer, CancellationToken cancellationToken)
     {
         // TODO: Make sound device settings configurable and discover devices
         var soundDeviceSettings = new SoundDeviceSettings()
@@ -110,11 +167,7 @@ public class VoiceCommandDispatcher : BackgroundService
             {
                 try
                 {
-                    var monoSamples = ConvertInterleavedStereoPcm16ToMonoFloat(audioBytes);
-                    if (monoSamples.Length > 0)
-                    {
-                        writer.TryWrite(monoSamples);
-                    }
+                    writer.TryWrite(audioBytes.ToArray());
                 }
                 catch (Exception ex)
                 {
@@ -159,6 +212,84 @@ public class VoiceCommandDispatcher : BackgroundService
         return monoSamples;
     }
 
+    private static float ComputeRms(ReadOnlySpan<byte> stereoPcm16)
+    {
+        var frameCount = stereoPcm16.Length / 4;
+        if (frameCount == 0) return 0f;
+
+        var sumSquares = 0.0;
+        for (var i = 0; i < frameCount; i++)
+        {
+            var offset = i * 4;
+            var left = (double)BinaryPrimitives.ReadInt16LittleEndian(stereoPcm16.Slice(offset, 2));
+            var right = (double)BinaryPrimitives.ReadInt16LittleEndian(stereoPcm16.Slice(offset + 2, 2));
+            var mono = (left + right) / 2.0;
+            sumSquares += mono * mono;
+        }
+
+        return (float)(Math.Sqrt(sumSquares / frameCount) / short.MaxValue);
+    }
+
+    private static byte[] ConvertStereoToMonoPcm16(List<byte[]> chunks)
+    {
+        var totalFrames = 0;
+        foreach (var chunk in chunks)
+            totalFrames += chunk.Length / 4;
+
+        var monoBytes = new byte[totalFrames * 2];
+        var monoOffset = 0;
+
+        foreach (var chunk in chunks)
+        {
+            var frameCount = chunk.Length / 4;
+            for (var i = 0; i < frameCount; i++)
+            {
+                var offset = i * 4;
+                var left = BinaryPrimitives.ReadInt16LittleEndian(chunk.AsSpan(offset, 2));
+                var right = BinaryPrimitives.ReadInt16LittleEndian(chunk.AsSpan(offset + 2, 2));
+                var mono = (short)((left + right) / 2);
+                BinaryPrimitives.WriteInt16LittleEndian(monoBytes.AsSpan(monoOffset), mono);
+                monoOffset += 2;
+            }
+        }
+
+        return monoBytes;
+    }
+
+    private static async Task SaveRecordingAsync(List<byte[]> stereoChunks)
+    {
+        var monoData = ConvertStereoToMonoPcm16(stereoChunks);
+        var dir = Path.Combine(AppContext.BaseDirectory, "recordings");
+        Directory.CreateDirectory(dir);
+        var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
+
+        await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+        fs.Write(CreateWavHeader(monoData.Length, InputSampleRate));
+        await fs.WriteAsync(monoData);
+
+        Console.WriteLine($"Saved: {filePath}");
+    }
+
+    private static byte[] CreateWavHeader(int dataSize, int sampleRate)
+    {
+        var h = new byte[44];
+        var s = h.AsSpan();
+        "RIFF"u8.CopyTo(s);
+        BinaryPrimitives.WriteInt32LittleEndian(s[4..], 36 + dataSize);
+        "WAVE"u8.CopyTo(s[8..]);
+        "fmt "u8.CopyTo(s[12..]);
+        BinaryPrimitives.WriteInt32LittleEndian(s[16..], 16);
+        BinaryPrimitives.WriteInt16LittleEndian(s[20..], 1);
+        BinaryPrimitives.WriteInt16LittleEndian(s[22..], 1);
+        BinaryPrimitives.WriteInt32LittleEndian(s[24..], sampleRate);
+        BinaryPrimitives.WriteInt32LittleEndian(s[28..], sampleRate * 2);
+        BinaryPrimitives.WriteInt16LittleEndian(s[32..], 2);
+        BinaryPrimitives.WriteInt16LittleEndian(s[34..], 16);
+        "data"u8.CopyTo(s[36..]);
+        BinaryPrimitives.WriteInt32LittleEndian(s[40..], dataSize);
+        return h;
+    }
+
     private KeywordSpotter CreateKeywordSpotter()
     {
         const string baseModelPath = @"/home/ksalk/dev/sherpa-onnx-models/sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20";
@@ -187,4 +318,10 @@ public class VoiceCommandDispatcher : BackgroundService
 
         return new KeywordSpotter(keywordSpotterConfig);
     }
+}
+
+public enum State
+{
+    ListeningForWakeWord,
+    RecordingCommand
 }
