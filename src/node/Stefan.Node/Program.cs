@@ -5,12 +5,16 @@ using Stefan.Node.Services;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
+// Configuration
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-builder.Services.AddHostedService<VoiceCommandDispatcher>();
+builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
 
+// Voice command handling
+builder.Services.AddHostedService<VoiceCommandDispatcher>();
+
+// Remote server communication
 builder.Services.AddHttpClient<RemoteServerClient>((sp, client) =>
 {
     var remoteOptions = sp.GetRequiredService<IOptions<RemoteServerOptions>>().Value;

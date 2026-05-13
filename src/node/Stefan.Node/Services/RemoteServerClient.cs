@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
@@ -7,19 +8,19 @@ namespace Stefan.Node.Services;
 
 public class RemoteServerClient(
     HttpClient httpClient,
+    IOptions<NodeOptions> nodeOptions,
     IOptions<ServerOptions> serverOptions,
-    IOptions<RemoteServerOptions> remoteServerOptions,
     ILogger<RemoteServerClient> logger)
 {
-    private readonly string _sessionId = Guid.NewGuid().ToString();
+    private static readonly string _sessionId = Guid.NewGuid().ToString();
 
     public async Task<bool> RegisterNodeAsync()
     {
         var port = new Uri(serverOptions.Value.Url).Port;
-
+        Console.WriteLine($"Node session ID: {_sessionId}");
         var payload = new JsonObject
         {
-            ["NodeName"] = remoteServerOptions.Value.NodeName,
+            ["NodeName"] = nodeOptions.Value.NodeName,
             ["SessionId"] = _sessionId,
             ["Port"] = port,
         };
@@ -29,8 +30,7 @@ public class RemoteServerClient(
             Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
         };
 
-        logger.LogInformation(
-            "Registering node with server at {ServerUrl}...",
+        logger.LogInformation("Registering node with server at {ServerUrl}...",
             request.RequestUri);
 
         var response = await SendAsync(request);
@@ -38,6 +38,39 @@ public class RemoteServerClient(
         if (response is not null)
         {
             logger.LogInformation("Node registered successfully.");
+            return true;
+        }
+
+        return false;
+    }
+
+    public async Task<bool> SendCommandAsync(byte[] commandAudio)
+    {
+        Console.WriteLine($"Node session - command ID: {_sessionId}");
+        var audioContent = new ByteArrayContent(commandAudio);
+        audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+
+        var content = new MultipartFormDataContent
+        {
+            { audioContent, "file", "command.wav" }
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/commands")
+        {
+            Content = content
+        };
+
+        request.Headers.Add("X-Node-Device-ID", nodeOptions.Value.NodeName);
+        request.Headers.Add("X-Node-Session-ID", _sessionId);
+
+        logger.LogInformation("Sending command to server at {ServerUrl}...",
+            request.RequestUri);
+
+        var response = await SendAsync(request);
+
+        if (response is not null)
+        {
+            logger.LogInformation("Command sent successfully.");
             return true;
         }
 

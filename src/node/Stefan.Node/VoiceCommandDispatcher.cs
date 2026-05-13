@@ -2,8 +2,9 @@ using System.Buffers.Binary;
 using System.Threading.Channels;
 using Alsa.Net;
 using SherpaOnnx;
+using Stefan.Node.Services;
 
-public class VoiceCommandDispatcher : BackgroundService
+public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : BackgroundService
 {
     private const int InputSampleRate = 16_000;
     private const float SilenceThreshold = 0.02f;
@@ -125,7 +126,8 @@ public class VoiceCommandDispatcher : BackgroundService
 
                     if (_silentDurationMs >= SilenceTimeoutMs || elapsedMs >= MaxRecordingMs)
                     {
-                        await SaveRecordingAsync(_commandAudioBuffer);
+                        //await SaveRecordingAsync(_commandAudioBuffer);
+                        await SendCommandToServerAsync(_commandAudioBuffer);
                         _commandAudioBuffer.Clear();
                         _silentDurationMs = 0f;
                         _state = State.ListeningForWakeWord;
@@ -269,6 +271,34 @@ public class VoiceCommandDispatcher : BackgroundService
         await fs.WriteAsync(monoData);
 
         Console.WriteLine($"Saved: {filePath}");
+    }
+
+    private async Task SendCommandToServerAsync(List<byte[]> stereoChunks)
+    {
+        try
+        {
+            Console.WriteLine("Sending command audio to server...");
+
+            var monoData = ConvertStereoToMonoPcm16(stereoChunks);
+            var wavHeader = CreateWavHeader(monoData.Length, InputSampleRate);
+            var wavBytes = new byte[wavHeader.Length + monoData.Length];
+            wavHeader.CopyTo(wavBytes, 0);
+            monoData.CopyTo(wavBytes, wavHeader.Length);
+
+            var result = await remoteServerClient.SendCommandAsync(wavBytes);
+            if (result)
+            {
+                Console.WriteLine("Command sent successfully.");
+            }
+            else
+            {
+                Console.WriteLine("Failed to send command.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending command to server: {ex}");
+        }
     }
 
     private static byte[] CreateWavHeader(int dataSize, int sampleRate)
