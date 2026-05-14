@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using Stefan.Node.Audio;
 using Stefan.Node.HttpServer;
 using Stefan.Node.Options;
 using Stefan.Node.Services;
@@ -16,6 +17,10 @@ builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection
 // Voice command handling
 builder.Services.AddSingleton<AppStateService>();
 builder.Services.AddHostedService<VoiceCommandDispatcher>();
+
+// Audio player
+builder.Services.AddSingleton<AudioPlayer>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AudioPlayer>());
 
 // Remote server communication
 builder.Services.AddHttpClient<RemoteServerClient>((sp, client) =>
@@ -35,15 +40,17 @@ if (!await remoteClient.RegisterNodeAsync())
     return 1;
 }
 
+var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
 var sendFilePath = app.Configuration["send-file"];
 if (sendFilePath is not null)
 {
     Console.WriteLine($"[info] Sending file: {sendFilePath}");
     var audioBytes = await File.ReadAllBytesAsync(sendFilePath);
-    var success = await remoteClient.SendCommandAsync(audioBytes);
-    if (success)
+    var responseAudio = await remoteClient.SendCommandAsync(audioBytes);
+    if (responseAudio is not null)
     {
-        Console.WriteLine("[info] File sent successfully.");
+        Console.WriteLine("[info] File sent successfully. Playing response...");
+        await audioPlayer.PlayAsync(responseAudio);
         return 0;
     }
     Console.Error.WriteLine("[error] Failed to send file.");

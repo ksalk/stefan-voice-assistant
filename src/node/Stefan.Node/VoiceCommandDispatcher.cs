@@ -2,9 +2,13 @@ using System.Buffers.Binary;
 using System.Threading.Channels;
 using Alsa.Net;
 using SherpaOnnx;
+using Stefan.Node.Audio;
 using Stefan.Node.Services;
 
-public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient, AppStateService appStateService) : BackgroundService
+public class VoiceCommandDispatcher(
+    RemoteServerClient remoteServerClient,
+    AppStateService appStateService,
+    AudioPlayer audioPlayer) : BackgroundService
 {
     private const int InputSampleRate = 16_000;
     private const float SilenceThreshold = 0.02f;
@@ -284,10 +288,11 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient, AppSt
             wavHeader.CopyTo(wavBytes, 0);
             monoData.CopyTo(wavBytes, wavHeader.Length);
 
-            var result = await remoteServerClient.SendCommandAsync(wavBytes);
-            if (result)
+            var responseAudio = await remoteServerClient.SendCommandAsync(wavBytes);
+            if (responseAudio is not null)
             {
-                Console.WriteLine("Command sent successfully.");
+                Console.WriteLine("Command sent successfully. Queuing response audio for playback.");
+                audioPlayer.Queue(responseAudio);
             }
             else
             {

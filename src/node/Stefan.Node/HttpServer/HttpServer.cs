@@ -32,6 +32,31 @@ public static class HttpServer
             return Results.Json(status, NodeJsonContext.Default.NodeStatusResponse);
         });
 
+        app.MapPost("/play", async (HttpContext context, Stefan.Node.Audio.AudioPlayer audioPlayer) =>
+        {
+            IFormFile? file = context.Request.Form.Files.Count > 0
+                ? context.Request.Form.Files[0]
+                : null;
+
+            if (file is null || file.Length == 0)
+                return Results.BadRequest("No audio file provided.");
+
+            await using var stream = file.OpenReadStream();
+            using var ms = new MemoryStream((int)file.Length);
+            await stream.CopyToAsync(ms);
+
+            audioPlayer.Queue(ms.ToArray());
+
+            return Results.Ok();
+        })
+        .DisableAntiforgery();
+
+        app.MapDelete("/play/current", (Stefan.Node.Audio.AudioPlayer audioPlayer) =>
+        {
+            audioPlayer.CancelCurrent();
+            return Results.Ok();
+        });
+
         return app;
     }
 
