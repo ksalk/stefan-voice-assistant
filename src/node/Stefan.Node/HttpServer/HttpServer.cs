@@ -1,3 +1,5 @@
+using Stefan.Node.Audio;
+
 namespace Stefan.Node.HttpServer;
 
 public static class HttpServer
@@ -32,7 +34,7 @@ public static class HttpServer
             return Results.Json(status, NodeJsonContext.Default.NodeStatusResponse);
         });
 
-        app.MapPost("/play", async (HttpContext context, Stefan.Node.Audio.AudioPlayer audioPlayer) =>
+        app.MapPost("/audio", async (HttpContext context, AudioPlayer audioPlayer) =>
         {
             IFormFile? file = context.Request.Form.Files.Count > 0
                 ? context.Request.Form.Files[0]
@@ -51,7 +53,7 @@ public static class HttpServer
         })
         .DisableAntiforgery();
 
-        app.MapDelete("/play/current", (Stefan.Node.Audio.AudioPlayer audioPlayer) =>
+        app.MapDelete("/audio/current", (AudioPlayer audioPlayer) =>
         {
             audioPlayer.CancelCurrent();
             return Results.Ok();
