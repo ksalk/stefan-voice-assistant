@@ -20,7 +20,7 @@ public class RemoteServerClient(
         Console.WriteLine($"Node session ID: {_sessionId}");
         var payload = new JsonObject
         {
-            ["NodeName"] = nodeOptions.Value.NodeName,
+            ["NodeName"] = nodeOptions.Value.Name,
             ["SessionId"] = _sessionId,
             ["Port"] = port,
         };
@@ -60,7 +60,7 @@ public class RemoteServerClient(
             Content = content
         };
 
-        request.Headers.Add("X-Node-Device-ID", nodeOptions.Value.NodeName);
+        request.Headers.Add("X-Node-Device-ID", nodeOptions.Value.Name);
         request.Headers.Add("X-Node-Session-ID", _sessionId);
 
         logger.LogInformation("Sending command to server at {ServerUrl}...",
