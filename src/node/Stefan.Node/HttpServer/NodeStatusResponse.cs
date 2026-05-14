@@ -6,4 +6,6 @@ public class NodeStatusResponse
     public double CpuUsage { get; set; }
     public MemoryUsageInfo MemoryUsage { get; set; } = new();
     public DiskUsageInfo DiskUsage { get; set; } = new();
+    public string? Version { get; set; }
+    public string? GitCommit { get; set; }
 }

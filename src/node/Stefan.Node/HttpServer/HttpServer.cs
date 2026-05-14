@@ -25,7 +25,9 @@ public static class HttpServer
                 },
                 CpuUsage = await GetCpuUsageAsync(),
                 MemoryUsage = GetMemoryUsage(),
-                DiskUsage = GetDiskUsage()
+                DiskUsage = GetDiskUsage(),
+                Version = ThisAssembly.AssemblyInformationalVersion,
+                GitCommit = ThisAssembly.GitCommitId
             };
             return Results.Json(status, NodeJsonContext.Default.NodeStatusResponse);
         });

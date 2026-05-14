@@ -13,5 +13,7 @@ public class NodeStatusReportEntityConfiguration : IEntityTypeConfiguration<Node
         builder.Property(n => n.NodeId).IsRequired();
         builder.Property(n => n.Timestamp).IsRequired();
         builder.Property(n => n.Status).IsRequired();
+        builder.Property(n => n.Version).HasMaxLength(64);
+        builder.Property(n => n.GitCommit).HasMaxLength(64);
     }
 }
