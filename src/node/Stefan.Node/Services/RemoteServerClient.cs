@@ -44,7 +44,10 @@ public class RemoteServerClient(
         return false;
     }
 
-    public async Task<bool> SendCommandAsync(byte[] commandAudio)
+    /// <summary>
+    /// Sends a voice command WAV to the server. Returns the response audio bytes on success, or null on failure.
+    /// </summary>
+    public async Task<byte[]?> SendCommandAsync(byte[] commandAudio)
     {
         Console.WriteLine($"Node session - command ID: {_sessionId}");
         var audioContent = new ByteArrayContent(commandAudio);
@@ -71,10 +74,10 @@ public class RemoteServerClient(
         if (response is not null)
         {
             logger.LogInformation("Command sent successfully.");
-            return true;
+            return await response.Content.ReadAsByteArrayAsync();
         }
 
-        return false;
+        return null;
     }
 
     private async Task<HttpResponseMessage?> SendAsync(HttpRequestMessage request)
