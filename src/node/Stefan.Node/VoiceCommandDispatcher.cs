@@ -4,21 +4,20 @@ using Alsa.Net;
 using SherpaOnnx;
 using Stefan.Node.Services;
 
-public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : BackgroundService
+public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient, AppStateService appStateService) : BackgroundService
 {
     private const int InputSampleRate = 16_000;
     private const float SilenceThreshold = 0.02f;
     private const int SilenceTimeoutMs = 1000;
     private const int MaxRecordingMs = 10_000;
 
-    private State _state = State.ListeningForWakeWord;
     private readonly List<byte[]> _commandAudioBuffer = [];
     private float _silentDurationMs;
     private DateTime _recordingStartTime = DateTime.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _state = State.ListeningForWakeWord;
+        appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
         try
         {
             var audioChannel = Channel.CreateBounded<byte[]>(
@@ -69,7 +68,7 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
         {
             await foreach (var audioBytes in reader.ReadAllAsync(cancellationToken))
             {
-                if (_state == State.ListeningForWakeWord)
+                if (appStateService.CurrentState == VoiceAssistantState.ListeningForWakeWord)
                 {
                     try
                     {
@@ -90,7 +89,7 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
                             var keywordResult = keywordSpotter.GetResult(keywordStream);
                             if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
                             {
-                                _state = State.RecordingCommand;
+                                appStateService.CurrentState = VoiceAssistantState.RecordingCommand;
                                 _commandAudioBuffer.Clear();
                                 _silentDurationMs = 0f;
                                 _recordingStartTime = DateTime.UtcNow;
@@ -106,7 +105,7 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
                     }
                 }
 
-                if (_state == State.RecordingCommand)
+                if (appStateService.CurrentState == VoiceAssistantState.RecordingCommand)
                 {
                     _commandAudioBuffer.Add(audioBytes);
 
@@ -130,7 +129,7 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
                         await SendCommandToServerAsync(_commandAudioBuffer);
                         _commandAudioBuffer.Clear();
                         _silentDurationMs = 0f;
-                        _state = State.ListeningForWakeWord;
+                        appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
                         Console.WriteLine("Finished recording command. Returning to wake word detection.");
                     }
                 }
@@ -156,7 +155,7 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
         // TODO: Make sound device settings configurable and discover devices
         var soundDeviceSettings = new SoundDeviceSettings()
         {
-            RecordingDeviceName = "plughw:1,0", // software resampling if hw doesn't support 16kHz natively
+            RecordingDeviceName = "plughw:0,0", // software resampling if hw doesn't support 16kHz natively
             RecordingSampleRate = InputSampleRate,
             RecordingChannels = 2,
             RecordingBitsPerSample = 16
@@ -349,10 +348,4 @@ public class VoiceCommandDispatcher(RemoteServerClient remoteServerClient) : Bac
 
         return new KeywordSpotter(keywordSpotterConfig);
     }
-}
-
-public enum State
-{
-    ListeningForWakeWord,
-    RecordingCommand
 }

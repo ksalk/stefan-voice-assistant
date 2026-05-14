@@ -12,6 +12,7 @@ builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(Serve
 builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
 
 // Voice command handling
+builder.Services.AddSingleton<AppStateService>();
 builder.Services.AddHostedService<VoiceCommandDispatcher>();
 
 // Remote server communication
