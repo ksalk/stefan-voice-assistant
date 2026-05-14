@@ -77,7 +77,7 @@ using (var scope = app.Services.CreateScope())
 app.Services.GetRequiredService<ISpeechToTextService>();
 
 // Eagerly load the TTS engine (downloads piper/model if missing) so it's ready before the first request.
-app.Services.GetRequiredService<TextToSpeechService>();
+app.Services.GetRequiredService<ITextToSpeechService>();
 
 if (app.Environment.IsDevelopment())
 {

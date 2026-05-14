@@ -5,11 +5,11 @@ using Stefan.Server.Common;
 
 namespace Stefan.Server.Application.Services;
 
-public class TextToSpeechService
+public class PiperTextToSpeechService : ITextToSpeechService
 {
     private readonly PiperProvider _piper;
 
-    public TextToSpeechService(IConfiguration configuration)
+    public PiperTextToSpeechService(IConfiguration configuration)
     {
         var section = configuration.GetSection("Piper");
         var executablePath = section["ExecutablePath"] ?? "piper/piper";

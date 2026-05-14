@@ -8,7 +8,7 @@ namespace Stefan.Server.Application.AI.Tools.Timer;
 [DisallowConcurrentExecution]
 public class FireTimerJob(
     TimerDbContext dbContext,
-    TextToSpeechService ttsService,
+    ITextToSpeechService ttsService,
     ILogger<FireTimerJob> logger) : IJob
 {
     public const string TimerIdKey = "TimerId";

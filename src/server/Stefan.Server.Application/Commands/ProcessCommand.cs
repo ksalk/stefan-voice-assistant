@@ -18,7 +18,7 @@ public class ProcessCommandRequest
 public class ProcessCommand(
     ISpeechToTextService stt,
     LlmCommandService llm,
-    TextToSpeechService tts,
+    ITextToSpeechService tts,
     AudioConverterService audioConverter,
     StefanDbContext dbContext)
 {

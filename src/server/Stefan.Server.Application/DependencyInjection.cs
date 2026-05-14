@@ -24,7 +24,7 @@ public static class DependencyInjection
 
         services.AddSpeechToTextServices(configuration);
 
-        services.AddTextToSpeechServices();
+        services.AddTextToSpeechServices(configuration);
 
         services.AddAIServices(configuration);
 
@@ -80,9 +80,18 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddTextToSpeechServices(this IServiceCollection services)
+    private static IServiceCollection AddTextToSpeechServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<TextToSpeechService>();
+        var provider = configuration["TtsProvider"] ?? "Piper";
+
+        if (provider.Equals("XAi", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<ITextToSpeechService, XAiTextToSpeechService>();
+        }
+        else
+        {
+            services.AddSingleton<ITextToSpeechService, PiperTextToSpeechService>();
+        }
 
         return services;
     }
