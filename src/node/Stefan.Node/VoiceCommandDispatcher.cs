@@ -1,14 +1,17 @@
 using System.Buffers.Binary;
 using System.Threading.Channels;
 using Alsa.Net;
+using Microsoft.Extensions.Options;
 using SherpaOnnx;
 using Stefan.Node.Audio;
+using Stefan.Node.Options;
 using Stefan.Node.Services;
 
 public class VoiceCommandDispatcher(
     RemoteServerClient remoteServerClient,
     AppStateService appStateService,
-    AudioPlayer audioPlayer) : BackgroundService
+    AudioPlayer audioPlayer,
+    IOptions<KeywordSpotterOptions> keywordSpotterOptions) : BackgroundService
 {
     private const int InputSampleRate = 16_000;
     private const float SilenceThreshold = 0.02f;
@@ -159,7 +162,7 @@ public class VoiceCommandDispatcher(
         // TODO: Make sound device settings configurable and discover devices
         var soundDeviceSettings = new SoundDeviceSettings()
         {
-            RecordingDeviceName = "plughw:0,0", // software resampling if hw doesn't support 16kHz natively
+            RecordingDeviceName = "plughw:1,0", // software resampling if hw doesn't support 16kHz natively
             RecordingSampleRate = InputSampleRate,
             RecordingChannels = 2,
             RecordingBitsPerSample = 16
@@ -327,23 +330,23 @@ public class VoiceCommandDispatcher(
 
     private KeywordSpotter CreateKeywordSpotter()
     {
-        const string baseModelPath = @"/home/ksalk/dev/sherpa-onnx-models/sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20";
-        var keywordsPath = Path.Combine(AppContext.BaseDirectory, "keywords.txt");
+        var opts = keywordSpotterOptions.Value;
+        var modelPath = opts.ModelPath;
         var keywordSpotterConfig = new KeywordSpotterConfig()
         {
             ModelConfig = new OnlineModelConfig()
             {
                 Transducer = new OnlineTransducerModelConfig()
                 {
-                    Encoder = Path.Combine(baseModelPath, "encoder-epoch-13-avg-2-chunk-16-left-64.onnx"),
-                    Decoder = Path.Combine(baseModelPath, "decoder-epoch-13-avg-2-chunk-16-left-64.onnx"),
-                    Joiner = Path.Combine(baseModelPath, "joiner-epoch-13-avg-2-chunk-16-left-64.onnx")
+                    Encoder = Path.Combine(modelPath, opts.EncoderFile),
+                    Decoder = Path.Combine(modelPath, opts.DecoderFile),
+                    Joiner = Path.Combine(modelPath, opts.JoinerFile)
                 },
-                Tokens = Path.Combine(baseModelPath, "tokens.txt"),
+                Tokens = Path.Combine(modelPath, opts.TokensPath),
                 NumThreads = 2,
                 Provider = "cpu",
             },
-            KeywordsFile = keywordsPath,
+            KeywordsFile = Path.Combine(modelPath, opts.KeywordsFile),
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = 16000,

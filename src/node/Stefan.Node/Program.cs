@@ -13,6 +13,7 @@ builder.Configuration.AddCommandLine(args);
 builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
 builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
 builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
+builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
 
 // Voice command handling
 builder.Services.AddSingleton<AppStateService>();

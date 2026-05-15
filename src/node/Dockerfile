@@ -27,6 +27,16 @@ RUN dotnet publish Stefan.Node/Stefan.Node.csproj \
     /p:StripSymbols=true \
     && rm -f /app/*.dbg
 
+FROM debian:bookworm-slim AS models
+
+# TODO: prune nonrequired models
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+    && mkdir -p /models \
+    && curl -fsSL https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20.tar.bz2 \
+        | tar -xj --strip-components=1 -C /models \
+    && rm -rf /var/lib/apt/lists/*
+
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -38,6 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=build /app ./
+COPY --from=models /models /app/models
 
 EXPOSE 8080
 
