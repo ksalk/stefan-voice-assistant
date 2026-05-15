@@ -6,6 +6,9 @@ dbup:
 runserver:
     dotnet run --project src/server/Stefan.Server.API
 
+buildnodeimage:
+    docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
+
 runnode:
     dotnet run --project src/node/Stefan.Node
 
