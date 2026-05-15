@@ -8,6 +8,7 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 // Configuration
 builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
 builder.Configuration.AddCommandLine(args);
 
 builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
