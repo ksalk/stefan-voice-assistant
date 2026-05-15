@@ -24,7 +24,8 @@ RUN dotnet publish Stefan.Node/Stefan.Node.csproj \
     -r linux-arm64 \
     -o /app \
     --self-contained true \
-    /p:StripSymbols=true
+    /p:StripSymbols=true \
+    && rm -f /app/*.dbg
 
 FROM debian:bookworm-slim
 
@@ -32,13 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libasound2 \
     alsa-utils \
     libstdc++6 \
-    libgcc-s1 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=build /app ./
-RUN rm -f *.dbg
 
 EXPOSE 8080
 
