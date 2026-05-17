@@ -25,7 +25,8 @@ public class MicAudioInputProvider : IAudioInputProvider
             {
                 try
                 {
-                    audioWriter.TryWrite(audioBytes);
+                    // Need to copy the bytes since AlsaDevice reuses the same buffer for each callback
+                    audioWriter.TryWrite(audioBytes.ToArray());
                 }
                 catch (Exception ex)
                 {

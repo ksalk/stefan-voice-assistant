@@ -9,6 +9,7 @@ using Stefan.Node.Services;
 
 public class VoiceCommandDispatcher(
     RemoteServerClient remoteServerClient,
+    IAudioInputProvider audioInputProvider,
     AppStateService appStateService,
     AudioPlayer audioPlayer,
     IOptions<KeywordSpotterOptions> keywordSpotterOptions) : BackgroundService
@@ -41,7 +42,7 @@ public class VoiceCommandDispatcher(
                 cancellationToken);
 
             var recordMicTask = Task.Factory.StartNew(
-                () => RunMicRecording(audioChannel.Writer, cancellationToken),
+                () => audioInputProvider.WriteAudioInput(audioChannel.Writer, cancellationToken),
                 cancellationToken,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
@@ -154,50 +155,6 @@ public class VoiceCommandDispatcher(
         {
             Console.WriteLine($"Error in inference worker: {ex}");
         }
-    }
-
-    // TODO: extract to IAudioInputProvider or sth
-    private Task RunMicRecording(ChannelWriter<byte[]> writer, CancellationToken cancellationToken)
-    {
-        // TODO: Make sound device settings configurable and discover devices
-        var soundDeviceSettings = new SoundDeviceSettings()
-        {
-            RecordingDeviceName = "plughw:1,0", // software resampling if hw doesn't support 16kHz natively
-            RecordingSampleRate = InputSampleRate,
-            RecordingChannels = 2,
-            RecordingBitsPerSample = 16
-        };
-
-        using var alsaDevice = AlsaDeviceBuilder.Create(soundDeviceSettings);
-        try
-        {
-            alsaDevice.Record(audioBytes =>
-            {
-                try
-                {
-                    // Need to copy the bytes since AlsaDevice reuses the same buffer for each callback
-                    writer.TryWrite(audioBytes.ToArray());
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error in ALSA record callback: {ex}");
-                }
-            }, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on shutdown
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in ALSA record loop: {ex}");
-        }
-        finally
-        {
-            writer.Complete();
-        }
-
-        return Task.CompletedTask;
     }
 
     private static float[] ConvertInterleavedStereoPcm16ToMonoFloat(ReadOnlySpan<byte> audioBytes)

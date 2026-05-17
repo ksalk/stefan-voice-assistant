@@ -6,32 +6,7 @@ using Stefan.Node.Services;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
-// Configuration
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
-builder.Configuration.AddCommandLine(args);
-
-builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
-builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
-builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
-builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
-
-// Voice command handling
-builder.Services.AddSingleton<AppStateService>();
-builder.Services.AddHostedService<VoiceCommandDispatcher>();
-
-// Audio player
-builder.Services.AddSingleton<AudioPlayer>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<AudioPlayer>());
-
-// Remote server communication
-builder.Services.AddHttpClient<RemoteServerClient>((sp, client) =>
-{
-    var remoteOptions = sp.GetRequiredService<IOptions<RemoteServerOptions>>().Value;
-    client.BaseAddress = new Uri(remoteOptions.Url.TrimEnd('/') + "/");
-    client.DefaultRequestHeaders.Add("X-Node-Secret", remoteOptions.AuthSecret);
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+ConfigureServices(builder);
 
 var app = builder.Build();
 
@@ -42,22 +17,66 @@ if (!await remoteClient.RegisterNodeAsync())
     return 1;
 }
 
-var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
-var sendFilePath = app.Configuration["send-file"];
-if (sendFilePath is not null)
+if (IsSendTestCommandRequested(app, out var sendFilePath))
 {
-    Console.WriteLine($"[info] Sending file: {sendFilePath}");
-    var audioBytes = await File.ReadAllBytesAsync(sendFilePath);
+    await TrySendTestCommand(app, sendFilePath!);
+}
+
+await app.RunServerAsync("http://0.0.0.0:8080");
+return 0;
+
+WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
+{
+    // Configuration
+    builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
+    builder.Configuration.AddCommandLine(args);
+
+    builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
+    builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
+    builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
+    builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
+
+    // Voice command handling
+    builder.Services.AddSingleton<AppStateService>();
+    builder.Services.AddSingleton<IAudioInputProvider, MicAudioInputProvider>();
+    builder.Services.AddHostedService<VoiceCommandDispatcher>();
+
+    // Audio player
+    builder.Services.AddSingleton<AudioPlayer>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<AudioPlayer>());
+
+    // Remote server communication
+    builder.Services.AddHttpClient<RemoteServerClient>((sp, client) =>
+    {
+        var remoteOptions = sp.GetRequiredService<IOptions<RemoteServerOptions>>().Value;
+        client.BaseAddress = new Uri(remoteOptions.Url.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Add("X-Node-Secret", remoteOptions.AuthSecret);
+        client.Timeout = TimeSpan.FromSeconds(10);
+    });
+
+    return builder;
+}
+
+bool IsSendTestCommandRequested(WebApplication app, out string? sendFilePath)
+{
+    sendFilePath = app.Configuration["send-file"];
+    return !string.IsNullOrWhiteSpace(sendFilePath);
+}
+
+async Task<bool> TrySendTestCommand(WebApplication app, string filePath)
+{
+    var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
+
+    Console.WriteLine($"[info] Sending file: {filePath}");
+    var audioBytes = await File.ReadAllBytesAsync(filePath!);
     var responseAudio = await remoteClient.SendCommandAsync(audioBytes);
     if (responseAudio is not null)
     {
         Console.WriteLine("[info] File sent successfully. Playing response...");
         await audioPlayer.PlayAsync(responseAudio);
-        return 0;
+        return true;
     }
     Console.Error.WriteLine("[error] Failed to send file.");
-    return 1;
+    return false;
 }
-
-await app.RunServerAsync("http://0.0.0.0:8080");
-return 0;
