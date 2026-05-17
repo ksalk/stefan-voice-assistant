@@ -10,10 +10,8 @@ ConfigureServices(builder);
 
 var app = builder.Build();
 
-var remoteClient = app.Services.GetRequiredService<RemoteServerClient>();
-if (!await remoteClient.RegisterNodeAsync())
+if (!await RegisterNode(app))
 {
-    Console.Error.WriteLine("[fatal] Node registration failed. Exiting.");
     return 1;
 }
 
@@ -58,6 +56,17 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     return builder;
 }
 
+async Task<bool> RegisterNode(WebApplication app)
+{
+    var remoteClient = app.Services.GetRequiredService<RemoteServerClient>();
+    if (!await remoteClient.RegisterNodeAsync())
+    {
+        Console.Error.WriteLine("[fatal] Node registration failed. Exiting.");
+        return false;
+    }
+    return true;
+}
+
 bool IsSendTestCommandRequested(WebApplication app, out string? sendFilePath)
 {
     sendFilePath = app.Configuration["send-file"];
@@ -66,6 +75,7 @@ bool IsSendTestCommandRequested(WebApplication app, out string? sendFilePath)
 
 async Task<bool> TrySendTestCommand(WebApplication app, string filePath)
 {
+    var remoteClient = app.Services.GetRequiredService<RemoteServerClient>();
     var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
 
     Console.WriteLine($"[info] Sending file: {filePath}");
