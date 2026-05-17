@@ -3,11 +3,17 @@
 dbup:
     docker compose --profile db up -d
 
+buildserver:
+    dotnet build --project src/server/Stefan.Server.API
+    
 runserver:
     dotnet run --project src/server/Stefan.Server.API
 
 buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
+
+buildnode:
+    dotnet build --project src/node/Stefan.Node
 
 runnode:
     dotnet run --project src/node/Stefan.Node
