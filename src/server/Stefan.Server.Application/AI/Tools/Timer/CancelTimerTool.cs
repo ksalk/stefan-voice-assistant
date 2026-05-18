@@ -3,7 +3,7 @@ using OpenAI.Chat;
 
 namespace Stefan.Server.Application.AI.Tools.Timer;
 
-public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler)
+public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler) : ITool
 {
     public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
         functionName: nameof(CancelTimerTool),
@@ -22,7 +22,7 @@ public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerSche
         """u8.ToArray())
     );
 
-    public async Task<string> ExecuteAsync(ChatToolCall toolCall, CancellationToken cancellationToken = default)
+    public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default)
     {
         using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
         bool hasTimerId = argumentsJson.RootElement.TryGetProperty("timerId", out JsonElement timerId);

@@ -1,4 +1,5 @@
 using OpenAI.Chat;
+using Stefan.Server.Application.AI;
 using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Common;
 
@@ -47,6 +48,10 @@ public class LlmCommandService(
             new("user", command, null),
         };
 
+        var toolCallContext = new ToolCallContext()
+        {
+          SourceDeviceId = deviceId
+        };
         bool requiresAction;
 
         do
@@ -74,7 +79,7 @@ public class LlmCommandService(
                     foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
-                        var toolResult = await DispatchToolCallAsync(toolCall, deviceId, cancellationToken);
+                        var toolResult = await DispatchToolCallAsync(toolCall, toolCallContext, cancellationToken);
                         messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
 
                         toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
@@ -104,18 +109,18 @@ public class LlmCommandService(
         return new LlmCommandResult("Error", conversationMessages);
     }
 
-    private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, string deviceId, CancellationToken cancellationToken)
+    private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken)
     {
         switch (toolCall.FunctionName)
         {
             case nameof(AddTimerTool):
-                return await new AddTimerTool(dbContext, timerScheduler).ExecuteAsync(toolCall, deviceId, cancellationToken);
+                return await new AddTimerTool(dbContext, timerScheduler).Execute(toolCall, context, cancellationToken);
 
             case nameof(ListTimersTool):
-                return ListTimersTool.Execute(toolCall, dbContext);
+                return await new ListTimersTool(dbContext).Execute(toolCall, context, cancellationToken);
 
             case nameof(CancelTimerTool):
-                return await new CancelTimerTool(dbContext, timerScheduler).ExecuteAsync(toolCall, cancellationToken);
+                return await new CancelTimerTool(dbContext, timerScheduler).Execute(toolCall, context, cancellationToken);
 
             default:
                 throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");
