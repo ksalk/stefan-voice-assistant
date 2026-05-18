@@ -18,6 +18,7 @@ if (!await RegisterNode(app))
 if (IsSendTestCommandRequested(app, out var sendFilePath))
 {
     await TrySendTestCommand(app, sendFilePath!);
+    return 0;
 }
 
 await app.RunServerAsync("http://0.0.0.0:8080");

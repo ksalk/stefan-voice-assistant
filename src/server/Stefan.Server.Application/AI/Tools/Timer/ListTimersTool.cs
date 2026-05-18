@@ -5,7 +5,9 @@ namespace Stefan.Server.Application.AI.Tools.Timer;
 
 public class ListTimersTool(TimerDbContext dbContext) : ITool
 {
-    public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
+    public string Name => nameof(ListTimersTool);
+
+    public ChatTool Definition => ChatTool.CreateFunctionTool(
         functionName: nameof(ListTimersTool),
         functionDescription: "List active timers"
     );

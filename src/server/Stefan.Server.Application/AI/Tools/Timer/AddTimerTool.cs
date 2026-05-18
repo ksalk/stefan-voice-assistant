@@ -5,7 +5,9 @@ namespace Stefan.Server.Application.AI.Tools.Timer;
 
 public class AddTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler) : ITool
 {
-    public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
+    public string Name => nameof(AddTimerTool);
+
+    public ChatTool Definition => ChatTool.CreateFunctionTool(
         functionName: nameof(AddTimerTool),
         functionDescription: "Add a timer",
         functionParameters: BinaryData.FromBytes("""

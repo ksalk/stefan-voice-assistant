@@ -4,7 +4,8 @@ namespace Stefan.Server.Application.AI;
 
 public interface ITool
 {
-    public static ChatTool Definition => throw new NotImplementedException();
+    public string Name { get; }
+    public ChatTool Definition { get; }
 
     Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default);
 }

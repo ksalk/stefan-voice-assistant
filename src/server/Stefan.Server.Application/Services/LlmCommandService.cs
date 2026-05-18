@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
 using Stefan.Server.Application.AI;
 using Stefan.Server.Application.AI.Tools.Timer;
@@ -7,14 +8,8 @@ namespace Stefan.Server.Application.Services;
 
 public class LlmCommandService(
     ChatClient chatClient,
-    TimerDbContext dbContext,
-    ITimerScheduler timerScheduler)
+    ToolRegistry toolRegistry)
 {
-    private static readonly ChatCompletionOptions CompletionOptions = new()
-    {
-        Tools = { AddTimerTool.Definition, ListTimersTool.Definition, CancelTimerTool.Definition },
-    };
-
     private static string BuildSystemPrompt() => $"""
         You are Stefan, a voice home assistant that manages timers using the provided tools.
 
@@ -57,7 +52,7 @@ public class LlmCommandService(
         do
         {
             requiresAction = false;
-            ChatCompletion completion = await chatClient.CompleteChatAsync(messages, CompletionOptions, cancellationToken);
+            ChatCompletion completion = await chatClient.CompleteChatAsync(messages, GetChatCompletionOptions(), cancellationToken);
 
             switch (completion.FinishReason)
             {
@@ -111,19 +106,22 @@ public class LlmCommandService(
 
     private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken)
     {
-        switch (toolCall.FunctionName)
+        var chatTool = toolRegistry.GetTool(toolCall.FunctionName) ?? throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");
+        var toolResult = await chatTool.Execute(toolCall, context, cancellationToken);
+
+        return toolResult;
+    }
+
+    private ChatCompletionOptions GetChatCompletionOptions() 
+    {
+        var toolDefinitions = toolRegistry.GetAllToolDefinitions();
+        var options = new ChatCompletionOptions();
+
+        foreach (var toolDefinition in toolDefinitions)
         {
-            case nameof(AddTimerTool):
-                return await new AddTimerTool(dbContext, timerScheduler).Execute(toolCall, context, cancellationToken);
-
-            case nameof(ListTimersTool):
-                return await new ListTimersTool(dbContext).Execute(toolCall, context, cancellationToken);
-
-            case nameof(CancelTimerTool):
-                return await new CancelTimerTool(dbContext, timerScheduler).Execute(toolCall, context, cancellationToken);
-
-            default:
-                throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");
+            options.Tools.Add(toolDefinition);
         }
+
+        return options;
     }
 }

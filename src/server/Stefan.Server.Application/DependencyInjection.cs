@@ -119,6 +119,19 @@ public static class DependencyInjection
         services.AddTransient<FireTimerJob>();
         services.AddScoped<LlmCommandService>();
 
+        services.RegisterAITools();
+
+        return services;
+    }
+
+    private static IServiceCollection RegisterAITools(this IServiceCollection services)
+    {
+        services.AddScoped<ToolRegistry>();
+
+        services.AddScoped<ITool, AddTimerTool>();
+        services.AddScoped<ITool, ListTimersTool>();
+        services.AddScoped<ITool, CancelTimerTool>();
+
         return services;
     }
 }

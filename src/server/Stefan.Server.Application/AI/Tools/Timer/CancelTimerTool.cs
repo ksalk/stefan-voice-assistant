@@ -5,7 +5,9 @@ namespace Stefan.Server.Application.AI.Tools.Timer;
 
 public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler) : ITool
 {
-    public static readonly ChatTool Definition = ChatTool.CreateFunctionTool(
+    public string Name => nameof(CancelTimerTool);
+    
+    public ChatTool Definition => ChatTool.CreateFunctionTool(
         functionName: nameof(CancelTimerTool),
         functionDescription: "Cancel a timer by its ID",
         functionParameters: BinaryData.FromBytes("""
