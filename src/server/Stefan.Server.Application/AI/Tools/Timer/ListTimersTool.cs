@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
+using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.AI.Tools.Timer;
 
-public class ListTimersTool(TimerDbContext dbContext) : ITool
+public class ListTimersTool(ToolsDbContext dbContext) : ITool
 {
     public string Name => nameof(ListTimersTool);
 
@@ -14,14 +15,14 @@ public class ListTimersTool(TimerDbContext dbContext) : ITool
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context,  CancellationToken cancellationToken = default)
     {
-        var timers = await dbContext.Timers.ToListAsync(cancellationToken);
+        var timers = await dbContext.TimerEntries.ToListAsync(cancellationToken);
         if (timers.Count == 0)
             return "No active timers.";
 
         string response = "Active timers:\n";
         foreach (var timer in timers)
         {
-            TimeSpan timeLeft = TimeSpan.FromSeconds(timer.Seconds) - (DateTime.UtcNow - timer.CreatedAt);
+            TimeSpan timeLeft = TimeSpan.FromSeconds(timer.DurationInSeconds) - (DateTime.UtcNow - timer.CreatedAt);
             if (timeLeft.TotalSeconds > 0)
             {
                 string labelPart = string.IsNullOrEmpty(timer.Label) ? "" : $" ({timer.Label})";

@@ -1,4 +1,5 @@
 using Quartz;
+using Stefan.Server.Domain.ToolEntities;
 
 namespace Stefan.Server.Application.AI.Tools.Timer;
 
@@ -24,7 +25,7 @@ public class TimerScheduler(ISchedulerFactory schedulerFactory) : ITimerSchedule
             .StoreDurably()
             .Build();
 
-        var fireAt = entry.CreatedAt.AddSeconds(entry.Seconds);
+        var fireAt = entry.CreatedAt.AddSeconds(entry.DurationInSeconds);
 
         var trigger = TriggerBuilder.Create()
             .WithIdentity($"TimerTrigger-{entry.Id}", JobGroup)
@@ -35,11 +36,11 @@ public class TimerScheduler(ISchedulerFactory schedulerFactory) : ITimerSchedule
         await scheduler.ScheduleJob(job, trigger, cancellationToken);
     }
 
-    public async Task CancelTimerAsync(int timerId, CancellationToken cancellationToken = default)
+    public async Task CancelTimerAsync(Guid timerId, CancellationToken cancellationToken = default)
     {
         var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
         await scheduler.DeleteJob(GetJobKey(timerId), cancellationToken);
     }
 
-    private static JobKey GetJobKey(int timerId) => new($"Timer-{timerId}", JobGroup);
+    private static JobKey GetJobKey(Guid timerId) => new($"Timer-{timerId}", JobGroup);
 }

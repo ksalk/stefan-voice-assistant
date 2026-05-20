@@ -1,9 +1,10 @@
 using System.Text.Json;
 using OpenAI.Chat;
+using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.AI.Tools.Timer;
 
-public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerScheduler) : ITool
+public class CancelTimerTool(ToolsDbContext toolsDbContext, ITimerScheduler timerScheduler) : ITool
 {
     public string Name => nameof(CancelTimerTool);
     
@@ -32,14 +33,14 @@ public class CancelTimerTool(TimerDbContext dbContext, ITimerScheduler timerSche
         if (!hasTimerId)
             throw new ArgumentNullException(nameof(timerId), "The timerId argument is required.");
 
-        int timerIdValue = timerId.GetInt32();
+        Guid timerIdValue = timerId.GetGuid();
 
-        var timer = await dbContext.Timers.FindAsync(timerIdValue, cancellationToken);
+        var timer = await toolsDbContext.TimerEntries.FindAsync(timerIdValue, cancellationToken);
         if (timer == null)
             return $"No timer found with ID {timerIdValue}.";
 
-        dbContext.Timers.Remove(timer);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        toolsDbContext.TimerEntries.Remove(timer);
+        await toolsDbContext.SaveChangesAsync(cancellationToken);
 
         await timerScheduler.CancelTimerAsync(timerIdValue, cancellationToken);
 

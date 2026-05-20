@@ -11,6 +11,7 @@ using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
+using Stefan.Server.Infrastructure;
 using Whisper.net;
 
 namespace Stefan.Server.Application;
@@ -108,11 +109,6 @@ public static class DependencyInjection
                 model: config.Model,
                 credential: new ApiKeyCredential(config.ApiKey),
                 options: new OpenAIClientOptions { Endpoint = new Uri(config.Endpoint) });
-        });
-
-        services.AddDbContext<TimerDbContext>(options =>
-        {
-            options.UseSqlite(configuration.GetConnectionString("TimerDb"));
         });
 
         services.AddScoped<ITimerScheduler, TimerScheduler>();

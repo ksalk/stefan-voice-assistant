@@ -2,12 +2,13 @@ using Microsoft.Extensions.Logging;
 using Quartz;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
+using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.AI.Tools.Timer;
 
 [DisallowConcurrentExecution]
 public class FireTimerJob(
-    TimerDbContext dbContext,
+    ToolsDbContext dbContext,
     ITextToSpeechService ttsService,
     ILogger<FireTimerJob> logger) : IJob
 {
@@ -39,10 +40,10 @@ public class FireTimerJob(
         }
 
         // Remove the timer entry from the database
-        var entry = await dbContext.Timers.FindAsync(timerId, context.CancellationToken);
+        var entry = await dbContext.TimerEntries.FindAsync(timerId, context.CancellationToken);
         if (entry != null)
         {
-            dbContext.Timers.Remove(entry);
+            dbContext.TimerEntries.Remove(entry);
             await dbContext.SaveChangesAsync(context.CancellationToken);
         }
     }

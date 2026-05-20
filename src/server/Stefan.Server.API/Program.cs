@@ -2,10 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Stefan.Server.API;
 using Stefan.Server.API.Endpoints;
 using Stefan.Server.Application;
-using Stefan.Server.Application.AI.Tools.Timer;
 using Stefan.Server.Application.Nodes.Scheduling;
 using Stefan.Server.Application.Services;
-using Stefan.Server.Common;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 using Stefan.Server.Infrastructure.Authentication;
@@ -48,10 +46,6 @@ var app = builder.Build();
 // app.UseWebSockets();
 app.UseCors();
 app.UseAuthentication();
-
-// Ensure the SQLite database and schema exist on startup.
-using (var scope = app.Services.CreateScope())
-    scope.ServiceProvider.GetRequiredService<TimerDbContext>().Database.EnsureCreated();
 
 // Reschedule ping jobs for all online nodes after server restart
 using (var scope = app.Services.CreateScope())
