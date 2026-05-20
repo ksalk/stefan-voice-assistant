@@ -19,4 +19,5 @@ public class ToolsDbContext : DbContext
     }
 
     public DbSet<TimerEntry> TimerEntries { get; set; }
+    public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
 }

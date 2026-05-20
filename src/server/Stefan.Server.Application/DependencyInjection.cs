@@ -14,6 +14,7 @@ using Stefan.Server.Application.Tools;
 using Whisper.net;
 using Stefan.Server.Application.Nodes.Jobs;
 using Stefan.Server.Application.Tools.Timer.Jobs;
+using Stefan.Server.Application.Tools.ShoppingList;
 
 namespace Stefan.Server.Application;
 
@@ -134,6 +135,11 @@ public static class DependencyInjection
         services.AddScoped<ScheduleTimerJob>();
         services.AddScoped<CancelTimerJob>();
         services.AddScoped<FireTimerJob>();
+
+        services.AddScoped<ITool, AddItemToShoppingListTool>();
+        services.AddScoped<ITool, ListShoppingListItemsTool>();
+        services.AddScoped<ITool, RemoveItemFromShoppingListTool>();
+        services.AddScoped<ITool, ClearShoppingListTool>();
 
         return services;
     }
