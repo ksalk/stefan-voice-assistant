@@ -1,6 +1,6 @@
 using OpenAI.Chat;
 
-namespace Stefan.Server.Application.AI;
+namespace Stefan.Server.Application.Tools;
 
 public interface ITool
 {

@@ -2,9 +2,9 @@ using System.Text.Json;
 using OpenAI.Chat;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.AI.Tools.Timer;
+namespace Stefan.Server.Application.Tools.Timer;
 
-public class CancelTimerTool(ToolsDbContext toolsDbContext, ITimerScheduler timerScheduler) : ITool
+public class CancelTimerTool(ToolsDbContext toolsDbContext, CancelTimerJob cancelTimerJob) : ITool
 {
     public string Name => nameof(CancelTimerTool);
     
@@ -42,7 +42,7 @@ public class CancelTimerTool(ToolsDbContext toolsDbContext, ITimerScheduler time
         toolsDbContext.TimerEntries.Remove(timer);
         await toolsDbContext.SaveChangesAsync(cancellationToken);
 
-        await timerScheduler.CancelTimerAsync(timerIdValue, cancellationToken);
+        await cancelTimerJob.Handle(timerIdValue, cancellationToken);
 
         return $"Timer with ID {timerIdValue} cancelled.";
     }

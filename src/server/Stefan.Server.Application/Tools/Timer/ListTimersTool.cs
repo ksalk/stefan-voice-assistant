@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.AI.Tools.Timer;
+namespace Stefan.Server.Application.Tools.Timer;
 
 public class ListTimersTool(ToolsDbContext dbContext) : ITool
 {

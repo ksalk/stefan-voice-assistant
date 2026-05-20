@@ -1,7 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
-using Stefan.Server.Application.AI;
-using Stefan.Server.Application.AI.Tools.Timer;
+using Stefan.Server.Application.Tools;
 using Stefan.Server.Common;
 
 namespace Stefan.Server.Application.Services;

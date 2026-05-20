@@ -2,13 +2,15 @@ using Microsoft.Extensions.Logging;
 using Quartz;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.Nodes.Scheduling;
+namespace Stefan.Server.Application.Nodes.Jobs;
 
 [DisallowConcurrentExecution]
 public class PingNodeJob(StefanDbContext dbContext, ILogger<PingNodeJob> logger, PingNode pingNode) : IJob
 {
     public static readonly string NodeIdKey = "NodeId";
     public static readonly string FailureCountKey = "FailureCount";
+
+    public static readonly string JobGroup = "NodePings";
 
     public async Task Execute(IJobExecutionContext context)
     {

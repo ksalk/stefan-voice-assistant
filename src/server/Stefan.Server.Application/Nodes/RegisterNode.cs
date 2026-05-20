@@ -1,4 +1,4 @@
-using Stefan.Server.Application.Nodes.Scheduling;
+using Stefan.Server.Application.Nodes.Jobs;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 
@@ -12,7 +12,7 @@ public class RegisterNodeRequest
     public required int Port { get; set; }
 }   
 
-public class RegisterNode(StefanDbContext dbContext, INodePingScheduler pingScheduler)
+public class RegisterNode(StefanDbContext dbContext, ScheduleNodePing scheduleNodePing)
 {
     public async Task Handle(RegisterNodeRequest request, CancellationToken cancellationToken)
     {
@@ -31,6 +31,6 @@ public class RegisterNode(StefanDbContext dbContext, INodePingScheduler pingSche
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Schedule recurring ping job for this node
-        await pingScheduler.SchedulePingAsync(node.Id, cancellationToken);
+        await scheduleNodePing.Handle(node.Id, cancellationToken);
     }
 }

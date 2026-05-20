@@ -3,9 +3,9 @@ using OpenAI.Chat;
 using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.AI.Tools.Timer;
+namespace Stefan.Server.Application.Tools.Timer;
 
-public class AddTimerTool(ToolsDbContext toolsDbContext, ITimerScheduler timerScheduler) : ITool
+public class AddTimerTool(ToolsDbContext toolsDbContext, ScheduleTimerJob scheduleTimerJob) : ITool
 {
     public string Name => nameof(AddTimerTool);
 
@@ -52,7 +52,7 @@ public class AddTimerTool(ToolsDbContext toolsDbContext, ITimerScheduler timerSc
         toolsDbContext.TimerEntries.Add(entry);
         await toolsDbContext.SaveChangesAsync(cancellationToken);
 
-        await timerScheduler.ScheduleTimerAsync(entry, context.SourceDeviceId, cancellationToken);
+        await scheduleTimerJob.Handle(entry, context.SourceDeviceId, cancellationToken);
 
         return string.IsNullOrEmpty(labelValue)
             ? $"Timer set for {secondsValue} seconds."

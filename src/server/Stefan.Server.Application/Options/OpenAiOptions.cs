@@ -1,6 +1,6 @@
 namespace Stefan.Server.Application.AI;
 
-public class OpenAiConfig
+public class OpenAiOptions
 {
     public const string SectionName = "OpenAI";
 

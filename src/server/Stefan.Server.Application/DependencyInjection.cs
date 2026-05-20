@@ -1,18 +1,19 @@
 using System.ClientModel;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
 using Stefan.Server.Application.AI;
-using Stefan.Server.Application.AI.Tools.Timer;
+using Stefan.Server.Application.Tools.Timer;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
-using Stefan.Server.Application.Nodes.Scheduling;
+using Stefan.Server.Application.Scheduling;
 using Stefan.Server.Application.Services;
-using Stefan.Server.Infrastructure;
+using Stefan.Server.Application.Tools;
 using Whisper.net;
+using Stefan.Server.Application.Nodes.Jobs;
+using Stefan.Server.Application.Tools.Timer.Jobs;
 
 namespace Stefan.Server.Application;
 
@@ -31,6 +32,8 @@ public static class DependencyInjection
 
         services.AddSingleton<AudioConverterService>();
 
+        services.AddScoped<Scheduler>();
+
         return services;
     }
 
@@ -40,7 +43,10 @@ public static class DependencyInjection
         services.AddScoped<GetNodes>();
         services.AddScoped<GetNodeDetails>();
         services.AddScoped<PingNode>();
-        services.AddScoped<INodePingScheduler, NodePingScheduler>();
+        services.AddScoped<ScheduleNodePing>();
+        services.AddScoped<RescheduleNodePings>();
+
+        services.AddScoped<PingNodeJob>();
         return services;
     }
 
@@ -99,11 +105,11 @@ public static class DependencyInjection
 
     private static IServiceCollection AddAIServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<OpenAiConfig>(configuration.GetSection(OpenAiConfig.SectionName));
+        services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
 
         services.AddSingleton(sp =>
         {
-            var config = sp.GetRequiredService<IOptions<OpenAiConfig>>().Value;
+            var config = sp.GetRequiredService<IOptions<OpenAiOptions>>().Value;
 
             return new ChatClient(
                 model: config.Model,
@@ -111,8 +117,6 @@ public static class DependencyInjection
                 options: new OpenAIClientOptions { Endpoint = new Uri(config.Endpoint) });
         });
 
-        services.AddScoped<ITimerScheduler, TimerScheduler>();
-        services.AddTransient<FireTimerJob>();
         services.AddScoped<LlmCommandService>();
 
         services.RegisterAITools();
@@ -127,6 +131,9 @@ public static class DependencyInjection
         services.AddScoped<ITool, AddTimerTool>();
         services.AddScoped<ITool, ListTimersTool>();
         services.AddScoped<ITool, CancelTimerTool>();
+        services.AddScoped<ScheduleTimerJob>();
+        services.AddScoped<CancelTimerJob>();
+        services.AddScoped<FireTimerJob>();
 
         return services;
     }

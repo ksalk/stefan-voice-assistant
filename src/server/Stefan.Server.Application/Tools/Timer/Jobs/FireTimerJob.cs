@@ -4,7 +4,7 @@ using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Infrastructure;
 
-namespace Stefan.Server.Application.AI.Tools.Timer;
+namespace Stefan.Server.Application.Tools.Timer.Jobs;
 
 [DisallowConcurrentExecution]
 public class FireTimerJob(
@@ -15,6 +15,7 @@ public class FireTimerJob(
     public const string TimerIdKey = "TimerId";
     public const string DeviceIdKey = "DeviceId";
     public const string LabelKey = "Label";
+    public static readonly string JobGroup = "FireTimer";
 
     public async Task Execute(IJobExecutionContext context)
     {
