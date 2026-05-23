@@ -6,7 +6,7 @@ namespace Stefan.Server.Application.Services;
 
 public class LlmCommandService(
     ChatClient chatClient,
-    ToolRegistry toolRegistry)
+    ToolRegistry toolRegistry) : ILlmCommandService
 {
     private static string BuildSystemPrompt() => $"""
         You are Stefan, a voice home assistant that manages timers using the provided tools.
@@ -28,7 +28,7 @@ public class LlmCommandService(
     public async Task<LlmCommandResult> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
         var systemPrompt = BuildSystemPrompt();
-        
+
         List<ChatMessage> messages =
         [
             new SystemChatMessage(systemPrompt),
@@ -43,7 +43,7 @@ public class LlmCommandService(
 
         var toolCallContext = new ToolCallContext()
         {
-          SourceDeviceId = deviceId
+            SourceDeviceId = deviceId
         };
         bool requiresAction;
 
@@ -55,35 +55,35 @@ public class LlmCommandService(
             switch (completion.FinishReason)
             {
                 case ChatFinishReason.Stop:
-                {
-                    messages.Add(new AssistantChatMessage(completion));
-                    var assistantMessage = completion.Content[0].Text;
-                    ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
-                    conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
-                    return new LlmCommandResult(assistantMessage, conversationMessages);
-                }
-
-                case ChatFinishReason.ToolCalls:
-                {
-                    messages.Add(new AssistantChatMessage(completion));
-
-                    var toolCalls = new List<ToolCallRecord>();
-
-                    foreach (ChatToolCall toolCall in completion.ToolCalls)
                     {
-                        ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
-                        var toolResult = await DispatchToolCallAsync(toolCall, toolCallContext, cancellationToken);
-                        messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
-
-                        toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
-                        conversationMessages.Add(new ConversationMessage("tool", toolResult, null));
+                        messages.Add(new AssistantChatMessage(completion));
+                        var assistantMessage = completion.Content[0].Text;
+                        ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
+                        conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
+                        return new LlmCommandResult(assistantMessage, conversationMessages);
                     }
 
-                    conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
+                case ChatFinishReason.ToolCalls:
+                    {
+                        messages.Add(new AssistantChatMessage(completion));
 
-                    requiresAction = true;
-                    break;
-                }
+                        var toolCalls = new List<ToolCallRecord>();
+
+                        foreach (ChatToolCall toolCall in completion.ToolCalls)
+                        {
+                            ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
+                            var toolResult = await DispatchToolCallAsync(toolCall, toolCallContext, cancellationToken);
+                            messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
+
+                            toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
+                            conversationMessages.Add(new ConversationMessage("tool", toolResult, null));
+                        }
+
+                        conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
+
+                        requiresAction = true;
+                        break;
+                    }
 
                 case ChatFinishReason.Length:
                     throw new NotImplementedException("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
@@ -110,7 +110,7 @@ public class LlmCommandService(
         return toolResult;
     }
 
-    private ChatCompletionOptions GetChatCompletionOptions() 
+    private ChatCompletionOptions GetChatCompletionOptions()
     {
         var toolDefinitions = toolRegistry.GetAllToolDefinitions();
         var options = new ChatCompletionOptions();
