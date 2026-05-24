@@ -50,14 +50,11 @@ public class ProcessCommand(
         var inputWavBytes = audioBuffer.ToArray();
         var inputAudioDurationMs = GetWavDurationMs(inputWavBytes);
 
-        byte[] audioBytes = [];
-        string responseText = "Error";
-
         // Compress input audio to Opus
         var compressedInputAudio = await CompressAudio(inputWavBytes, cancellationToken);
 
         // Create initial command record with input audio and duration, so we have a record even if STT fails
-        var commandRecord = await CreateCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs);
+        var commandRecord = await CreateCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
 
         // STT
         try
@@ -112,14 +109,13 @@ public class ProcessCommand(
         // TTS
         try
         {
-            var ttsResult = await tts.SynthesizeAsync(responseText);
+            var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText);
             if (!ttsResult.IsSuccess)
             {
                 throw new Exception(ttsResult.Error ?? "Unknown TTS error");
             }
 
-            audioBytes = ttsResult.Value.AudioBytes;
-            var compressedOutputAudio = await CompressAudio(audioBytes, cancellationToken);
+            var compressedOutputAudio = await CompressAudio(ttsResult.Value.AudioBytes, cancellationToken);
 
             ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {ttsResult.Value.DurationMs} ms, compressed size: {compressedOutputAudio.Length} bytes");
         
@@ -140,7 +136,7 @@ public class ProcessCommand(
         commandRecord.SetTotalDuration(totalDurationMs);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ProcessCommandResponse { AudioBytes = audioBytes, ResponseText = responseText };
+        return new ProcessCommandResponse { AudioBytes = commandRecord.OutputAudio, ResponseText = commandRecord.ResponseText };
     }
 
     private async Task<byte[]> CompressAudio(byte[] inputWavBytes, CancellationToken cancellationToken)
@@ -163,6 +159,8 @@ public class ProcessCommand(
 
         // PCM WAV: header is 44 bytes. Data size is at offset 40 (uint32 LE).
         // Sample rate at offset 24 (uint32 LE), bits per sample at offset 34 (uint16 LE), channels at offset 22 (uint16 LE).
+        // Using BitConverter assumes the system is little-endian. WAV is always little-endian,
+        // so this works on x86/ARM but would break on big-endian systems. Use BinaryPrimitives.ReadUInt16LittleEndian for portable code.
         var channels = BitConverter.ToUInt16(wavBytes, 22);
         var sampleRate = BitConverter.ToUInt32(wavBytes, 24);
         var bitsPerSample = BitConverter.ToUInt16(wavBytes, 34);
@@ -176,7 +174,7 @@ public class ProcessCommand(
     }
 
     private async Task<CommandRecord> CreateCommandRecord(Guid nodeId, string sessionId,
-        byte[] inputAudio, double inputAudioDurationMs)
+        byte[] inputAudio, double inputAudioDurationMs, CancellationToken cancellationToken)
     {
         var record = new CommandRecord
         {
@@ -190,8 +188,8 @@ public class ProcessCommand(
             Status = CommandStatus.Received
         };
 
-        await dbContext.CommandRecords.AddAsync(record);
-        await dbContext.SaveChangesAsync();
+        await dbContext.CommandRecords.AddAsync(record, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return record;
     }
