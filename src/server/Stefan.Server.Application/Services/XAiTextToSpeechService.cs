@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -9,8 +10,9 @@ public class XAiTextToSpeechService(IConfiguration configuration) : ITextToSpeec
 {
     private static readonly HttpClient HttpClient = new();
 
-    public async Task<byte[]> SynthesizeAsync(string text)
+    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text)
     {
+        var startTimestamp = Stopwatch.GetTimestamp();
         var endpoint = configuration["xAI:Endpoint"] ?? "https://api.x.ai/v1";
         var apiKey = configuration["xAI:ApiKey"] ?? string.Empty;
         var language = configuration["xAI:Language"] ?? "en";
@@ -33,6 +35,9 @@ public class XAiTextToSpeechService(IConfiguration configuration) : ITextToSpeec
         using var response = await HttpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadAsByteArrayAsync();
+        var audioBytes = await response.Content.ReadAsByteArrayAsync();
+        var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+
+        return Result<TextToSpeechResult>.Success(new TextToSpeechResult(audioBytes, durationMs));
     }
 }

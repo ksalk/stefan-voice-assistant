@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Vosk;
 
@@ -19,8 +20,9 @@ public class VoskSpeechToTextService : ISpeechToTextService, IDisposable
         _recognizer.SetWords(true);
     }
 
-    public async Task<string> TranscribeAsync(Stream audioStream)
+    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream)
     {
+        var startTimestamp = Stopwatch.GetTimestamp();
         var buffer = new byte[4096];
         int bytesRead;
 
@@ -32,9 +34,17 @@ public class VoskSpeechToTextService : ISpeechToTextService, IDisposable
         var resultJson = _recognizer.FinalResult();
         var result = JsonSerializer.Deserialize<JsonElement>(resultJson);
 
-        return result.TryGetProperty("text", out var text)
+        var transcript = result.TryGetProperty("text", out var text)
             ? text.GetString() ?? string.Empty
             : string.Empty;
+
+        var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+        
+        return new SpeechToTextTranscription
+        {
+            Transcript = transcript,
+            DurationMs = durationMs
+        };
     }
 
     public void Dispose()

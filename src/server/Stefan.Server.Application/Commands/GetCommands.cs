@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Commands;
@@ -26,7 +27,7 @@ public class CommandSummaryDto
     public double LlmDurationMs { get; set; }
     public double TtsDurationMs { get; set; }
     public double TotalDurationMs { get; set; }
-    public string Status { get; set; } = null!;
+    public CommandStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
 }
 

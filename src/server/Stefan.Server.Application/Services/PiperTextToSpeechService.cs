@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using PiperSharp;
 using PiperSharp.Models;
@@ -57,8 +58,18 @@ public class PiperTextToSpeechService : ITextToSpeechService
     /// <summary>
     /// Synthesize the given text to a WAV byte array.
     /// </summary>
-    public async Task<byte[]> SynthesizeAsync(string text)
+    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text)
     {
-        return await _piper.InferAsync(text, AudioOutputType.Wav);
+        try
+        {
+            var timestamp = Stopwatch.GetTimestamp();
+            var audioBytes = await _piper.InferAsync(text, AudioOutputType.Wav);
+            var durationMs = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
+            return Result<TextToSpeechResult>.Success(new TextToSpeechResult(audioBytes, durationMs));
+        }
+        catch (Exception ex)
+        {
+            return Result<TextToSpeechResult>.Failure(ex.Message);
+        }
     }
 }

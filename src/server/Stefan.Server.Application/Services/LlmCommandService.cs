@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using OpenAI.Chat;
 using Stefan.Server.Application.Tools;
 using Stefan.Server.Common;
@@ -25,8 +26,10 @@ public class LlmCommandService(
         The current date and time is {DateTime.Now:dddd, MMMM d, yyyy h:mm tt}.
         """;
 
-    public async Task<LlmCommandResult> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
+    // TODO: remove async from name
+    public async Task<Result<LlmCommandResult>> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
+        var startTimestamp = Stopwatch.GetTimestamp();
         var systemPrompt = BuildSystemPrompt();
 
         List<ChatMessage> messages =
@@ -60,7 +63,8 @@ public class LlmCommandService(
                         var assistantMessage = completion.Content[0].Text;
                         ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
                         conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
-                        return new LlmCommandResult(assistantMessage, conversationMessages);
+                        var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+                        return new LlmCommandResult(assistantMessage, conversationMessages, durationMs);
                     }
 
                 case ChatFinishReason.ToolCalls:
@@ -86,20 +90,20 @@ public class LlmCommandService(
                     }
 
                 case ChatFinishReason.Length:
-                    throw new NotImplementedException("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
+                    return Result<LlmCommandResult>.Failure("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
 
                 case ChatFinishReason.ContentFilter:
-                    throw new NotImplementedException("Omitted content due to a content filter flag.");
+                    return Result<LlmCommandResult>.Failure("Omitted content due to a content filter flag.");
 
                 case ChatFinishReason.FunctionCall:
-                    throw new NotImplementedException("Deprecated in favor of tool calls.");
+                    return Result<LlmCommandResult>.Failure("Deprecated in favor of tool calls.");
 
                 default:
-                    throw new NotImplementedException(completion.FinishReason.ToString());
+                    return Result<LlmCommandResult>.Failure($"Unhandled finish reason: {completion.FinishReason}");
             }
         } while (requiresAction);
 
-        return new LlmCommandResult("Error", conversationMessages);
+        return Result<LlmCommandResult>.Failure("Unexpected error processing command - this should never be reached.");
     }
 
     private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken)

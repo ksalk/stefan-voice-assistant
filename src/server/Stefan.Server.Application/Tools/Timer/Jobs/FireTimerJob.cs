@@ -31,9 +31,15 @@ public class FireTimerJob(
 
         try
         {
-            var audioData = await ttsService.SynthesizeAsync(message);
+            var ttsResult = await ttsService.SynthesizeAsync(message);
+            if(!ttsResult.IsSuccess)
+            {
+                logger.LogError("TTS synthesis failed for timer {TimerId}: {ErrorMessage}", timerId, ttsResult.Error);
+                return;
+            }
+            
             var notifier = new NodeNotifier();
-            await notifier.SendAudioNotification(deviceId, audioData);
+            await notifier.SendAudioNotification(deviceId, ttsResult.Value.AudioBytes);
         }
         catch (Exception ex)
         {

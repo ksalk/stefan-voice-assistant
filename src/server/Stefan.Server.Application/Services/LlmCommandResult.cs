@@ -1,6 +1,7 @@
 namespace Stefan.Server.Application.Services;
 
-public record LlmCommandResult(string ResponseText, IReadOnlyList<ConversationMessage> Messages);
+// TODO: can this be a record struct
+public record struct LlmCommandResult(string ResponseText, IReadOnlyList<ConversationMessage> Messages, double DurationMs);
 
 public record ConversationMessage(
     string Role,

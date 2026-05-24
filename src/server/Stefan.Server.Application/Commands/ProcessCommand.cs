@@ -26,6 +26,8 @@ public class ProcessCommand(
 
     public async Task<ProcessCommandResponse?> Handle(ProcessCommandRequest request, CancellationToken cancellationToken)
     {
+        // TODO: save command record to db at the beginning, so if something fails we still have the record with error status. Currently if STT fails, we have no record of the command at all.
+        // TODO: also extract some methods to make it shorter
         var totalTimestamp = Stopwatch.GetTimestamp();
 
         var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == request.DeviceId, cancellationToken);
@@ -41,130 +43,118 @@ public class ProcessCommand(
             return null;
         }
 
+        // TODO: is this really required, is audio read twice at all?
         // Buffer the input audio stream so we can read it twice (STT + storage)
         using var audioBuffer = new MemoryStream();
         await request.AudioStream.CopyToAsync(audioBuffer, cancellationToken);
         var inputWavBytes = audioBuffer.ToArray();
         var inputAudioDurationMs = GetWavDurationMs(inputWavBytes);
 
-        byte[] compressedInputAudio;
-        string transcript;
-        LlmCommandResult? llmResult = null;
         byte[] audioBytes = [];
         string responseText = "Error";
-        string status = "Success";
-        string? errorMessage = null;
-        double sttDurationMs = 0, llmDurationMs = 0, ttsDurationMs = 0;
 
         // Compress input audio to Opus
-        try
-        {
-            compressedInputAudio = await audioConverter.CompressToOpusAsync(inputWavBytes, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            ConsoleLog.Write(LogCategory.HTTP, $"Audio compression failed for input: {ex.Message}");
-            compressedInputAudio = inputWavBytes;
-        }
+        var compressedInputAudio = await CompressAudio(inputWavBytes, cancellationToken);
+
+        // Create initial command record with input audio and duration, so we have a record even if STT fails
+        var commandRecord = await CreateCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs);
 
         // STT
         try
         {
-            var timestamp = Stopwatch.GetTimestamp();
-
+            // TODO: maybe pass inputWavBytes directly to avoid creating another MemoryStream, but need to check if stt.TranscribeAsync can read from the same byte array without issues
             using var sttStream = new MemoryStream(inputWavBytes);
-            transcript = await stt.TranscribeAsync(sttStream);
+            var speechToTextResult = await stt.TranscribeAsync(sttStream);
+            if(!speechToTextResult.IsSuccess)
+            {
+                throw new Exception(speechToTextResult.Error ?? "Unknown STT error");
+            }
+            
+            var speechToTextTranscription = speechToTextResult.Value;
+            commandRecord.SaveTranscriptionResult(speechToTextTranscription.Transcript, speechToTextTranscription.DurationMs);
 
-            sttDurationMs = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-
-            ConsoleLog.Write(LogCategory.STT, $"Transcription result: {transcript}");
-            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {sttDurationMs} ms");
+            ConsoleLog.Write(LogCategory.STT, $"Transcription result: {speechToTextTranscription.Transcript}");
+            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {speechToTextTranscription.DurationMs} ms");
         }
         catch (Exception ex)
         {
-            status = "SttFailed";
-            errorMessage = ex.Message;
+            commandRecord.SaveTranscriptionError(ex.Message);
             ConsoleLog.Write(LogCategory.STT, $"STT failed: {ex.Message}");
-
-            await SaveRecordAsync(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs,
-                "[STT failed]", "[]", "Error", [],
-                sttDurationMs, llmDurationMs, ttsDurationMs,
-                Stopwatch.GetElapsedTime(totalTimestamp).TotalMilliseconds,
-                status, errorMessage, cancellationToken);
-
+    
+            // TODO: save record in database
+            // TODO: return more detailed error response to client
+            await dbContext.SaveChangesAsync(cancellationToken);
             return null;
         }
 
         // LLM
         try
         {
-            var timestamp = Stopwatch.GetTimestamp();
+            var llmResult = await llm.ProcessCommandAsync(commandRecord.Transcript, request.DeviceId, cancellationToken);
+            if (!llmResult.IsSuccess)
+            {
+                throw new Exception(llmResult.Error ?? "Unknown LLM error");
+            }
+            var result  = llmResult.Value;
 
-            llmResult = await llm.ProcessCommandAsync(transcript, request.DeviceId, cancellationToken);
-            responseText = llmResult.ResponseText;
+            ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {result.DurationMs} ms");
 
-            llmDurationMs = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-
-            ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {llmDurationMs} ms");
+            commandRecord.SaveLlmResult(result.ResponseText, JsonSerializer.Serialize(result.Messages, JsonOptions), result.DurationMs);
         }
         catch (Exception ex)
         {
-            status = "LlmFailed";
-            errorMessage = ex.Message;
             ConsoleLog.Write(LogCategory.LLM, $"LLM failed: {ex.Message}");
-
-            await SaveRecordAsync(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs,
-                transcript, JsonSerializer.Serialize(llmResult?.Messages ?? [], JsonOptions), "Error", [],
-                sttDurationMs, llmDurationMs, ttsDurationMs,
-                Stopwatch.GetElapsedTime(totalTimestamp).TotalMilliseconds,
-                status, errorMessage, cancellationToken);
-
+            commandRecord.SaveLlmError(ex.Message);
+            await dbContext.SaveChangesAsync(cancellationToken);
             return null;
         }
 
         // TTS
         try
         {
-            var timestamp = Stopwatch.GetTimestamp();
+            var ttsResult = await tts.SynthesizeAsync(responseText);
+            if (!ttsResult.IsSuccess)
+            {
+                throw new Exception(ttsResult.Error ?? "Unknown TTS error");
+            }
 
-            audioBytes = await tts.SynthesizeAsync(responseText);
+            audioBytes = ttsResult.Value.AudioBytes;
+            var compressedOutputAudio = await CompressAudio(audioBytes, cancellationToken);
 
-            ttsDurationMs = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-
-            ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {ttsDurationMs} ms, size: {audioBytes.Length} bytes");
+            ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {ttsResult.Value.DurationMs} ms, compressed size: {compressedOutputAudio.Length} bytes");
+        
+            commandRecord.SaveTtsResult(compressedOutputAudio, "opus", ttsResult.Value.DurationMs);
         }
         catch (Exception ex)
         {
-            status = "TtsFailed";
-            errorMessage = ex.Message;
             ConsoleLog.Write(LogCategory.TTS, $"TTS failed: {ex.Message}");
-        }
+            commandRecord.SaveTtsError(ex.Message);
 
-        // Compress output audio
-        byte[] compressedOutputAudio;
-        try
-        {
-            compressedOutputAudio = audioBytes.Length > 0
-                ? await audioConverter.CompressToOpusAsync(audioBytes, cancellationToken)
-                : [];
-        }
-        catch (Exception ex)
-        {
-            ConsoleLog.Write(LogCategory.HTTP, $"Audio compression failed for output: {ex.Message}");
-            compressedOutputAudio = audioBytes;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return null;
         }
 
         node.MarkSeen();
 
-        var conversationJson = JsonSerializer.Serialize(llmResult?.Messages ?? [], JsonOptions);
         var totalDurationMs = Stopwatch.GetElapsedTime(totalTimestamp).TotalMilliseconds;
-
-        await SaveRecordAsync(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs,
-            transcript, conversationJson, responseText, compressedOutputAudio,
-            sttDurationMs, llmDurationMs, ttsDurationMs, totalDurationMs,
-            status, errorMessage, cancellationToken);
+        commandRecord.SetTotalDuration(totalDurationMs);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ProcessCommandResponse { AudioBytes = audioBytes, ResponseText = responseText };
+    }
+
+    private async Task<byte[]> CompressAudio(byte[] inputWavBytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await audioConverter.CompressToOpusAsync(inputWavBytes, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // TODO: also log error, but continue processing with uncompressed audio to avoid failing the whole command just because compression failed. We can compress it later when we save the record to db, so at least we have compressed audio stored even if compression fails here.
+            ConsoleLog.Write(LogCategory.HTTP, $"Audio compression failed: {ex.Message}");
+            return inputWavBytes;
+        }
     }
 
     private static double GetWavDurationMs(byte[] wavBytes)
@@ -185,13 +175,8 @@ public class ProcessCommand(
         return byteRate > 0 ? (double)dataSize / byteRate * 1000 : 0;
     }
 
-    private async Task SaveRecordAsync(
-        Guid nodeId, string sessionId,
-        byte[] inputAudio, double inputAudioDurationMs, string transcript, string conversationJson, string responseText,
-        byte[] outputAudio,
-        double sttMs, double llmMs, double ttsMs, double totalMs,
-        string status, string? errorMessage,
-        CancellationToken cancellationToken)
+    private async Task<CommandRecord> CreateCommandRecord(Guid nodeId, string sessionId,
+        byte[] inputAudio, double inputAudioDurationMs)
     {
         var record = new CommandRecord
         {
@@ -202,23 +187,13 @@ public class ProcessCommand(
             InputAudio = inputAudio,
             InputAudioFormat = "opus",
             InputAudioDurationMs = inputAudioDurationMs,
-            Transcript = transcript,
-            LlmConversationJson = conversationJson,
-            ResponseText = responseText,
-            OutputAudio = outputAudio,
-            OutputAudioFormat = "opus",
-            SttDurationMs = sttMs,
-            LlmDurationMs = llmMs,
-            TtsDurationMs = ttsMs,
-            TotalDurationMs = totalMs,
-            Status = status,
-            ErrorMessage = errorMessage,
+            Status = CommandStatus.Received
         };
 
-        dbContext.CommandRecords.Add(record);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.CommandRecords.AddAsync(record);
+        await dbContext.SaveChangesAsync();
 
-        ConsoleLog.Write(LogCategory.HTTP, $"CommandRecord saved: {record.Id}");
+        return record;
     }
 }
 
