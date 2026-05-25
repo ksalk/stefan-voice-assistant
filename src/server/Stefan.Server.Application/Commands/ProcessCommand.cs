@@ -26,20 +26,13 @@ public class ProcessCommand(
 
     public async Task<ProcessCommandResponse?> Handle(ProcessCommandRequest request, CancellationToken cancellationToken)
     {
-        // TODO: save command record to db at the beginning, so if something fails we still have the record with error status. Currently if STT fails, we have no record of the command at all.
         // TODO: also extract some methods to make it shorter
         var totalTimestamp = Stopwatch.GetTimestamp();
 
-        var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == request.DeviceId, cancellationToken);
+        var node = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
         if (node == null)
         {
-            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{request.DeviceId}' not registered");
-            return null;
-        }
-
-        if (node.CurrentSessionId != request.SessionId)
-        {
-            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: invalid session ID for device '{request.DeviceId}'");
+            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{request.DeviceId}' not registered or invalid session");
             return null;
         }
 
@@ -54,7 +47,7 @@ public class ProcessCommand(
         var compressedInputAudio = await CompressAudio(inputWavBytes, cancellationToken);
 
         // Create initial command record with input audio and duration, so we have a record even if STT fails
-        var commandRecord = await CreateCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
+        var commandRecord = await CreateAndSaveCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
 
         // STT
         try
@@ -78,7 +71,6 @@ public class ProcessCommand(
             commandRecord.SaveTranscriptionError(ex.Message);
             ConsoleLog.Write(LogCategory.STT, $"STT failed: {ex.Message}");
     
-            // TODO: save record in database
             // TODO: return more detailed error response to client
             await dbContext.SaveChangesAsync(cancellationToken);
             return null;
@@ -139,6 +131,24 @@ public class ProcessCommand(
         return new ProcessCommandResponse { AudioBytes = commandRecord.OutputAudio, ResponseText = commandRecord.ResponseText };
     }
 
+    private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
+    {
+        var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, cancellationToken);
+        if (node == null)
+        {
+            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{deviceId}' not registered");
+            return null;
+        }
+
+        if (node.CurrentSessionId != sessionId)
+        {
+            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: invalid session ID for device '{deviceId}'");
+            return null;
+        }
+
+        return node;
+    }
+
     private async Task<byte[]> CompressAudio(byte[] inputWavBytes, CancellationToken cancellationToken)
     {
         try
@@ -173,7 +183,7 @@ public class ProcessCommand(
         return byteRate > 0 ? (double)dataSize / byteRate * 1000 : 0;
     }
 
-    private async Task<CommandRecord> CreateCommandRecord(Guid nodeId, string sessionId,
+    private async Task<CommandRecord> CreateAndSaveCommandRecord(Guid nodeId, string sessionId,
         byte[] inputAudio, double inputAudioDurationMs, CancellationToken cancellationToken)
     {
         var record = new CommandRecord
