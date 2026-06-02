@@ -103,6 +103,7 @@ public class VoiceCommandDispatcher(
                                 _recordingStartTime = DateTime.UtcNow;
 
                                 onKeywordDetected(keywordResult.Keyword);
+                                audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
                                 keywordSpotter.Reset(keywordStream);
                             }
                         }
