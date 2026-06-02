@@ -12,6 +12,12 @@ runserver:
 buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
 
+publishnode VERSION:
+    docker buildx build --platform linux/arm64 \
+      -t 192.168.0.30:3000/ksalk/stefan-voice-assistant:{{VERSION}} \
+      -t 192.168.0.30:3000/ksalk/stefan-voice-assistant:latest \
+      -f src/node/Dockerfile . --push
+
 buildnode:
     dotnet build --project src/node/Stefan.Node
 
