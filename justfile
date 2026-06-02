@@ -14,8 +14,8 @@ buildnodeimage:
 
 publishnode VERSION:
     docker buildx build --platform linux/arm64 \
-      -t 192.168.0.30:3000/ksalk/stefan-voice-assistant:{{VERSION}} \
-      -t 192.168.0.30:3000/ksalk/stefan-voice-assistant:latest \
+      -t git.harnas.top/ksalk/stefan-voice-assistant:{{VERSION}} \
+      -t git.harnas.top/ksalk/stefan-voice-assistant:latest \
       -f src/node/Dockerfile . --push
 
 buildnode:
