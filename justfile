@@ -31,4 +31,4 @@ runnodeplaytest FILEPATH:
     dotnet run --project src/node/Stefan.Node --play-file {{FILEPATH}}
 
 runui:
-    pnpm --prefix apps/dashboard/stefan-ui run dev
+    pnpm --prefix src/dashboard/stefan-ui run dev
