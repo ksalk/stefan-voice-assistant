@@ -18,16 +18,16 @@ public class CommandRecordEntityConfiguration : IEntityTypeConfiguration<Command
         builder.Property(c => c.InputAudioFormat).IsRequired();
         builder.Property(c => c.InputAudioDurationMs).IsRequired();
 
-        builder.Property(c => c.Transcript).IsRequired();
-        builder.Property(c => c.LlmConversationJson).IsRequired();
-        builder.Property(c => c.ResponseText).IsRequired();
+        builder.Property(c => c.Transcript).IsRequired(false);
+        builder.Property(c => c.LlmConversationJson).IsRequired(false);
+        builder.Property(c => c.ResponseText).IsRequired(false);
 
-        builder.Property(c => c.OutputAudio).IsRequired();
-        builder.Property(c => c.OutputAudioFormat).IsRequired();
+        builder.Property(c => c.OutputAudio).IsRequired(false);
+        builder.Property(c => c.OutputAudioFormat).IsRequired(false);
 
-        builder.Property(c => c.SttDurationMs).IsRequired();
-        builder.Property(c => c.LlmDurationMs).IsRequired();
-        builder.Property(c => c.TtsDurationMs).IsRequired();
+        builder.Property(c => c.SttDurationMs).IsRequired(false);
+        builder.Property(c => c.LlmDurationMs).IsRequired(false);
+        builder.Property(c => c.TtsDurationMs).IsRequired(false);
         builder.Property(c => c.TotalDurationMs).IsRequired();
 
         builder.Property(c => c.Status).IsRequired();
