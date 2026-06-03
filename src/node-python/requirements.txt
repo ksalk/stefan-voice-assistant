@@ -1,9 +1,0 @@
-numpy<2
-sounddevice
-openwakeword==0.6.0
-aiohttp
-python-dotenv
-pydantic
-pydantic-settings
-psutil
-scipy
