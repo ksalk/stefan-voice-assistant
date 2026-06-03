@@ -37,7 +37,8 @@ export function formatRelativeTime(date: string | Date): string {
 	return relativeTimeFormatter.format(Math.round(value), singularUnit);
 }
 
-export function formatDateTime(date: string | Date): string {
+export function formatDateTime(date: string | Date | null | undefined): string {
+	if (date == null) return '';
 	const dateObj = typeof date === 'string' ? new Date(date) : date;
 
 	const day = String(dateObj.getDate()).padStart(2, '0');

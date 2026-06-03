@@ -55,6 +55,7 @@
 			currentPage = response.page || 1;
 			pageSize = response.pageSize || 20;
 		} catch (e) {
+			console.log('Error fetching commands:', e);
 			error = e instanceof Error ? e.message : 'Failed to load commands';
 		} finally {
 			loading = false;
@@ -81,12 +82,20 @@
 	}
 
 	function getStatusColor(status: string): string {
-		switch (status.toLowerCase()) {
-			case 'completed':
+		switch (status) {
+			case 'Completed':
 				return 'text-green-600';
-			case 'failed':
+			case 'SttFailed':
+			case 'LlmFailed':
+			case 'TtsFailed':
+			case 'HttpFailed':
+			case 'Failed':
 				return 'text-red-600';
-			case 'processing':
+			case 'SttSuccess':
+			case 'LlmSuccess':
+			case 'TtsSuccess':
+				return 'text-blue-600';
+			case 'Received':
 				return 'text-yellow-600';
 			default:
 				return 'text-slate-600';

@@ -60,7 +60,7 @@
 					<Table.Cell>{node.status}</Table.Cell>
 					<Table.Cell>{node.lastKnownIpAddress}:{node.port}</Table.Cell>
 					<Table.Cell>{formatDateTime(node.registeredAt)}</Table.Cell>
-					<Table.Cell><TimeAgo date={node.lastPingAt} /></Table.Cell>
+					<Table.Cell>{formatDateTime(node.lastPingAt)}</Table.Cell>
 					<Table.Cell>
 						<Button
 							variant="outline"

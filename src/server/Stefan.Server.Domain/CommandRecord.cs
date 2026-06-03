@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Stefan.Server.Domain;
 
 public class CommandRecord
@@ -72,6 +74,7 @@ public class CommandRecord
     }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CommandStatus
 {
     Received,
