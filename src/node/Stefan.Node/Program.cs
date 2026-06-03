@@ -21,20 +21,34 @@ if (IsSendTestCommandRequested(app, out var sendFilePath))
     return 0;
 }
 
-await app.RunServerAsync("http://0.0.0.0:8080");
+if (IsPlayFileCommandRequested(app, out var playFilePath))
+{
+    var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
+    await audioPlayer.PlayAsync(await File.ReadAllBytesAsync(playFilePath!));
+    return 0;
+}
+
+var serverUrl = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.Url;
+await app.RunServerAsync(serverUrl);
 return 0;
 
 WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
 {
     // Configuration
     builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
+    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    //Console.WriteLine($"[info] Environment: {environment}");
+    //if (string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
+    }
     builder.Configuration.AddCommandLine(args);
 
     builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
     builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
     builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
     builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
+    builder.Services.Configure<AudioOptions>(builder.Configuration.GetSection(AudioOptions.SectionName));
 
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
@@ -72,6 +86,12 @@ bool IsSendTestCommandRequested(WebApplication app, out string? sendFilePath)
 {
     sendFilePath = app.Configuration["send-file"];
     return !string.IsNullOrWhiteSpace(sendFilePath);
+}
+
+bool IsPlayFileCommandRequested(WebApplication app, out string? playFilePath)
+{
+    playFilePath = app.Configuration["play-file"];
+    return !string.IsNullOrWhiteSpace(playFilePath);
 }
 
 async Task<bool> TrySendTestCommand(WebApplication app, string filePath)

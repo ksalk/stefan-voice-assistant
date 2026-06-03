@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Threading.Channels;
+using Microsoft.Extensions.Options;
+using Stefan.Node.Options;
 
 namespace Stefan.Node.Audio;
 
@@ -9,11 +11,13 @@ public class AudioPlayer : BackgroundService
 {
     private readonly Channel<AudioPlaybackItem> _queue;
     private readonly ILogger<AudioPlayer> _logger;
+    private readonly string _outputDeviceName;
     private volatile CancellationTokenSource? _currentCts;
 
-    public AudioPlayer(ILogger<AudioPlayer> logger)
+    public AudioPlayer(ILogger<AudioPlayer> logger, IOptions<AudioOptions> audioOptions)
     {
         _logger = logger;
+        _outputDeviceName = audioOptions.Value.Output.DeviceName;
         _queue = Channel.CreateUnbounded<AudioPlaybackItem>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -46,7 +50,7 @@ public class AudioPlayer : BackgroundService
         }
         finally
         {
-            try { File.Delete(tempPath); } catch { }
+            try { /* File.Delete(tempPath); */ } catch { }
         }
     }
 
@@ -96,7 +100,7 @@ public class AudioPlayer : BackgroundService
                 {
                     try
                     {
-                        File.Delete(item.FilePath);
+                        //File.Delete(item.FilePath);
                     }
                     catch (Exception ex)
                     {
@@ -107,14 +111,14 @@ public class AudioPlayer : BackgroundService
         }
     }
 
-    private static async Task PlayFileAsync(string filePath, CancellationToken cancellationToken)
+    private async Task PlayFileAsync(string filePath, CancellationToken cancellationToken)
     {
         using var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = "aplay",
-                ArgumentList = { "-D", "default", filePath },
+                ArgumentList = { "-D", _outputDeviceName, filePath },
                 UseShellExecute = false,
                 RedirectStandardOutput = false,
                 RedirectStandardError = false,

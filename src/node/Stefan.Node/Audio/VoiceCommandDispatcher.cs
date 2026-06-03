@@ -12,13 +12,9 @@ public class VoiceCommandDispatcher(
     IAudioInputProvider audioInputProvider,
     AppStateService appStateService,
     AudioPlayer audioPlayer,
-    IOptions<KeywordSpotterOptions> keywordSpotterOptions) : BackgroundService
+    IOptions<KeywordSpotterOptions> keywordSpotterOptions,
+    IOptions<AudioOptions> audioOptions) : BackgroundService
 {
-    private const int InputSampleRate = 16_000;
-    private const float SilenceThreshold = 0.02f;
-    private const int SilenceTimeoutMs = 1000;
-    private const int MaxRecordingMs = 10_000;
-
     private readonly List<byte[]> _commandAudioBuffer = [];
     private float _silentDurationMs;
     private DateTime _recordingStartTime = DateTime.MinValue;
@@ -88,7 +84,7 @@ public class VoiceCommandDispatcher(
 
                         //Console.WriteLine($"Received audio chunk: {audioBytes.Length} bytes, {monoSamples.Length} mono samples");
 
-                        keywordStream.AcceptWaveform(InputSampleRate, monoSamples);
+                        keywordStream.AcceptWaveform(audioOptions.Value.Input.SampleRate, monoSamples);
 
                         while (keywordSpotter.IsReady(keywordStream))
                         {
@@ -121,7 +117,7 @@ public class VoiceCommandDispatcher(
                     var chunkDurationMs = audioBytes.Length / 64f;
                     var rms = ComputeRms(audioBytes);
 
-                    if (rms < SilenceThreshold)
+                    if (rms < audioOptions.Value.SilenceThreshold)
                     {
                         _silentDurationMs += chunkDurationMs;
                     }
@@ -132,7 +128,7 @@ public class VoiceCommandDispatcher(
 
                     var elapsedMs = (DateTime.UtcNow - _recordingStartTime).TotalMilliseconds;
 
-                    if (_silentDurationMs >= SilenceTimeoutMs || elapsedMs >= MaxRecordingMs)
+                    if (_silentDurationMs >= audioOptions.Value.SilenceTimeoutMs || elapsedMs >= audioOptions.Value.MaxRecordingMs)
                     {
                         //await SaveRecordingAsync(_commandAudioBuffer);
                         await SendCommandToServerAsync(_commandAudioBuffer);
@@ -223,7 +219,7 @@ public class VoiceCommandDispatcher(
         return monoBytes;
     }
 
-    private static async Task SaveRecordingAsync(List<byte[]> stereoChunks)
+    private async Task SaveRecordingAsync(List<byte[]> stereoChunks)
     {
         var monoData = ConvertStereoToMonoPcm16(stereoChunks);
         var dir = Path.Combine(AppContext.BaseDirectory, "recordings");
@@ -231,7 +227,7 @@ public class VoiceCommandDispatcher(
         var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
 
         await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-        fs.Write(CreateWavHeader(monoData.Length, InputSampleRate));
+        fs.Write(CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate));
         await fs.WriteAsync(monoData);
 
         Console.WriteLine($"Saved: {filePath}");
@@ -244,7 +240,7 @@ public class VoiceCommandDispatcher(
             Console.WriteLine("Sending command audio to server...");
 
             var monoData = ConvertStereoToMonoPcm16(stereoChunks);
-            var wavHeader = CreateWavHeader(monoData.Length, InputSampleRate);
+            var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate);
             var wavBytes = new byte[wavHeader.Length + monoData.Length];
             wavHeader.CopyTo(wavBytes, 0);
             monoData.CopyTo(wavBytes, wavHeader.Length);
@@ -301,14 +297,14 @@ public class VoiceCommandDispatcher(
                     Joiner = Path.Combine(modelPath, opts.JoinerFile)
                 },
                 Tokens = Path.Combine(modelPath, opts.TokensPath),
-                NumThreads = 2,
-                Provider = "cpu",
+                NumThreads = opts.NumThreads,
+                Provider = opts.Provider,
             },
             KeywordsFile = Path.Combine(modelPath, opts.KeywordsFile),
             FeatConfig = new FeatureConfig()
             {
-                SampleRate = 16000,
-                FeatureDim = 80
+                SampleRate = audioOptions.Value.Input.SampleRate,
+                FeatureDim = opts.FeatureDim
             }
         };
 

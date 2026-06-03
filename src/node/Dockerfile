@@ -48,6 +48,10 @@ WORKDIR /app
 COPY --from=build /app ./
 COPY --from=models /models /app/models
 
+RUN rm -f /app/appsettings.Development.json
+
+ENV ASPNETCORE_ENVIRONMENT=Production
+
 EXPOSE 8080
 
 ENTRYPOINT ["./Stefan.Node"]

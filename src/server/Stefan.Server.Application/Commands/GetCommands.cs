@@ -20,13 +20,13 @@ public class CommandSummaryDto
     public DateTime ReceivedAt { get; set; }
     public string InputAudioFormat { get; set; } = null!;
     public double InputAudioDurationMs { get; set; }
-    public string Transcript { get; set; } = null!;
-    public string ResponseText { get; set; } = null!;
-    public string OutputAudioFormat { get; set; } = null!;
-    public double SttDurationMs { get; set; }
-    public double LlmDurationMs { get; set; }
-    public double TtsDurationMs { get; set; }
-    public double TotalDurationMs { get; set; }
+    public string? Transcript { get; set; }
+    public string? ResponseText { get; set; }
+    public string? OutputAudioFormat { get; set; }
+    public double? SttDurationMs { get; set; }
+    public double? LlmDurationMs { get; set; }
+    public double? TtsDurationMs { get; set; }
+    public double? TotalDurationMs { get; set; }
     public CommandStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
 }

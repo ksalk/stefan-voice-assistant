@@ -99,6 +99,7 @@ public class ProcessCommand(
         }
 
         // TTS
+        byte[] wavOutputAudio;
         try
         {
             var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText);
@@ -107,7 +108,8 @@ public class ProcessCommand(
                 throw new Exception(ttsResult.Error ?? "Unknown TTS error");
             }
 
-            var compressedOutputAudio = await CompressAudio(ttsResult.Value.AudioBytes, cancellationToken);
+            wavOutputAudio = ttsResult.Value.AudioBytes;
+            var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
 
             ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {ttsResult.Value.DurationMs} ms, compressed size: {compressedOutputAudio.Length} bytes");
         
@@ -128,7 +130,7 @@ public class ProcessCommand(
         commandRecord.SetTotalDuration(totalDurationMs);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ProcessCommandResponse { AudioBytes = commandRecord.OutputAudio, ResponseText = commandRecord.ResponseText };
+        return new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText };
     }
 
     private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)

@@ -13,7 +13,7 @@ buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
 
 publishnode VERSION:
-    docker buildx build --platform linux/arm64 \
+    docker buildx build --platform linux/arm64 --pull \
       -t git.harnas.top/ksalk/stefan-voice-assistant:{{VERSION}} \
       -t git.harnas.top/ksalk/stefan-voice-assistant:latest \
       -f src/node/Dockerfile . --push
@@ -27,14 +27,8 @@ runnode:
 runnodetest:
     dotnet run --project src/node/Stefan.Node --send-file ../../../src/node-python/test_commands/how_much_longer.wav
 
+runnodeplaytest FILEPATH:
+    dotnet run --project src/node/Stefan.Node --play-file {{FILEPATH}}
+
 runui:
     pnpm --prefix apps/dashboard/stefan-ui run dev
-
-runnodepython:
-    uv pip install -r src/node-python/requirements.txt 
-    uv run src/node-python/src/main.py
-
-runnodepythontest:
-    uv venv --clear
-    uv pip install -r src/node-python/requirements.txt 
-    uv run src/node-python/src/main.py --test-command src/node-python/test_commands/how_much_longer.wav

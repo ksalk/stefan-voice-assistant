@@ -9,4 +9,7 @@ public class KeywordSpotterOptions
     public string JoinerFile { get; set; } = "joiner-epoch-13-avg-2-chunk-16-left-64.onnx";
     public string TokensPath { get; set; } = "tokens.txt";
     public string KeywordsFile { get; set; } = "keywords.txt";
+    public int NumThreads { get; set; } = 2;
+    public string Provider { get; set; } = "cpu";
+    public int FeatureDim { get; set; } = 80;
 }

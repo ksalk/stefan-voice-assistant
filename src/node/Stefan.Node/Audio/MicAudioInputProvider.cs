@@ -1,21 +1,21 @@
 using System.Threading.Channels;
 using Alsa.Net;
+using Microsoft.Extensions.Options;
+using Stefan.Node.Options;
 
 namespace Stefan.Node.Audio;
 
-public class MicAudioInputProvider : IAudioInputProvider
+public class MicAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudioInputProvider
 {
-    private const int InputSampleRate = 16_000;
-
     public Task WriteAudioInput(ChannelWriter<byte[]> audioWriter, CancellationToken cancellationToken)
     {
-        // TODO: Make sound device settings configurable and discover devices
+        var input = audioOptions.Value.Input;
         var soundDeviceSettings = new SoundDeviceSettings()
         {
-            RecordingDeviceName = "plughw:1,0", // software resampling if hw doesn't support 16kHz natively
-            RecordingSampleRate = InputSampleRate,
-            RecordingChannels = 2,
-            RecordingBitsPerSample = 16
+            RecordingDeviceName = input.DeviceName,
+            RecordingSampleRate = (uint)input.SampleRate,
+            RecordingChannels = (ushort)input.Channels,
+            RecordingBitsPerSample = (ushort)input.BitsPerSample
         };
 
         using var alsaDevice = AlsaDeviceBuilder.Create(soundDeviceSettings);
@@ -25,7 +25,6 @@ public class MicAudioInputProvider : IAudioInputProvider
             {
                 try
                 {
-                    // Need to copy the bytes since AlsaDevice reuses the same buffer for each callback
                     audioWriter.TryWrite(audioBytes.ToArray());
                 }
                 catch (Exception ex)
@@ -36,7 +35,6 @@ public class MicAudioInputProvider : IAudioInputProvider
         }
         catch (OperationCanceledException)
         {
-            // Expected on shutdown
         }
         catch (Exception ex)
         {
