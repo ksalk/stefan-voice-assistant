@@ -8,19 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Skip first X ms on recording audio
-- SQLite persistence
-- Whisper.NET for STT (replacing Vosk)
-- Colored logs
-- Modularized tools
-- Basic tests for node HTTP server
-- GitHub Actions CI for dotnet build and node python app
+- Dotnet node app with wakeword detection and command processing
+- Svelte web dashboard (nodes, commands, shadcn UI, auth, CORS)
+- Node registration and management system with health/status endpoints
+- Docker Compose support with profiles for server and node
+- PostgresDB persistence (migrated from SQLite)
+- Tool system with registry, shopping list, and scheduler tools
+- Vosk, xAI, and Whisper STT providers with auto model download
+- Server-side TTS with Piper and xAI providers
+- Audio preprocessing: silence trimming and resampling
+- Command history and storage in database
+- Node ping jobs with Quartz scheduler
+- Justfile for build, push, and deployment commands
+- App versioning and git commit info endpoint
+- CLI parameter for test command dispatch
 
 ### Changed
-- Refactored server code
-- Moved dotnet code to `src` directory
-- Refactored server solution and added more projects
-- Centralized package and build management
+- Replaced Python node app with a dotnet-based console app
+- Refactored server to vertical slice architecture
+- Extracted Application, AI, and Infrastructure projects
+- Moved all STT and TTS logic to the server
+- Improved thread-safety in node app
+
+### Fixed
+- Node Dockerfile build issues
+- CI pipeline build errors
+- Command dispatching and audio playback issues
 
 ## [0.2.0] - 2026-02-27
 
