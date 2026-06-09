@@ -32,3 +32,6 @@ runnodeplaytest FILEPATH:
 
 runui:
     pnpm --prefix src/dashboard/stefan-ui run dev
+
+buildnodetestimage:
+    docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src/node/Dockerfile . --load

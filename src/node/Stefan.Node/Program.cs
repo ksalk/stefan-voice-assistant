@@ -40,7 +40,7 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     //Console.WriteLine($"[info] Environment: {environment}");
     //if (string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
     {
-        builder.Configuration.AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true);
+        builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
     }
     builder.Configuration.AddCommandLine(args);
 
