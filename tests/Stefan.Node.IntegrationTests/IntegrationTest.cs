@@ -24,18 +24,20 @@ public class IntegrationTest : IAsyncLifetime
         _pipeDirectory = Path.Combine("audio-pipes", _pipeId);
         _pipePath = Path.Combine(_pipeDirectory, "audio-input");
         Directory.CreateDirectory(_pipeDirectory);
+        File.WriteAllText(_pipePath, string.Empty);
 
         _mockServer = CreateMockServer();
         await _mockServer.StartAsync();
 
         var urls = _mockServer.Urls.ToArray();
-        var url = urls.First(u => u.StartsWith("http://127.0.0.1"));
+        var url = urls.First(u => u.StartsWith("http://"));
         _mockServerPort = int.Parse(url.Split(':')[2]);
 
         var hostPipeDir = Path.GetFullPath($"./audio-pipes/{_pipeId}");
 
         _stefanNodeContainer = new ContainerBuilder(ImageName)
             .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
+            .WithExtraHost("host.docker.internal", "host-gateway")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("Node__Name", "stefan-node-test")
             .WithEnvironment("Server__Url", "http://0.0.0.0:8080")
@@ -117,7 +119,7 @@ public class IntegrationTest : IAsyncLifetime
     private static WebApplication CreateMockServer()
     {
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.WebHost.UseUrls("http://0.0.0.0:0");
         var app = builder.Build();
 
         app.MapPost("/api/nodes/register", () => Results.Ok());

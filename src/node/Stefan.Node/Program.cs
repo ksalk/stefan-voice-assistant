@@ -34,14 +34,13 @@ return 0;
 
 WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
 {
-    // Configuration
+    // Clear default configuration sources to control order
+    builder.Configuration.Sources.Clear();
+    
+    // Configuration - JSON files first, then env vars, then command line
     builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    //Console.WriteLine($"[info] Environment: {environment}");
-    //if (string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
-    {
-        builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
-    }
+    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddEnvironmentVariables();
     builder.Configuration.AddCommandLine(args);
 
     builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
