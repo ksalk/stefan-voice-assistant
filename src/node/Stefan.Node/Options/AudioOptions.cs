@@ -16,6 +16,8 @@ public class AudioOutputOptions
 public class AudioOptions
 {
     public const string SectionName = "Audio";
+    public string InputSource { get; set; } = "mic";
+    public string? PipePath { get; set; }
     public AudioInputOptions Input { get; set; } = new();
     public AudioOutputOptions Output { get; set; } = new();
     public float SilenceThreshold { get; set; } = 0.02f;

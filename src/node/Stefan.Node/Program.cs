@@ -52,7 +52,7 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
 
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
-    builder.Services.AddSingleton<IAudioInputProvider, MicAudioInputProvider>();
+    RegisterAudioInputProvider(builder);
     builder.Services.AddHostedService<VoiceCommandDispatcher>();
 
     // Audio player
@@ -69,6 +69,31 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     });
 
     return builder;
+}
+
+void RegisterAudioInputProvider(WebApplicationBuilder builder)
+{
+    var audioOptions = builder.Configuration.GetSection(AudioOptions.SectionName).Get<AudioOptions>() ?? new AudioOptions();
+    var inputSource = audioOptions.InputSource.ToLowerInvariant();
+
+    Console.WriteLine($"[audio] Input source: {inputSource}");
+
+    switch (inputSource)
+    {
+        case "pipe":
+            builder.Services.AddSingleton<IAudioInputProvider, PipeAudioInputProvider>();
+            Console.WriteLine($"[audio] Using pipe input (path: {audioOptions.PipePath ?? "/tmp/audio-input"})");
+            break;
+        case "test":
+            builder.Services.AddSingleton<IAudioInputProvider, TestAudioInputProvider>();
+            Console.WriteLine("[audio] Using test file input");
+            break;
+        case "mic":
+        default:
+            builder.Services.AddSingleton<IAudioInputProvider, MicAudioInputProvider>();
+            Console.WriteLine("[audio] Using microphone input");
+            break;
+    }
 }
 
 async Task<bool> RegisterNode(WebApplication app)

@@ -1,0 +1,63 @@
+using System.Runtime.InteropServices;
+using System.Threading.Channels;
+using Microsoft.Extensions.Options;
+using Stefan.Node.Options;
+
+namespace Stefan.Node.Audio;
+
+public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudioInputProvider
+{
+    private const int ChunkSize = 4096;
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int mkfifo(string pathname, uint mode);
+
+    public async Task WriteAudioInput(ChannelWriter<byte[]> audioWriter, CancellationToken cancellationToken)
+    {
+        var pipePath = audioOptions.Value.PipePath ?? "/tmp/audio-input";
+
+        Console.WriteLine($"[pipe] Setting up named pipe: {pipePath}");
+
+        try
+        {
+            if (!File.Exists(pipePath))
+            {
+                var result = mkfifo(pipePath, 0666);
+                if (result != 0)
+                {
+                    throw new IOException($"Failed to create named pipe at {pipePath}. Error code: {result}");
+                }
+                Console.WriteLine($"[pipe] Named pipe created: {pipePath}");
+            }
+
+            Console.WriteLine($"[pipe] Waiting for writer to open pipe: {pipePath}");
+
+            await using var pipeStream = new FileStream(pipePath, FileMode.Open, FileAccess.Read, FileShare.None, bufferSize: ChunkSize, useAsync: true);
+
+            Console.WriteLine("[pipe] Writer connected, reading audio data");
+
+            var buffer = new byte[ChunkSize];
+            int bytesRead;
+
+            while ((bytesRead = await pipeStream.ReadAsync(buffer.AsMemory(0, ChunkSize), cancellationToken)) > 0)
+            {
+                var chunk = buffer[..bytesRead];
+                await audioWriter.WriteAsync(chunk, cancellationToken);
+            }
+
+            Console.WriteLine("[pipe] Pipe closed by sender");
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("[pipe] Reading cancelled");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[pipe] Error reading from pipe: {ex}");
+        }
+        finally
+        {
+            audioWriter.Complete();
+        }
+    }
+}
