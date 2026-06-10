@@ -29,13 +29,13 @@ public class AudioPlayer : BackgroundService
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"stefan_audio_{Guid.NewGuid():N}.wav");
         File.WriteAllBytes(tempPath, wavBytes);
-        _logger.LogDebug("Queued audio from bytes -> {TempPath}", tempPath);
+        _logger.LogDebug("[audio] Queued audio from bytes -> {TempPath}", tempPath);
         _queue.Writer.TryWrite(new AudioPlaybackItem(tempPath, IsTemp: true));
     }
 
     public void Queue(string filePath)
     {
-        _logger.LogDebug("Queued audio file: {FilePath}", filePath);
+        _logger.LogDebug("[audio] Queued audio file: {FilePath}", filePath);
         _queue.Writer.TryWrite(new AudioPlaybackItem(filePath, IsTemp: false));
     }
 
@@ -59,14 +59,14 @@ public class AudioPlayer : BackgroundService
         var cts = _currentCts;
         if (cts is not null)
         {
-            _logger.LogInformation("Cancelling current audio playback.");
+            _logger.LogInformation("[audio] Cancelling current audio playback.");
             cts.Cancel();
         }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("AudioPlayer started.");
+        _logger.LogInformation("[audio] AudioPlayer started.");
 
         await foreach (var item in _queue.Reader.ReadAllAsync(stoppingToken))
         {
@@ -75,13 +75,13 @@ public class AudioPlayer : BackgroundService
 
             try
             {
-                _logger.LogInformation("Playing audio: {FilePath}", item.FilePath);
+                _logger.LogInformation("[audio] Playing audio: {FilePath}", item.FilePath);
                 await PlayFileAsync(item.FilePath, itemCts.Token);
             }
             catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
             {
                 // Individual item was cancelled via CancelCurrent() — continue to next item
-                _logger.LogInformation("Audio playback cancelled, continuing queue.");
+                _logger.LogInformation("[audio] Audio playback cancelled, continuing queue.");
             }
             catch (OperationCanceledException)
             {
@@ -90,7 +90,7 @@ public class AudioPlayer : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during audio playback of {FilePath}", item.FilePath);
+                _logger.LogError(ex, "[audio] Error during audio playback of {FilePath}", item.FilePath);
             }
             finally
             {
@@ -104,7 +104,7 @@ public class AudioPlayer : BackgroundService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to delete temp audio file: {FilePath}", item.FilePath);
+                        _logger.LogWarning(ex, "[audio] Failed to delete temp audio file: {FilePath}", item.FilePath);
                     }
                 }
             }

@@ -34,7 +34,7 @@ public class VoiceCommandDispatcher(
 
             var audioProcessingTask = RunAudioProcessingAsync(
                 audioChannel.Reader,
-                keyword => Console.WriteLine($"Keyword detected: {keyword} \nStarting command recording..."),
+                keyword => Console.WriteLine($"[listener] Keyword detected: {keyword} \nStarting command recording..."),
                 cancellationToken);
 
             var recordMicTask = Task.Factory.StartNew(
@@ -43,7 +43,7 @@ public class VoiceCommandDispatcher(
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
 
-            Console.WriteLine("VoiceCommandDispatcher started. Listening for wake word...");
+            Console.WriteLine("[listener] VoiceCommandDispatcher started. Listening for wake word...");
 
             await Task.WhenAll(recordMicTask, audioProcessingTask);
         }
@@ -53,7 +53,7 @@ public class VoiceCommandDispatcher(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fatal error in VoiceCommandDispatcher: {ex}");
+            Console.WriteLine($"[listener] Fatal error in VoiceCommandDispatcher: {ex}");
             throw;
         }
     }
@@ -106,7 +106,7 @@ public class VoiceCommandDispatcher(
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error during keyword inference: {ex}");
+                        Console.WriteLine($"[listener] Error during keyword inference: {ex}");
                     }
                 }
 
@@ -135,7 +135,7 @@ public class VoiceCommandDispatcher(
                         _commandAudioBuffer.Clear();
                         _silentDurationMs = 0f;
                         appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
-                        Console.WriteLine("Finished recording command. Returning to wake word detection.");
+                        Console.WriteLine("[listener] Finished recording command. Returning to wake word detection.");
                     }
                 }
             }
@@ -150,7 +150,7 @@ public class VoiceCommandDispatcher(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in inference worker: {ex}");
+            Console.WriteLine($"[listener] Error in inference worker: {ex}");
         }
     }
 
@@ -230,14 +230,14 @@ public class VoiceCommandDispatcher(
         fs.Write(CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate));
         await fs.WriteAsync(monoData);
 
-        Console.WriteLine($"Saved: {filePath}");
+        Console.WriteLine($"[listener] Saved: {filePath}");
     }
 
     private async Task SendCommandToServerAsync(List<byte[]> stereoChunks)
     {
         try
         {
-            Console.WriteLine("Sending command audio to server...");
+            Console.WriteLine("[listener] Sending command audio to server...");
 
             var monoData = ConvertStereoToMonoPcm16(stereoChunks);
             var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate);
@@ -248,17 +248,17 @@ public class VoiceCommandDispatcher(
             var responseAudio = await remoteServerClient.SendCommandAsync(wavBytes);
             if (responseAudio is not null)
             {
-                Console.WriteLine("Command sent successfully. Queuing response audio for playback.");
+                Console.WriteLine("[listener] Command sent successfully. Queuing response audio for playback.");
                 audioPlayer.Queue(responseAudio);
             }
             else
             {
-                Console.WriteLine("Failed to send command.");
+                Console.WriteLine("[listener] Failed to send command.");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error sending command to server: {ex}");
+            Console.WriteLine($"[listener] Error sending command to server: {ex}");
         }
     }
 
