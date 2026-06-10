@@ -300,7 +300,7 @@ public class VoiceCommandDispatcher(
                 NumThreads = opts.NumThreads,
                 Provider = opts.Provider,
             },
-            KeywordsFile = Path.Combine(modelPath, opts.KeywordsFile),
+            KeywordsFile = opts.KeywordsFile,
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = audioOptions.Value.Input.SampleRate,

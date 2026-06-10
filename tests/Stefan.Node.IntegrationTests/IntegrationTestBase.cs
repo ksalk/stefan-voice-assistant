@@ -50,7 +50,7 @@ public abstract class IntegrationTestBase
 
         var containerBuilder = new ContainerBuilder(ImageName)
             // Enable to show logs from container
-            //.WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
+            .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
             .WithName($"stefan-node-integration-test-{testRunId}")
             .WithExtraHost("host.docker.internal", "host-gateway")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
@@ -165,6 +165,12 @@ public abstract class IntegrationTestBase
 
         public async Task WriteAudioAsync(byte[] data, CancellationToken cancellationToken = default) =>
             await File.WriteAllBytesAsync(_pipePath, data, cancellationToken);
+
+        public async Task WriteAudioFileAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            var data = await File.ReadAllBytesAsync(filePath, cancellationToken);
+            await File.WriteAllBytesAsync(_pipePath, data, cancellationToken);
+        }
 
         public async Task WriteSilenceAsync(TimeSpan duration, CancellationToken cancellationToken = default)
         {
