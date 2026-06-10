@@ -6,59 +6,50 @@ using Microsoft.AspNetCore.Http;
 
 namespace Stefan.Node.IntegrationTests;
 
-public abstract class IntegrationTestBase : IAsyncLifetime
+public abstract class IntegrationTestBase
 {
-    private readonly string _testRunId = Guid.NewGuid().ToString("D");
-    private string _pipeDirectory = null!;
-    private string _pipePath = null!;
-    private WebApplication _mockServer = null!;
-    private IContainer _stefanNodeContainer = null!;
-    private int _mockServerPort;
     private const string ImageName = "stefan-node:test";
     private const string AuthSecret = "test-secret";
 
-    public HttpClient HttpClient { get; private set; } = null!;
-
-    public string PipePath => _pipePath;
-
-    protected string PipeDirectory => _pipeDirectory;
-
-    protected IContainer Container => _stefanNodeContainer;
-
-    protected WebApplication MockServer => _mockServer;
-
-    public async Task InitializeAsync()
+    protected async Task<NodeApp> CreateNodeApp(
+        Func<ContainerBuilder, ContainerBuilder>? configureContainer = null,
+        Action<WebApplication>? configureServer = null)
     {
-        _pipeDirectory = Path.Combine("audio-pipes", _testRunId);
-        _pipePath = Path.Combine(_pipeDirectory, "audio-input");
-        Directory.CreateDirectory(_pipeDirectory);
-        File.WriteAllText(_pipePath, string.Empty);
+        var testRunId = Guid.NewGuid().ToString("D");
+        var pipeDirectory = Path.Combine("audio-pipes", testRunId);
+        var pipePath = Path.Combine(pipeDirectory, "audio-input");
+        Directory.CreateDirectory(pipeDirectory);
+        File.WriteAllText(pipePath, string.Empty);
 
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://0.0.0.0:0");
-        _mockServer = builder.Build();
+        var serverBuilder = WebApplication.CreateBuilder();
+        serverBuilder.WebHost.UseUrls("http://0.0.0.0:0");
+        var mockServer = serverBuilder.Build();
 
-        ConfigureMockServer(_mockServer);
+        if (configureServer is not null)
+            configureServer(mockServer);
+        else
+            mockServer.MapPost("/api/nodes/register", () => Results.Ok());
 
-        await _mockServer.StartAsync();
+        await mockServer.StartAsync();
 
-        var urls = _mockServer.Urls.ToArray();
+        var urls = mockServer.Urls.ToArray();
         var url = urls.First(u => u.StartsWith("http://"));
-        _mockServerPort = int.Parse(url.Split(':')[2]);
+        var mockServerPort = int.Parse(url.Split(':')[2]);
 
-        var hostPipeDir = Path.GetFullPath($"./audio-pipes/{_testRunId}");
+        var hostPipeDir = Path.GetFullPath($"./audio-pipes/{testRunId}");
 
         var containerBuilder = new ContainerBuilder(ImageName)
-            .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
-            .WithName($"stefan-node-integration-test-{_testRunId}")
+            // Enable to show logs from container
+            //.WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
+            .WithName($"stefan-node-integration-test-{testRunId}")
             .WithExtraHost("host.docker.internal", "host-gateway")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("Node__Name", "stefan-node-test")
             .WithEnvironment("Server__Url", "http://0.0.0.0:8080")
-            .WithEnvironment("RemoteServer__Url", $"http://host.docker.internal:{_mockServerPort}")
+            .WithEnvironment("RemoteServer__Url", $"http://host.docker.internal:{mockServerPort}")
             .WithEnvironment("RemoteServer__AuthSecret", AuthSecret)
             .WithEnvironment("Audio__InputSource", "pipe")
-            .WithEnvironment("Audio__PipePath", $"/tmp/audio-pipes/{_testRunId}/audio-input")
+            .WithEnvironment("Audio__PipePath", $"/tmp/audio-pipes/{testRunId}/audio-input")
             .WithEnvironment("Audio__Output__DeviceName", "null")
             .WithEnvironment("Audio__SilenceThreshold", "0.02")
             .WithEnvironment("Audio__SilenceTimeoutMs", "1000")
@@ -70,47 +61,74 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             .WithEnvironment("KeywordSpotter__Provider", "cpu")
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
             .WithPortBinding(8080, true)
-            .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{_testRunId}")
+            .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{testRunId}")
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)));
 
-        containerBuilder = ConfigureContainer(containerBuilder);
+        if (configureContainer is not null)
+            containerBuilder = configureContainer(containerBuilder);
 
-        _stefanNodeContainer = containerBuilder.Build();
+        var container = containerBuilder.Build();
+        await container.StartAsync();
 
-        await _stefanNodeContainer.StartAsync();
+        var port = container.GetMappedPublicPort(8080);
+        var host = container.Hostname;
 
-        var port = _stefanNodeContainer.GetMappedPublicPort(8080);
-        var host = _stefanNodeContainer.Hostname;
-
-        HttpClient = new HttpClient
+        var httpClient = new HttpClient
         {
             BaseAddress = new Uri($"http://{host}:{port}"),
             Timeout = TimeSpan.FromSeconds(5),
         };
+
+        return new NodeApp(httpClient, pipePath, pipeDirectory, mockServerPort, container, mockServer);
     }
 
-    public async Task DisposeAsync()
+    public class NodeApp : IAsyncDisposable
     {
-        if (_stefanNodeContainer != null)
-            await _stefanNodeContainer.DisposeAsync();
+        private readonly IContainer _container;
+        private readonly WebApplication _mockServer;
+        private readonly string _pipeDirectory;
+        private readonly string _pipePath;
 
-        if (_mockServer != null)
+        public NodeApp(
+            HttpClient httpClient,
+            string pipePath,
+            string pipeDirectory,
+            int mockServerPort,
+            IContainer container,
+            WebApplication mockServer)
+        {
+            HttpClient = httpClient;
+            MockServerPort = mockServerPort;
+            _container = container;
+            _mockServer = mockServer;
+            _pipeDirectory = pipeDirectory;
+            _pipePath = pipePath;
+        }
+
+        public HttpClient HttpClient { get; }
+        public int MockServerPort { get; }
+
+        public Task WriteAudioAsync(byte[] data) =>
+            File.WriteAllBytesAsync(_pipePath, data);
+
+        public Task WriteSilenceAsync(TimeSpan duration)
+        {
+            const int sampleRate = 16000;
+            const int channels = 2;
+            const int bytesPerSample = 2;
+            var bytesPerSecond = sampleRate * channels * bytesPerSample;
+            var byteCount = (int)(bytesPerSecond * duration.TotalSeconds);
+            return File.WriteAllBytesAsync(_pipePath, new byte[byteCount]);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await _container.DisposeAsync();
             await _mockServer.StopAsync();
-
-        if (Directory.Exists(_pipeDirectory))
-            Directory.Delete(_pipeDirectory, true);
-
-        HttpClient.Dispose();
-    }
-
-    protected virtual void ConfigureMockServer(WebApplication app)
-    {
-        _mockServer.MapPost("/api/nodes/register", () => Results.Ok());
-    }
-
-    protected virtual ContainerBuilder ConfigureContainer(ContainerBuilder builder)
-    {
-        return builder;
+            if (Directory.Exists(_pipeDirectory))
+                Directory.Delete(_pipeDirectory, true);
+            HttpClient.Dispose();
+        }
     }
 }

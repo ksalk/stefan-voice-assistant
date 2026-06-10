@@ -7,8 +7,13 @@ public class HealthEndpointTests : IntegrationTestBase
     [Fact]
     public async Task HealthEndpoint_ReturnsOk()
     {
-        var response = await HttpClient.GetAsync("/health");
+        // Arrange
+        await using var app = await CreateNodeApp();
 
+        // Act
+        var response = await app.HttpClient.GetAsync("/health");
+
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("OK", await response.Content.ReadAsStringAsync());
     }
@@ -16,13 +21,15 @@ public class HealthEndpointTests : IntegrationTestBase
     [Fact]
     public async Task HealthEndpoint_ReturnsOk_AfterSendingSilence()
     {
-        var silence = new byte[4096];
-        await File.WriteAllBytesAsync(PipePath, silence);
-
+        // Arrange
+        await using var app = await CreateNodeApp();
+        await app.WriteSilenceAsync(TimeSpan.FromMilliseconds(500));
         await Task.Delay(500);
 
-        var response = await HttpClient.GetAsync("/health");
+        // Act
+        var response = await app.HttpClient.GetAsync("/health");
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
