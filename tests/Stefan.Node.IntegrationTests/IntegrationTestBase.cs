@@ -3,6 +3,7 @@ using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Stefan.Node.IntegrationTests;
 
@@ -22,6 +23,7 @@ public abstract class IntegrationTestBase
         File.WriteAllText(pipePath, string.Empty);
 
         var serverBuilder = WebApplication.CreateBuilder();
+        serverBuilder.Logging.ClearProviders();
         serverBuilder.WebHost.UseUrls("http://0.0.0.0:0");
         var mockServer = serverBuilder.Build();
 
