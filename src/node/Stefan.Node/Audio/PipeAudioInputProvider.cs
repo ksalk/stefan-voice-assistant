@@ -12,6 +12,9 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
     [DllImport("libc", SetLastError = true)]
     private static extern int mkfifo(string pathname, uint mode);
 
+    [DllImport("libc", SetLastError = true)]
+    private static extern int chmod(string pathname, uint mode);
+
     public async Task WriteAudioInput(ChannelWriter<byte[]> audioWriter, CancellationToken cancellationToken)
     {
         var pipePath = audioOptions.Value.PipePath ?? "/tmp/audio-input";
@@ -22,17 +25,19 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
         {
             if (!File.Exists(pipePath))
             {
-                var result = mkfifo(pipePath, 0666);
+                // Permissions need to be set in octal format, e.g. 0666 for read/write permissions for everyone
+                var result = mkfifo(pipePath, Convert.ToUInt32("666", 8));
                 if (result != 0)
                 {
                     throw new IOException($"Failed to create named pipe at {pipePath}. Error code: {result}");
                 }
+                chmod(pipePath, Convert.ToUInt32("666", 8));
                 Console.WriteLine($"[pipe] Named pipe created: {pipePath}");
             }
 
             Console.WriteLine($"[pipe] Waiting for writer to open pipe: {pipePath}");
 
-            await using var pipeStream = new FileStream(pipePath, FileMode.Open, FileAccess.Read, FileShare.None, bufferSize: ChunkSize, useAsync: true);
+            await using var pipeStream = new FileStream(pipePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: ChunkSize, useAsync: true);
 
             Console.WriteLine("[pipe] Writer connected, reading audio data");
 

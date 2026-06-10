@@ -28,7 +28,7 @@ public abstract class IntegrationTestBase
         var pipeDirectory = Path.Combine("audio-pipes", testRunId);
         var pipePath = Path.Combine(pipeDirectory, "audio-input");
         Directory.CreateDirectory(pipeDirectory);
-        File.WriteAllText(pipePath, string.Empty);
+        //File.WriteAllText(pipePath, string.Empty);
 
         var serverBuilder = WebApplication.CreateBuilder();
         serverBuilder.Logging.ClearProviders();
@@ -137,6 +137,7 @@ public abstract class IntegrationTestBase
         private readonly WebApplication _mockServer;
         private readonly string _pipeDirectory;
         private readonly string _pipePath;
+        private FileStream? _pipeStream;
 
         public NodeApp(
             HttpClient httpClient,
@@ -163,13 +164,28 @@ public abstract class IntegrationTestBase
         public async Task<(string Stdout, string Stderr)> GetLogsAsync(CancellationToken cancellationToken = default) =>
             await _container.GetLogsAsync(DateTime.MinValue, DateTime.MaxValue, false, cancellationToken);
 
-        public async Task WriteAudioAsync(byte[] data, CancellationToken cancellationToken = default) =>
-            await File.WriteAllBytesAsync(_pipePath, data, cancellationToken);
+        private async Task<FileStream> GetPipeStreamAsync(CancellationToken cancellationToken)
+        {
+            if (_pipeStream is null)
+            {
+                _pipeStream = new FileStream(_pipePath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+                await Task.CompletedTask;
+            }
+            return _pipeStream;
+        }
+
+        public async Task WriteAudioAsync(byte[] data, CancellationToken cancellationToken = default)
+        {
+            var stream = await GetPipeStreamAsync(cancellationToken);
+            await stream.WriteAsync(data, cancellationToken);
+            await stream.FlushAsync(cancellationToken);
+        }
 
         public async Task WriteAudioFileAsync(string filePath, CancellationToken cancellationToken = default)
         {
+            // TODO: this probably sends WAV header as well, should probably discard it
             var data = await File.ReadAllBytesAsync(filePath, cancellationToken);
-            await File.WriteAllBytesAsync(_pipePath, data, cancellationToken);
+            await WriteAudioAsync(data, cancellationToken);
         }
 
         public async Task WriteSilenceAsync(TimeSpan duration, CancellationToken cancellationToken = default)
@@ -179,15 +195,17 @@ public abstract class IntegrationTestBase
             const int bytesPerSample = 2;
             var bytesPerSecond = sampleRate * channels * bytesPerSample;
             var byteCount = (int)(bytesPerSecond * duration.TotalSeconds);
-            await File.WriteAllBytesAsync(_pipePath, new byte[byteCount], cancellationToken);
+            await WriteAudioAsync(new byte[byteCount], cancellationToken);
         }
 
         public async ValueTask DisposeAsync()
         {
+            if (_pipeStream is not null)
+                await _pipeStream.DisposeAsync();
             await _container.DisposeAsync();
             await _mockServer.StopAsync();
             if (Directory.Exists(_pipeDirectory))
-                Directory.Delete(_pipeDirectory, true);
+               Directory.Delete(_pipeDirectory, true);
             HttpClient.Dispose();
         }
     }
