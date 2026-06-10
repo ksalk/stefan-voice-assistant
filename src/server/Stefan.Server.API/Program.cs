@@ -65,6 +65,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.MapHealthEndpoints();
 app.MapNodeEndpoints();
 app.MapCommandEndpoints();
 
