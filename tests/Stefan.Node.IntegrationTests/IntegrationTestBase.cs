@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -7,12 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Stefan.Node.IntegrationTests;
 
+public enum ContainerStartMode
+{
+    ExpectRunning,
+    ExpectExit,
+}
+
 public abstract class IntegrationTestBase
 {
     private const string ImageName = "stefan-node:test";
     private const string AuthSecret = "test-secret";
 
     protected async Task<NodeApp> CreateNodeApp(
+        ContainerStartMode startMode = ContainerStartMode.ExpectRunning,
         Func<ContainerBuilder, ContainerBuilder>? configureContainer = null,
         Action<WebApplication>? configureServer = null)
     {
@@ -64,8 +72,7 @@ public abstract class IntegrationTestBase
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
             .WithPortBinding(8080, true)
             .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{testRunId}")
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)));
+            .WithWaitStrategy(BuildWaitStrategy(startMode));
 
         if (configureContainer is not null)
             containerBuilder = configureContainer(containerBuilder);
@@ -83,6 +90,45 @@ public abstract class IntegrationTestBase
         };
 
         return new NodeApp(httpClient, pipePath, pipeDirectory, mockServerPort, container, mockServer);
+    }
+
+    private static IWaitForContainerOS BuildWaitStrategy(ContainerStartMode startMode)
+    {
+        var baseStrategy = Wait.ForUnixContainer();
+
+        return startMode switch
+        {
+            ContainerStartMode.ExpectRunning => baseStrategy
+                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)),
+
+            ContainerStartMode.ExpectExit => baseStrategy
+                .AddCustomWaitStrategy(new ExitWaitUntil(TimeSpan.FromSeconds(30))),
+
+            _ => throw new ArgumentOutOfRangeException(nameof(startMode)),
+        };
+    }
+
+    private class ExitWaitUntil(TimeSpan timeout) : IWaitUntil
+    {
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            using var cts = new CancellationTokenSource(timeout);
+
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var exitCode = await container.GetExitCodeAsync(cts.Token);
+                    return exitCode != -1;
+                }
+                catch
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
+                }
+            }
+
+            throw new TimeoutException("Container did not exit within the timeout period.");
+        }
     }
 
     public class NodeApp : IAsyncDisposable
@@ -111,17 +157,23 @@ public abstract class IntegrationTestBase
         public HttpClient HttpClient { get; }
         public int MockServerPort { get; }
 
-        public Task WriteAudioAsync(byte[] data) =>
-            File.WriteAllBytesAsync(_pipePath, data);
+        public async Task<long> GetExitCodeAsync(CancellationToken cancellationToken = default) =>
+            await _container.GetExitCodeAsync(cancellationToken);
 
-        public Task WriteSilenceAsync(TimeSpan duration)
+        public async Task<(string Stdout, string Stderr)> GetLogsAsync(CancellationToken cancellationToken = default) =>
+            await _container.GetLogsAsync(DateTime.MinValue, DateTime.MaxValue, false, cancellationToken);
+
+        public async Task WriteAudioAsync(byte[] data, CancellationToken cancellationToken = default) =>
+            await File.WriteAllBytesAsync(_pipePath, data, cancellationToken);
+
+        public async Task WriteSilenceAsync(TimeSpan duration, CancellationToken cancellationToken = default)
         {
             const int sampleRate = 16000;
             const int channels = 2;
             const int bytesPerSample = 2;
             var bytesPerSecond = sampleRate * channels * bytesPerSample;
             var byteCount = (int)(bytesPerSecond * duration.TotalSeconds);
-            return File.WriteAllBytesAsync(_pipePath, new byte[byteCount]);
+            await File.WriteAllBytesAsync(_pipePath, new byte[byteCount], cancellationToken);
         }
 
         public async ValueTask DisposeAsync()

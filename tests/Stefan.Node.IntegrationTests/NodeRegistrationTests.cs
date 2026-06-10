@@ -34,4 +34,30 @@ public class NodeRegistrationTests : IntegrationTestBase
         // Assert
         Assert.Equal(expectedNodeName, receivedNodeName);
     }
+
+    [Fact]
+    public async Task NodeRegistersToServer_ExistsWhenRegistrationFails()
+    {
+        // Arrange
+        string expectedNodeName = "stefan-node-test-name";
+
+        await using var app = await CreateNodeApp(
+            startMode: ContainerStartMode.ExpectExit,
+            configureContainer: builder => builder.WithEnvironment("Node__Name", expectedNodeName),
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", async (HttpRequest request) =>
+                {
+                    return Results.Unauthorized();
+                });
+            });
+
+        // Act
+        var exitCode = await app.GetExitCodeAsync();
+        var (stdout, stderr) = await app.GetLogsAsync();
+
+        // Assert
+        Assert.Equal(1L, exitCode);
+        Assert.Contains("[fatal] Node registration failed. Exiting.", stderr);
+    }
 }
