@@ -1,5 +1,3 @@
-﻿using System.Net;
-using System.Net.Sockets;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Builder;
@@ -8,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Stefan.Node.IntegrationTests;
 
-public class IntegrationTest : IAsyncLifetime
+public abstract class IntegrationTestBase : IAsyncLifetime
 {
     private readonly string _pipeId = Guid.NewGuid().ToString("D");
     private string _pipeDirectory = null!;
@@ -19,6 +17,16 @@ public class IntegrationTest : IAsyncLifetime
     private const string ImageName = "stefan-node:test";
     private const string AuthSecret = "test-secret";
 
+    public HttpClient HttpClient { get; private set; } = null!;
+
+    public string PipePath => _pipePath;
+
+    protected string PipeDirectory => _pipeDirectory;
+
+    protected IContainer Container => _stefanNodeContainer;
+
+    protected WebApplication MockServer => _mockServer;
+
     public async Task InitializeAsync()
     {
         _pipeDirectory = Path.Combine("audio-pipes", _pipeId);
@@ -26,7 +34,14 @@ public class IntegrationTest : IAsyncLifetime
         Directory.CreateDirectory(_pipeDirectory);
         File.WriteAllText(_pipePath, string.Empty);
 
-        _mockServer = CreateMockServer();
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://0.0.0.0:0");
+        _mockServer = builder.Build();
+
+        _mockServer.MapPost("/api/nodes/register", () => Results.Ok());
+
+        ConfigureMockServer(_mockServer);
+
         await _mockServer.StartAsync();
 
         var urls = _mockServer.Urls.ToArray();
@@ -35,8 +50,9 @@ public class IntegrationTest : IAsyncLifetime
 
         var hostPipeDir = Path.GetFullPath($"./audio-pipes/{_pipeId}");
 
-        _stefanNodeContainer = new ContainerBuilder(ImageName)
+        var containerBuilder = new ContainerBuilder(ImageName)
             .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
+            .WithName($"stefan-node-integration-test-{_pipeId}")
             .WithExtraHost("host.docker.internal", "host-gateway")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("Node__Name", "stefan-node-test")
@@ -58,10 +74,22 @@ public class IntegrationTest : IAsyncLifetime
             .WithPortBinding(8080, true)
             .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{_pipeId}")
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)))
-            .Build();
+                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)));
+
+        ConfigureContainer(containerBuilder);
+
+        _stefanNodeContainer = containerBuilder.Build();
 
         await _stefanNodeContainer.StartAsync();
+
+        var port = _stefanNodeContainer.GetMappedPublicPort(8080);
+        var host = _stefanNodeContainer.Hostname;
+
+        HttpClient = new HttpClient
+        {
+            BaseAddress = new Uri($"http://{host}:{port}"),
+            Timeout = TimeSpan.FromSeconds(5),
+        };
     }
 
     public async Task DisposeAsync()
@@ -74,56 +102,15 @@ public class IntegrationTest : IAsyncLifetime
 
         if (Directory.Exists(_pipeDirectory))
             Directory.Delete(_pipeDirectory, true);
+
+        HttpClient.Dispose();
     }
 
-    [Fact]
-    public async Task HealthEndpoint_ReturnsOk()
+    protected virtual void ConfigureMockServer(WebApplication app)
     {
-        var port = _stefanNodeContainer.GetMappedPublicPort(8080);
-        var host = _stefanNodeContainer.Hostname;
-
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri($"http://{host}:{port}"),
-            Timeout = TimeSpan.FromSeconds(5),
-        };
-
-        var response = await client.GetAsync("/health");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("OK", await response.Content.ReadAsStringAsync());
     }
 
-    [Fact]
-    public async Task HealthEndpoint_ReturnsOk_AfterSendingSilence()
+    protected virtual void ConfigureContainer(ContainerBuilder builder)
     {
-        var port = _stefanNodeContainer.GetMappedPublicPort(8080);
-        var host = _stefanNodeContainer.Hostname;
-
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri($"http://{host}:{port}"),
-            Timeout = TimeSpan.FromSeconds(5),
-        };
-
-        var silence = new byte[4096];
-        await File.WriteAllBytesAsync(_pipePath, silence);
-
-        await Task.Delay(500);
-
-        var response = await client.GetAsync("/health");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    private static WebApplication CreateMockServer()
-    {
-        var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://0.0.0.0:0");
-        var app = builder.Build();
-
-        app.MapPost("/api/nodes/register", () => Results.Ok());
-
-        return app;
     }
 }
