@@ -8,7 +8,7 @@ namespace Stefan.Node.IntegrationTests;
 
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    private readonly string _pipeId = Guid.NewGuid().ToString("D");
+    private readonly string _testRunId = Guid.NewGuid().ToString("D");
     private string _pipeDirectory = null!;
     private string _pipePath = null!;
     private WebApplication _mockServer = null!;
@@ -29,7 +29,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _pipeDirectory = Path.Combine("audio-pipes", _pipeId);
+        _pipeDirectory = Path.Combine("audio-pipes", _testRunId);
         _pipePath = Path.Combine(_pipeDirectory, "audio-input");
         Directory.CreateDirectory(_pipeDirectory);
         File.WriteAllText(_pipePath, string.Empty);
@@ -37,8 +37,6 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls("http://0.0.0.0:0");
         _mockServer = builder.Build();
-
-        _mockServer.MapPost("/api/nodes/register", () => Results.Ok());
 
         ConfigureMockServer(_mockServer);
 
@@ -48,11 +46,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         var url = urls.First(u => u.StartsWith("http://"));
         _mockServerPort = int.Parse(url.Split(':')[2]);
 
-        var hostPipeDir = Path.GetFullPath($"./audio-pipes/{_pipeId}");
+        var hostPipeDir = Path.GetFullPath($"./audio-pipes/{_testRunId}");
 
         var containerBuilder = new ContainerBuilder(ImageName)
             .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
-            .WithName($"stefan-node-integration-test-{_pipeId}")
+            .WithName($"stefan-node-integration-test-{_testRunId}")
             .WithExtraHost("host.docker.internal", "host-gateway")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("Node__Name", "stefan-node-test")
@@ -60,7 +58,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             .WithEnvironment("RemoteServer__Url", $"http://host.docker.internal:{_mockServerPort}")
             .WithEnvironment("RemoteServer__AuthSecret", AuthSecret)
             .WithEnvironment("Audio__InputSource", "pipe")
-            .WithEnvironment("Audio__PipePath", $"/tmp/audio-pipes/{_pipeId}/audio-input")
+            .WithEnvironment("Audio__PipePath", $"/tmp/audio-pipes/{_testRunId}/audio-input")
             .WithEnvironment("Audio__Output__DeviceName", "null")
             .WithEnvironment("Audio__SilenceThreshold", "0.02")
             .WithEnvironment("Audio__SilenceTimeoutMs", "1000")
@@ -72,11 +70,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             .WithEnvironment("KeywordSpotter__Provider", "cpu")
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
             .WithPortBinding(8080, true)
-            .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{_pipeId}")
+            .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{_testRunId}")
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)));
 
-        ConfigureContainer(containerBuilder);
+        containerBuilder = ConfigureContainer(containerBuilder);
 
         _stefanNodeContainer = containerBuilder.Build();
 
@@ -108,9 +106,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
     protected virtual void ConfigureMockServer(WebApplication app)
     {
+        _mockServer.MapPost("/api/nodes/register", () => Results.Ok());
     }
 
-    protected virtual void ConfigureContainer(ContainerBuilder builder)
+    protected virtual ContainerBuilder ConfigureContainer(ContainerBuilder builder)
     {
+        return builder;
     }
 }
