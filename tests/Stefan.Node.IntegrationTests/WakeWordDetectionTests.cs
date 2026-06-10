@@ -30,6 +30,30 @@ public class WakeWordDetectionTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task WakeWordDetected_PlaysNotificationSound()
+    {
+        // Arrange
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", () => Results.Ok());
+            }
+        );
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.5));
+
+        await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
+
+        // Assert
+        var appLogs = await app.GetLogsAsync();
+        Assert.Contains("[audio] Playing audio: /app/Assets/notification_sound.wav", appLogs.Stdout);
+    }
+
+    [Fact]
     public async Task WakeWordDetected_SendsCommandToServer_AndReceivesResponse()
     {
         // Arrange
@@ -62,7 +86,7 @@ public class WakeWordDetectionTests : IntegrationTestBase
 
         // Assert
         Assert.True(commandReceivedByServer);
-        
+
         var appLogs = await app.GetLogsAsync();
         Assert.Contains("[http] Command sent successfully. Received response text: Test command received", appLogs.Stdout);
     }
