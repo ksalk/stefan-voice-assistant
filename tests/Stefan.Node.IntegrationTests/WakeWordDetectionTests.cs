@@ -90,4 +90,50 @@ public class WakeWordDetectionTests : IntegrationTestBase
         var appLogs = await app.GetLogsAsync();
         Assert.Contains("[http] Command sent successfully. Received response text: Test command received", appLogs.Stdout);
     }
+
+    [Fact]
+    public async Task WakeWordNotDetected_WhenPassedInvalidWakeWordAudio()
+    {
+        // Arrange
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", () => Results.Ok());
+            }
+        );
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/how-much-longer.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.5));
+
+        await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
+
+        // Assert
+        var appLogs = await app.GetLogsAsync();
+        Assert.DoesNotContain("[listener] Keyword detected: stefan", appLogs.Stdout);
+    }
+
+    [Fact]
+    public async Task WakeWordNotDetected_WhenPassedSilenceAudio()
+    {
+        // Arrange
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", () => Results.Ok());
+            }
+        );
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(5));
+
+        await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
+
+        // Assert
+        var appLogs = await app.GetLogsAsync();
+        Assert.DoesNotContain("[listener] Keyword detected: stefan", appLogs.Stdout);
+    }
 }
