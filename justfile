@@ -3,6 +3,16 @@
 dbup:
     docker compose --profile db up -d
 
+migrate-add-stefan NAME:
+    dotnet ef migrations add {{NAME}} --project src/server/Stefan.Server.Infrastructure --context StefanDbContext --output-dir Migrations/StefanDb
+
+migrate-add-tools NAME:
+    dotnet ef migrations add {{NAME}} --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext --output-dir Migrations/ToolsDb
+
+migrate-update:
+    dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext
+    dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext
+
 buildserver:
     dotnet build --project src/server/Stefan.Server.API
     

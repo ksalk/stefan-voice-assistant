@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Stefan.Server.Domain;
 using Stefan.Server.Domain.ToolEntities;
+using Stefan.Server.Infrastructure.EntityConfigurations;
 
 namespace Stefan.Server.Infrastructure;
 
@@ -8,14 +8,14 @@ public class ToolsDbContext : DbContext
 {
     public ToolsDbContext(DbContextOptions<ToolsDbContext> options) : base(options)
     {
-        Database.EnsureCreated();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.HasDefaultSchema("tools");
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ToolsDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new ShoppingListItemEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new TimerEntryEntityConfiguration());
     }
 
     public DbSet<TimerEntry> TimerEntries { get; set; }
