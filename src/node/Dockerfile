@@ -54,7 +54,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 \
     libicu72 \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && find /usr/lib -name 'libasound.so.2' -execdir ln -s libasound.so.2 libasound.so \;
 
 WORKDIR /app
 COPY --from=build /app ./
