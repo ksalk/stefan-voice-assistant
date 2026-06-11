@@ -17,7 +17,8 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString(ConnectionStringName)));
         
         services.AddDbContext<ToolsDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString(ConnectionStringName)));
+            options.UseNpgsql(configuration.GetConnectionString(ConnectionStringName), npgsqlOptions =>
+                npgsqlOptions.MigrationsHistoryTable("__ToolsMigrationsHistory")));
 
         // Configure Quartz with PostgreSQL persistence
         services.AddQuartz(q =>
