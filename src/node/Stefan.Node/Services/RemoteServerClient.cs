@@ -103,7 +103,7 @@ public class RemoteServerClient(
         }
         catch (TaskCanceledException)
         {
-            logger.LogError("[http] Request to {Url} timed out after 10s.", request.RequestUri);
+            logger.LogError("[http] Request to {Url} timed out after {Timeout}s.", request.RequestUri, httpClient.Timeout.TotalSeconds);
             return null;
         }
     }

@@ -64,7 +64,7 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
         var remoteOptions = sp.GetRequiredService<IOptions<RemoteServerOptions>>().Value;
         client.BaseAddress = new Uri(remoteOptions.Url.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Add("X-Node-Secret", remoteOptions.AuthSecret);
-        client.Timeout = TimeSpan.FromSeconds(10);
+        client.Timeout = TimeSpan.FromSeconds(15);
     });
 
     return builder;
