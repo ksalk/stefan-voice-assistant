@@ -52,8 +52,11 @@ public class LlmCommandService(
 
         do
         {
+            ConsoleLog.Write(LogCategory.LLM, $"[llm] Sending command to LLM (message count: {messages.Count})...");
             requiresAction = false;
             ChatCompletion completion = await chatClient.CompleteChatAsync(messages, GetChatCompletionOptions(), cancellationToken);
+
+            ConsoleLog.Write(LogCategory.LLM, $"[llm] Received response from LLM (finish reason: {completion.FinishReason})");
 
             switch (completion.FinishReason)
             {
@@ -69,6 +72,7 @@ public class LlmCommandService(
 
                 case ChatFinishReason.ToolCalls:
                     {
+                        ConsoleLog.Write(LogCategory.LLM, $"LLM requested tool calls: {string.Join(", ", completion.ToolCalls.Select(c => c.FunctionName))}");
                         messages.Add(new AssistantChatMessage(completion));
 
                         var toolCalls = new List<ToolCallRecord>();
