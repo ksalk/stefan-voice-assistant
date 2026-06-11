@@ -23,6 +23,6 @@ public static class HealthEndpoints
                 Version = version,
                 CommitHash = commitHash
             });
-        });
+        }).AllowAnonymous();
     }
 }
