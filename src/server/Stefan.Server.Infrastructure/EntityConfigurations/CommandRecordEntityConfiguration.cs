@@ -28,7 +28,7 @@ public class CommandRecordEntityConfiguration : IEntityTypeConfiguration<Command
         builder.Property(c => c.SttDurationMs).IsRequired(false);
         builder.Property(c => c.LlmDurationMs).IsRequired(false);
         builder.Property(c => c.TtsDurationMs).IsRequired(false);
-        builder.Property(c => c.TotalDurationMs).IsRequired();
+        builder.Property(c => c.TotalDurationMs).IsRequired(false);
 
         builder.Property(c => c.Status).IsRequired();
     }
