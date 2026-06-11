@@ -6,7 +6,7 @@ public static class HealthEndpoints
 {
     public static void MapHealthEndpoints(this WebApplication app)
     {
-        app.MapGet("/health", () => 
+        app.MapGet("/api/health", () => 
         {
             var assembly = Assembly.GetExecutingAssembly();
             var informationalVersion = assembly
