@@ -116,7 +116,7 @@ public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to ping node {NodeName}", node.Name);
+            logger.LogWarning("Failed to ping node {NodeName} with exception: {ExceptionMessage}", node.Name, ex.Message);
             return new PingNodeResult { ErrorMessage = "Failed to reach node" };
         }
     }
