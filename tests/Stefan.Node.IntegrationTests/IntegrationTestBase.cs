@@ -64,9 +64,10 @@ public abstract class IntegrationTestBase
             .WithEnvironment("Audio__SilenceThreshold", "0.02")
             .WithEnvironment("Audio__SilenceTimeoutMs", "1000")
             .WithEnvironment("Audio__MaxRecordingMs", "10000")
-            .WithEnvironment("Audio__Input__SampleRate", "16000")
-            .WithEnvironment("Audio__Input__Channels", "2")
+            .WithEnvironment("Audio__Input__SampleRate", "24000")
+            .WithEnvironment("Audio__Input__Channels", "1")
             .WithEnvironment("Audio__Input__BitsPerSample", "16")
+            .WithEnvironment("Audio__Input__ProcessingSampleRate", "16000")
             .WithEnvironment("KeywordSpotter__NumThreads", "2")
             .WithEnvironment("KeywordSpotter__Provider", "cpu")
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
@@ -177,21 +178,34 @@ public abstract class IntegrationTestBase
         public async Task WriteAudioAsync(byte[] data, CancellationToken cancellationToken = default)
         {
             var stream = await GetPipeStreamAsync(cancellationToken);
-            await stream.WriteAsync(data, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
+            const int chunkSize = 4096;
+            var offset = 0;
+            
+            while (offset < data.Length)
+            {
+                var size = Math.Min(chunkSize, data.Length - offset);
+                await stream.WriteAsync(data.AsMemory(offset, size), cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+                offset += size;
+                
+                await Task.Delay(10, cancellationToken);
+            }
         }
 
         public async Task WriteAudioFileAsync(string filePath, CancellationToken cancellationToken = default)
         {
-            // TODO: this probably sends WAV header as well, should probably discard it
             var data = await File.ReadAllBytesAsync(filePath, cancellationToken);
+            if (data.Length >= 44)
+            {
+                data = data[44..];
+            }
             await WriteAudioAsync(data, cancellationToken);
         }
 
         public async Task WriteSilenceAsync(TimeSpan duration, CancellationToken cancellationToken = default)
         {
             const int sampleRate = 16000;
-            const int channels = 2;
+            const int channels = 1;
             const int bytesPerSample = 2;
             var bytesPerSecond = sampleRate * channels * bytesPerSample;
             var byteCount = (int)(bytesPerSecond * duration.TotalSeconds);

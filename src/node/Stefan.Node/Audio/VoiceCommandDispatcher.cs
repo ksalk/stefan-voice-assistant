@@ -76,15 +76,13 @@ public class VoiceCommandDispatcher(
                 {
                     try
                     {
-                        var monoSamples = ConvertInterleavedStereoPcm16ToMonoFloat(audioBytes);
+                        var monoSamples = ConvertPcm16ToFloat(audioBytes);
                         if (monoSamples.Length == 0)
                         {
                             continue;
                         }
 
-                        //Console.WriteLine($"Received audio chunk: {audioBytes.Length} bytes, {monoSamples.Length} mono samples");
-
-                        keywordStream.AcceptWaveform(audioOptions.Value.Input.SampleRate, monoSamples);
+                        keywordStream.AcceptWaveform(audioOptions.Value.Input.ProcessingSampleRate, monoSamples);
 
                         while (keywordSpotter.IsReady(keywordStream))
                         {
@@ -114,7 +112,7 @@ public class VoiceCommandDispatcher(
                 {
                     _commandAudioBuffer.Add(audioBytes);
 
-                    var chunkDurationMs = audioBytes.Length / 64f;
+                    var chunkDurationMs = audioBytes.Length / 32f;
                     var rms = ComputeRms(audioBytes);
 
                     if (rms < audioOptions.Value.SilenceThreshold)
@@ -154,93 +152,86 @@ public class VoiceCommandDispatcher(
         }
     }
 
-    private static float[] ConvertInterleavedStereoPcm16ToMonoFloat(ReadOnlySpan<byte> audioBytes)
+    private static float[] ConvertPcm16ToFloat(ReadOnlySpan<byte> audioBytes)
     {
-        var frameCount = audioBytes.Length / (sizeof(short) * 2);
-        if (frameCount == 0)
+        var sampleCount = audioBytes.Length / sizeof(short);
+        if (sampleCount == 0)
         {
             return [];
         }
 
-        var monoSamples = new float[frameCount];
+        var samples = new float[sampleCount];
 
-        for (var frameIndex = 0; frameIndex < frameCount; frameIndex++)
+        for (var i = 0; i < sampleCount; i++)
         {
-            var byteOffset = frameIndex * sizeof(short) * 2;
-            var left = BinaryPrimitives.ReadInt16LittleEndian(audioBytes.Slice(byteOffset, sizeof(short)));
-            var right = BinaryPrimitives.ReadInt16LittleEndian(audioBytes.Slice(byteOffset + sizeof(short), sizeof(short)));
-            monoSamples[frameIndex] = ((left + right) / 2f) / short.MaxValue;
+            var sample = BinaryPrimitives.ReadInt16LittleEndian(audioBytes.Slice(i * sizeof(short), sizeof(short)));
+            samples[i] = sample / (float)short.MaxValue;
         }
 
-        return monoSamples;
+        return samples;
     }
 
-    private static float ComputeRms(ReadOnlySpan<byte> stereoPcm16)
+    private static float ComputeRms(ReadOnlySpan<byte> monoPcm16)
     {
-        var frameCount = stereoPcm16.Length / 4;
-        if (frameCount == 0) return 0f;
+        var sampleCount = monoPcm16.Length / 2;
+        if (sampleCount == 0) return 0f;
 
         var sumSquares = 0.0;
-        for (var i = 0; i < frameCount; i++)
+        for (var i = 0; i < sampleCount; i++)
         {
-            var offset = i * 4;
-            var left = (double)BinaryPrimitives.ReadInt16LittleEndian(stereoPcm16.Slice(offset, 2));
-            var right = (double)BinaryPrimitives.ReadInt16LittleEndian(stereoPcm16.Slice(offset + 2, 2));
-            var mono = (left + right) / 2.0;
-            sumSquares += mono * mono;
+            var sample = (double)BinaryPrimitives.ReadInt16LittleEndian(monoPcm16.Slice(i * 2, 2));
+            sumSquares += sample * sample;
         }
 
-        return (float)(Math.Sqrt(sumSquares / frameCount) / short.MaxValue);
+        return (float)(Math.Sqrt(sumSquares / sampleCount) / short.MaxValue);
     }
 
-    private static byte[] ConvertStereoToMonoPcm16(List<byte[]> chunks)
+
+
+    private async Task SaveRecordingAsync(List<byte[]> monoChunks)
     {
-        var totalFrames = 0;
-        foreach (var chunk in chunks)
-            totalFrames += chunk.Length / 4;
+        var totalBytes = 0;
+        foreach (var chunk in monoChunks)
+            totalBytes += chunk.Length;
 
-        var monoBytes = new byte[totalFrames * 2];
-        var monoOffset = 0;
-
-        foreach (var chunk in chunks)
+        var monoData = new byte[totalBytes];
+        var offset = 0;
+        foreach (var chunk in monoChunks)
         {
-            var frameCount = chunk.Length / 4;
-            for (var i = 0; i < frameCount; i++)
-            {
-                var offset = i * 4;
-                var left = BinaryPrimitives.ReadInt16LittleEndian(chunk.AsSpan(offset, 2));
-                var right = BinaryPrimitives.ReadInt16LittleEndian(chunk.AsSpan(offset + 2, 2));
-                var mono = (short)((left + right) / 2);
-                BinaryPrimitives.WriteInt16LittleEndian(monoBytes.AsSpan(monoOffset), mono);
-                monoOffset += 2;
-            }
+            chunk.CopyTo(monoData, offset);
+            offset += chunk.Length;
         }
 
-        return monoBytes;
-    }
-
-    private async Task SaveRecordingAsync(List<byte[]> stereoChunks)
-    {
-        var monoData = ConvertStereoToMonoPcm16(stereoChunks);
         var dir = Path.Combine(AppContext.BaseDirectory, "recordings");
         Directory.CreateDirectory(dir);
         var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
 
         await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-        fs.Write(CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate));
+        fs.Write(CreateWavHeader(monoData.Length, audioOptions.Value.Input.ProcessingSampleRate));
         await fs.WriteAsync(monoData);
 
         Console.WriteLine($"[listener] Saved: {filePath}");
     }
 
-    private async Task SendCommandToServerAsync(List<byte[]> stereoChunks)
+    private async Task SendCommandToServerAsync(List<byte[]> monoChunks)
     {
         try
         {
             Console.WriteLine("[listener] Sending command audio to server...");
 
-            var monoData = ConvertStereoToMonoPcm16(stereoChunks);
-            var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.SampleRate);
+            var totalBytes = 0;
+            foreach (var chunk in monoChunks)
+                totalBytes += chunk.Length;
+
+            var monoData = new byte[totalBytes];
+            var offset = 0;
+            foreach (var chunk in monoChunks)
+            {
+                chunk.CopyTo(monoData, offset);
+                offset += chunk.Length;
+            }
+
+            var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.ProcessingSampleRate);
             var wavBytes = new byte[wavHeader.Length + monoData.Length];
             wavHeader.CopyTo(wavBytes, 0);
             monoData.CopyTo(wavBytes, wavHeader.Length);
@@ -303,7 +294,7 @@ public class VoiceCommandDispatcher(
             KeywordsFile = opts.KeywordsFile,
             FeatConfig = new FeatureConfig()
             {
-                SampleRate = audioOptions.Value.Input.SampleRate,
+                SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
                 FeatureDim = opts.FeatureDim
             }
         };

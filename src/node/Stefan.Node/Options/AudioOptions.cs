@@ -3,9 +3,10 @@ namespace Stefan.Node.Options;
 public class AudioInputOptions
 {
     public string DeviceName { get; set; } = "plughw:1,0";
-    public int SampleRate { get; set; } = 16_000;
-    public int Channels { get; set; } = 2;
+    public int SampleRate { get; set; } = 48_000;
+    public int Channels { get; set; } = 1;
     public int BitsPerSample { get; set; } = 16;
+    public int ProcessingSampleRate { get; set; } = 16_000;
 }
 
 public class AudioOutputOptions

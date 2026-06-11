@@ -15,9 +15,10 @@ services:
       RemoteServer__Url: ${REMOTE_SERVER_URL:?REMOTE_SERVER_URL is required}
       RemoteServer__AuthSecret: ${REMOTE_SERVER_AUTH_SECRET:?REMOTE_SERVER_AUTH_SECRET is required}
       Audio__Input__DeviceName: ${AUDIO_INPUT_DEVICE:-plughw:1,0}
-      Audio__Input__SampleRate: ${AUDIO_INPUT_SAMPLE_RATE:-16000}
-      Audio__Input__Channels: ${AUDIO_INPUT_CHANNELS:-2}
+      Audio__Input__SampleRate: ${AUDIO_INPUT_SAMPLE_RATE:-48000}
+      Audio__Input__Channels: ${AUDIO_INPUT_CHANNELS:-1}
       Audio__Input__BitsPerSample: ${AUDIO_INPUT_BITS_PER_SAMPLE:-16}
+      Audio__Input__ProcessingSampleRate: ${AUDIO_INPUT_PROCESSING_SAMPLE_RATE:-16000}
       Audio__Output__DeviceName: ${AUDIO_OUTPUT_DEVICE:-default}
       Audio__SilenceThreshold: ${AUDIO_SILENCE_THRESHOLD:-0.02}
       Audio__SilenceTimeoutMs: ${AUDIO_SILENCE_TIMEOUT_MS:-1000}

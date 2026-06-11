@@ -83,10 +83,6 @@ void RegisterAudioInputProvider(WebApplicationBuilder builder)
             builder.Services.AddSingleton<IAudioInputProvider, PipeAudioInputProvider>();
             Console.WriteLine($"[audio] Using pipe input (path: {audioOptions.PipePath ?? "/tmp/audio-input"})");
             break;
-        case "test":
-            builder.Services.AddSingleton<IAudioInputProvider, TestAudioInputProvider>();
-            Console.WriteLine("[audio] Using test file input");
-            break;
         case "mic":
         default:
             builder.Services.AddSingleton<IAudioInputProvider, MicAudioInputProvider>();
