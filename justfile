@@ -19,13 +19,22 @@ buildserver:
 runserver:
     dotnet run --project src/server/Stefan.Server.API
 
+buildserverimage:
+    docker buildx build --platform linux/amd64 -t stefan-server -f src/server/Dockerfile . --load
+
+publishserver VERSION:
+    docker buildx build --platform linux/amd64 --pull \
+      -t git.harnas.top/ksalk/stefan-server:{{VERSION}} \
+      -t git.harnas.top/ksalk/stefan-server:latest \
+      -f src/server/Dockerfile . --push
+
 buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
 
 publishnode VERSION:
     docker buildx build --platform linux/arm64 --pull \
-      -t git.harnas.top/ksalk/stefan-voice-assistant:{{VERSION}} \
-      -t git.harnas.top/ksalk/stefan-voice-assistant:latest \
+      -t git.harnas.top/ksalk/stefan-node:{{VERSION}} \
+      -t git.harnas.top/ksalk/stefan-node:latest \
       -f src/node/Dockerfile . --push
 
 buildnode:

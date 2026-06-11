@@ -1,5 +1,7 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
+COPY .git .git/
+COPY version.json ./
 COPY src/server .
 
 RUN dotnet publish Stefan.Server.API/Stefan.Server.API.csproj \
@@ -10,7 +12,7 @@ RUN dotnet publish Stefan.Server.API/Stefan.Server.API.csproj \
 RUN wget -q -O /app/publish/ggml-base.bin \
     https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

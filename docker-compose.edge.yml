@@ -1,6 +1,6 @@
 services:
   stefan-node:
-    image: git.harnas.top/ksalk/stefan-voice-assistant:${VERSION:-latest}
+    image: git.harnas.top/ksalk/stefan-node:${VERSION:-latest}
     restart: unless-stopped
     devices:
       - /dev/snd:/dev/snd
