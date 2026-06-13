@@ -215,6 +215,7 @@ public class VoiceCommandDispatcher(
 
     private async Task SendCommandToServerAsync(List<byte[]> monoChunks)
     {
+        byte[] wavBytes;
         try
         {
             Console.WriteLine("[listener] Sending command audio to server...");
@@ -232,24 +233,25 @@ public class VoiceCommandDispatcher(
             }
 
             var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.ProcessingSampleRate);
-            var wavBytes = new byte[wavHeader.Length + monoData.Length];
+            wavBytes = new byte[wavHeader.Length + monoData.Length];
             wavHeader.CopyTo(wavBytes, 0);
             monoData.CopyTo(wavBytes, wavHeader.Length);
-
-            var responseAudio = await remoteServerClient.SendCommandAsync(wavBytes);
-            if (responseAudio is not null)
-            {
-                Console.WriteLine("[listener] Command sent successfully. Queuing response audio for playback.");
-                audioPlayer.Queue(responseAudio);
-            }
-            else
-            {
-                Console.WriteLine("[listener] Failed to send command.");
-            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[listener] Error sending command to server: {ex}");
+            Console.WriteLine($"[listener] Error building WAV data: {ex}");
+            return;
+        }
+
+        var result = await remoteServerClient.SendCommandAsync(wavBytes);
+        if (result.IsSuccess)
+        {
+            Console.WriteLine("[listener] Command sent successfully. Queuing response audio for playback.");
+            audioPlayer.Queue(result.Value.Audio);
+        }
+        else
+        {
+            Console.WriteLine($"[listener] Failed to send command: {result.Error}");
         }
     }
 

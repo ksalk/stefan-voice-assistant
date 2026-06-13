@@ -94,9 +94,10 @@ void RegisterAudioInputProvider(WebApplicationBuilder builder)
 async Task<bool> RegisterNode(WebApplication app)
 {
     var remoteClient = app.Services.GetRequiredService<RemoteServerClient>();
-    if (!await remoteClient.RegisterNodeAsync())
+    var result = await remoteClient.RegisterNodeAsync();
+    if (!result.IsSuccess)
     {
-        Console.Error.WriteLine("[fatal] Node registration failed. Exiting.");
+        Console.Error.WriteLine($"[fatal] Node registration failed: {result.Error}. Exiting.");
         return false;
     }
     return true;
@@ -121,13 +122,13 @@ async Task<bool> TrySendTestCommand(WebApplication app, string filePath)
 
     Console.WriteLine($"[info] Sending file: {filePath}");
     var audioBytes = await File.ReadAllBytesAsync(filePath!);
-    var responseAudio = await remoteClient.SendCommandAsync(audioBytes);
-    if (responseAudio is not null)
+    var result = await remoteClient.SendCommandAsync(audioBytes);
+    if (result.IsSuccess)
     {
-        Console.WriteLine("[info] File sent successfully. Playing response...");
-        await audioPlayer.PlayAsync(responseAudio);
+        Console.WriteLine($"[info] File sent successfully. Response: {result.Value.ResponseText}");
+        await audioPlayer.PlayAsync(result.Value.Audio);
         return true;
     }
-    Console.Error.WriteLine("[error] Failed to send file.");
+    Console.Error.WriteLine($"[error] Failed to send file: {result.Error}");
     return false;
 }
