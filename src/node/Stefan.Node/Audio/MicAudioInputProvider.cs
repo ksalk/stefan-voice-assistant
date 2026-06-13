@@ -25,8 +25,18 @@ public class MicAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudio
             {
                 try
                 {
-                    var outputBytes = AudioProcessing.ConvertAndResample(audioBytes.AsSpan(), input.Channels, input.SampleRate, input.ProcessingSampleRate);
-                    audioWriter.TryWrite(outputBytes);
+                    var chunk = new RawPcmChunk
+                    {
+                        Bytes = audioBytes,
+                        Format = new AudioFormat
+                        {
+                            Channels = input.Channels,
+                            SampleRate = input.SampleRate,
+                            BitsPerSample = input.BitsPerSample
+                        }
+                    };
+                    var output = AudioProcessing.ConvertAndResample(chunk, input.ProcessingSampleRate);
+                    audioWriter.TryWrite(output.Bytes);
                 }
                 catch (Exception ex)
                 {

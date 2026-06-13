@@ -47,9 +47,18 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
 
             while ((bytesRead = await pipeStream.ReadAsync(buffer.AsMemory(0, ChunkSize), cancellationToken)) > 0)
             {
-                var chunk = buffer.AsSpan(0, bytesRead);
-                var outputBytes = AudioProcessing.ConvertAndResample(chunk, input.Channels, input.SampleRate, input.ProcessingSampleRate);
-                await audioWriter.WriteAsync(outputBytes, cancellationToken);
+                var chunk = new RawPcmChunk
+                {
+                    Bytes = buffer[..bytesRead].ToArray(),
+                    Format = new AudioFormat
+                    {
+                        Channels = input.Channels,
+                        SampleRate = input.SampleRate,
+                        BitsPerSample = input.BitsPerSample
+                    }
+                };
+                var output = AudioProcessing.ConvertAndResample(chunk, input.ProcessingSampleRate);
+                await audioWriter.WriteAsync(output.Bytes, cancellationToken);
             }
 
             Console.WriteLine("[pipe] Pipe closed by sender");
