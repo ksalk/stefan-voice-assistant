@@ -97,7 +97,7 @@ async Task<bool> RegisterNode(WebApplication app)
     var result = await remoteClient.RegisterNodeAsync();
     if (!result.IsSuccess)
     {
-        Console.Error.WriteLine($"[fatal] Node registration failed: {result.Error}. Exiting.");
+        Console.Error.WriteLine($"[fatal] Node registration failed. {result.Error}. Exiting.");
         return false;
     }
     return true;

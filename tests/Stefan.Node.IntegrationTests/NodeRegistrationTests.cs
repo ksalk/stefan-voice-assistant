@@ -58,6 +58,6 @@ public class NodeRegistrationTests : IntegrationTestBase
 
         // Assert
         Assert.Equal(1L, exitCode);
-        Assert.Contains("[fatal] Node registration failed. Exiting.", stderr);
+        Assert.Contains("[fatal] Node registration failed. Server responded with 401 status code. Exiting.", stderr);
     }
 }

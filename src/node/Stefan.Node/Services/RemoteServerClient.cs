@@ -90,10 +90,10 @@ public class RemoteServerClient(
                 return Result<HttpResponseMessage>.Success(response);
 
             var body = await response.Content.ReadAsStringAsync();
-            var error = $"Server returned {(int)response.StatusCode} — {body.Trim()}";
-            logger.LogError("[http] Request to {Url} failed: {Error}",
-                request.RequestUri, error);
+            var error = $"Server responded with {(int)response.StatusCode} status code" + (!string.IsNullOrWhiteSpace(body) ? $" - {body.Trim()}" : string.Empty);
+            logger.LogError("[http] Request to {Url} failed: {Error}", request.RequestUri, error);
             response.Dispose();
+
             return Result<HttpResponseMessage>.Failure(error);
         }
         catch (HttpRequestException ex)
