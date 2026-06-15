@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Generic;
 
 namespace Stefan.Node.Audio;
 
@@ -223,5 +224,122 @@ public static class AudioProcessing
         var monoPcm = ConvertToMono(input);
         var resampled = Resample(monoPcm, targetSampleRate);
         return ConvertSamplesToBytes(resampled);
+    }
+
+    /// <summary>
+    /// Converts little-endian 16-bit PCM bytes into normalized float samples (-1.0 to 1.0).
+    /// </summary>
+    /// <exception cref="NotSupportedException">The PCM format is not 16-bit.</exception>
+    public static float[] ConvertPcm16ToFloat(RawPcmChunk input)
+    {
+        if (input.Format.BitsPerSample != 16)
+        {
+            throw new NotSupportedException($"Only 16-bit PCM is supported. Got {input.Format.BitsPerSample} bits per sample.");
+        }
+
+        var audioBytes = input.Bytes.AsSpan();
+        var sampleCount = audioBytes.Length / sizeof(short);
+        if (sampleCount == 0)
+        {
+            return [];
+        }
+
+        var samples = new float[sampleCount];
+
+        for (var i = 0; i < sampleCount; i++)
+        {
+            var sample = BinaryPrimitives.ReadInt16LittleEndian(audioBytes.Slice(i * sizeof(short), sizeof(short)));
+            samples[i] = sample / (float)short.MaxValue;
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Computes the RMS (root-mean-square) amplitude of little-endian 16-bit PCM data,
+    /// normalized to the range 0.0 to 1.0.
+    /// </summary>
+    /// <exception cref="NotSupportedException">The PCM format is not 16-bit.</exception>
+    /// <exception cref="ArgumentException">The audio is not single-channel (mono).</exception>
+    public static float ComputeRms(RawPcmChunk input)
+    {
+        if (input.Format.BitsPerSample != 16)
+        {
+            throw new NotSupportedException($"Only 16-bit PCM is supported. Got {input.Format.BitsPerSample} bits per sample.");
+        }
+
+        if (input.Format.Channels != 1)
+        {
+            throw new ArgumentException("RMS computation requires mono audio.", nameof(input));
+        }
+
+        var monoPcm16 = input.Bytes.AsSpan();
+        var sampleCount = monoPcm16.Length / 2;
+        if (sampleCount == 0) return 0f;
+
+        var sumSquares = 0.0;
+        for (var i = 0; i < sampleCount; i++)
+        {
+            var sample = (double)BinaryPrimitives.ReadInt16LittleEndian(monoPcm16.Slice(i * 2, 2));
+            sumSquares += sample * sample;
+        }
+
+        return (float)(Math.Sqrt(sumSquares / sampleCount) / short.MaxValue);
+    }
+
+    /// <summary>
+    /// Creates a standard 44-byte RIFF/WAV header for 16-bit mono PCM data.
+    /// </summary>
+    public static byte[] CreateWavHeader(int dataSize, int sampleRate)
+    {
+        var h = new byte[44];
+        var s = h.AsSpan();
+        "RIFF"u8.CopyTo(s);
+        BinaryPrimitives.WriteInt32LittleEndian(s[4..], 36 + dataSize);
+        "WAVE"u8.CopyTo(s[8..]);
+        "fmt "u8.CopyTo(s[12..]);
+        BinaryPrimitives.WriteInt32LittleEndian(s[16..], 16);
+        BinaryPrimitives.WriteInt16LittleEndian(s[20..], 1);
+        BinaryPrimitives.WriteInt16LittleEndian(s[22..], 1);
+        BinaryPrimitives.WriteInt32LittleEndian(s[24..], sampleRate);
+        BinaryPrimitives.WriteInt32LittleEndian(s[28..], sampleRate * 2);
+        BinaryPrimitives.WriteInt16LittleEndian(s[32..], 2);
+        BinaryPrimitives.WriteInt16LittleEndian(s[34..], 16);
+        "data"u8.CopyTo(s[36..]);
+        BinaryPrimitives.WriteInt32LittleEndian(s[40..], dataSize);
+        return h;
+    }
+
+    /// <summary>
+    /// Flattens a list of raw PCM chunks into a single byte array and prepends a WAV header.
+    /// </summary>
+    /// <exception cref="ArgumentException">The chunk list is empty or formats differ.</exception>
+    public static byte[] BuildWavBytes(List<RawPcmChunk> chunks)
+    {
+        if (chunks.Count == 0)
+        {
+            throw new ArgumentException("At least one chunk is required.", nameof(chunks));
+        }
+
+        var sampleRate = chunks[0].Format.SampleRate;
+        var totalBytes = 0;
+        foreach (var chunk in chunks)
+        {
+            totalBytes += chunk.Bytes.Length;
+        }
+
+        var monoData = new byte[totalBytes];
+        var offset = 0;
+        foreach (var chunk in chunks)
+        {
+            chunk.Bytes.CopyTo(monoData, offset);
+            offset += chunk.Bytes.Length;
+        }
+
+        var wavHeader = CreateWavHeader(monoData.Length, sampleRate);
+        var wavBytes = new byte[wavHeader.Length + monoData.Length];
+        wavHeader.CopyTo(wavBytes, 0);
+        monoData.CopyTo(wavBytes, wavHeader.Length);
+        return wavBytes;
     }
 }
