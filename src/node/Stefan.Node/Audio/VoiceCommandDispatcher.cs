@@ -190,26 +190,11 @@ public class VoiceCommandDispatcher(
 
     private async Task SaveRecordingAsync(List<byte[]> monoChunks)
     {
-        var totalBytes = 0;
-        foreach (var chunk in monoChunks)
-            totalBytes += chunk.Length;
-
-        var monoData = new byte[totalBytes];
-        var offset = 0;
-        foreach (var chunk in monoChunks)
-        {
-            chunk.CopyTo(monoData, offset);
-            offset += chunk.Length;
-        }
-
         var dir = Path.Combine(AppContext.BaseDirectory, "recordings");
         Directory.CreateDirectory(dir);
         var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
-
-        await using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-        fs.Write(CreateWavHeader(monoData.Length, audioOptions.Value.Input.ProcessingSampleRate));
-        await fs.WriteAsync(monoData);
-
+        var wavBytes = BuildWavBytes(monoChunks, audioOptions.Value.Input.ProcessingSampleRate);
+        await File.WriteAllBytesAsync(filePath, wavBytes);
         Console.WriteLine($"[listener] Saved: {filePath}");
     }
 
@@ -219,23 +204,7 @@ public class VoiceCommandDispatcher(
         try
         {
             Console.WriteLine("[listener] Sending command audio to server...");
-
-            var totalBytes = 0;
-            foreach (var chunk in monoChunks)
-                totalBytes += chunk.Length;
-
-            var monoData = new byte[totalBytes];
-            var offset = 0;
-            foreach (var chunk in monoChunks)
-            {
-                chunk.CopyTo(monoData, offset);
-                offset += chunk.Length;
-            }
-
-            var wavHeader = CreateWavHeader(monoData.Length, audioOptions.Value.Input.ProcessingSampleRate);
-            wavBytes = new byte[wavHeader.Length + monoData.Length];
-            wavHeader.CopyTo(wavBytes, 0);
-            monoData.CopyTo(wavBytes, wavHeader.Length);
+            wavBytes = BuildWavBytes(monoChunks, audioOptions.Value.Input.ProcessingSampleRate);
         }
         catch (Exception ex)
         {
@@ -253,6 +222,27 @@ public class VoiceCommandDispatcher(
         {
             Console.WriteLine($"[listener] Failed to send command: {result.Error}");
         }
+    }
+
+    private static byte[] BuildWavBytes(List<byte[]> chunks, int sampleRate)
+    {
+        var totalBytes = 0;
+        foreach (var chunk in chunks)
+            totalBytes += chunk.Length;
+
+        var monoData = new byte[totalBytes];
+        var offset = 0;
+        foreach (var chunk in chunks)
+        {
+            chunk.CopyTo(monoData, offset);
+            offset += chunk.Length;
+        }
+
+        var wavHeader = CreateWavHeader(monoData.Length, sampleRate);
+        var wavBytes = new byte[wavHeader.Length + monoData.Length];
+        wavHeader.CopyTo(wavBytes, 0);
+        monoData.CopyTo(wavBytes, wavHeader.Length);
+        return wavBytes;
     }
 
     private static byte[] CreateWavHeader(int dataSize, int sampleRate)
