@@ -204,6 +204,7 @@ public class VoiceCommandDispatcher(
         else
         {
             Console.WriteLine($"[listener] Failed to send command: {result.Error}");
+            audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "command_failed.wav"));
         }
     }
 
