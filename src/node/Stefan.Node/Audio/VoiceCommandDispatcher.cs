@@ -167,7 +167,7 @@ public class VoiceCommandDispatcher(
             _commandAudioBuffer.Clear();
             _silentDurationMs = 0f;
             appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
-            Console.WriteLine("[listener] Finished recording command. Returning to wake word detection.");
+            Console.WriteLine("[listener] Finished command processing. Returning to wake word detection.");
         }
     }
 
