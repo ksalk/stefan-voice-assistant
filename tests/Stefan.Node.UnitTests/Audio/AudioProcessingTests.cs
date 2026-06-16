@@ -354,4 +354,234 @@ public class AudioProcessingTests
     }
 
     #endregion
+
+    #region ConvertPcm16ToFloat
+
+    [Fact]
+    public void ConvertPcm16ToFloat_NormalValues_NormalizesCorrectly()
+    {
+        var samples = new short[] { 0, 1000, -1000, short.MaxValue, short.MinValue };
+        var input = CreateRawPcmChunk(ToLittleEndianBytes(samples), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.ConvertPcm16ToFloat(input);
+
+        Assert.Equal(5, result.Length);
+        Assert.Equal(0f, result[0]);
+        Assert.Equal(1000f / short.MaxValue, result[1], 6);
+        Assert.Equal(-1000f / short.MaxValue, result[2], 6);
+        Assert.Equal(1f, result[3], 4);
+        Assert.Equal(-1f, result[4], 4);
+    }
+
+    [Fact]
+    public void ConvertPcm16ToFloat_EmptyInput_ReturnsEmptyArray()
+    {
+        var input = CreateRawPcmChunk([], new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.ConvertPcm16ToFloat(input);
+
+        Assert.Empty(result);
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(24)]
+    [InlineData(32)]
+    public void ConvertPcm16ToFloat_Non16Bit_ThrowsNotSupportedException(int bitsPerSample)
+    {
+        var input = CreateRawPcmChunk([0, 0], new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = bitsPerSample
+        });
+
+        var ex = Assert.Throws<NotSupportedException>(() => AudioProcessing.ConvertPcm16ToFloat(input));
+        Assert.Contains($"{bitsPerSample}", ex.Message);
+    }
+
+    #endregion
+
+    #region ComputeRms
+
+    [Fact]
+    public void ComputeRms_ConstantSignal_ComputesCorrectly()
+    {
+        var samples = new short[] { 1000, 1000, 1000, 1000 };
+        var input = CreateRawPcmChunk(ToLittleEndianBytes(samples), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.ComputeRms(input);
+
+        var expected = 1000f / short.MaxValue;
+        Assert.Equal(expected, result, 6);
+    }
+
+    [Fact]
+    public void ComputeRms_EmptyInput_ReturnsZero()
+    {
+        var input = CreateRawPcmChunk([], new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.ComputeRms(input);
+
+        Assert.Equal(0f, result);
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(24)]
+    [InlineData(32)]
+    public void ComputeRms_Non16Bit_ThrowsNotSupportedException(int bitsPerSample)
+    {
+        var input = CreateRawPcmChunk([0, 0], new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = bitsPerSample
+        });
+
+        var ex = Assert.Throws<NotSupportedException>(() => AudioProcessing.ComputeRms(input));
+        Assert.Contains($"{bitsPerSample}", ex.Message);
+    }
+
+    [Fact]
+    public void ComputeRms_NonMono_ThrowsArgumentException()
+    {
+        var input = CreateRawPcmChunk(ToInterleavedBytes([1000, 2000], [3000, 4000]), new AudioFormat
+        {
+            Channels = 2,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        Assert.Throws<ArgumentException>(() => AudioProcessing.ComputeRms(input));
+    }
+
+    #endregion
+
+    #region CreateWavHeader
+
+    [Fact]
+    public void CreateWavHeader_ProducesCorrect44ByteHeader()
+    {
+        var dataSize = 1024;
+        var sampleRate = 16000;
+
+        var header = AudioProcessing.CreateWavHeader(dataSize, sampleRate);
+
+        Assert.Equal(44, header.Length);
+        Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(header[0..4]));
+        Assert.Equal(36 + dataSize, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(4, 4)));
+        Assert.Equal("WAVE", System.Text.Encoding.ASCII.GetString(header[8..12]));
+        Assert.Equal("fmt ", System.Text.Encoding.ASCII.GetString(header[12..16]));
+        Assert.Equal(16, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(16, 4)));
+        Assert.Equal(1, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(20, 2)));
+        Assert.Equal(1, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(22, 2)));
+        Assert.Equal(sampleRate, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(24, 4)));
+        Assert.Equal(sampleRate * 2, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(28, 4)));
+        Assert.Equal(2, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(32, 2)));
+        Assert.Equal(16, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(34, 2)));
+        Assert.Equal("data", System.Text.Encoding.ASCII.GetString(header[36..40]));
+        Assert.Equal(dataSize, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(40, 4)));
+    }
+
+    #endregion
+
+    #region BuildWavBytes
+
+    [Fact]
+    public void BuildWavBytes_MultipleChunks_ConcatenatesData()
+    {
+        var chunk1 = CreateRawPcmChunk(ToLittleEndianBytes([1, 2, 3]), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+        var chunk2 = CreateRawPcmChunk(ToLittleEndianBytes([4, 5]), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.BuildWavBytes([chunk1, chunk2]);
+
+        var expectedLength = 44 + 6 + 4;
+        Assert.Equal(expectedLength, result.Length);
+        Assert.Equal(1, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(20, 2)));
+        Assert.Equal(1, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(22, 2)));
+        Assert.Equal(16000, BinaryPrimitives.ReadInt32LittleEndian(result.AsSpan(24, 4)));
+        Assert.Equal(16, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(34, 2)));
+        Assert.Equal(1, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(44, 2)));
+        Assert.Equal(2, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(46, 2)));
+        Assert.Equal(3, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(48, 2)));
+        Assert.Equal(4, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(50, 2)));
+        Assert.Equal(5, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(52, 2)));
+    }
+
+    [Fact]
+    public void BuildWavBytes_SingleChunk_Works()
+    {
+        var chunk = CreateRawPcmChunk(ToLittleEndianBytes([42, 99]), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 48000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.BuildWavBytes([chunk]);
+
+        Assert.Equal(44 + 4, result.Length);
+        Assert.Equal(48000, BinaryPrimitives.ReadInt32LittleEndian(result.AsSpan(24, 4)));
+        Assert.Equal(42, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(44, 2)));
+        Assert.Equal(99, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(46, 2)));
+    }
+
+    [Fact]
+    public void BuildWavBytes_EmptyList_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => AudioProcessing.BuildWavBytes([]));
+    }
+
+    [Fact]
+    public void BuildWavBytes_PrependsValidWavHeader()
+    {
+        var chunk = CreateRawPcmChunk(ToLittleEndianBytes([1000]), new AudioFormat
+        {
+            Channels = 1,
+            SampleRate = 16000,
+            BitsPerSample = 16
+        });
+
+        var result = AudioProcessing.BuildWavBytes([chunk]);
+
+        Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(result[0..4]));
+        Assert.Equal("WAVE", System.Text.Encoding.ASCII.GetString(result[8..12]));
+        Assert.Equal("fmt ", System.Text.Encoding.ASCII.GetString(result[12..16]));
+        Assert.Equal("data", System.Text.Encoding.ASCII.GetString(result[36..40]));
+        Assert.Equal(2, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(32, 2)));
+        Assert.Equal(16, BinaryPrimitives.ReadInt16LittleEndian(result.AsSpan(34, 2)));
+    }
+
+    #endregion
 }
