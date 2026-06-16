@@ -35,6 +35,8 @@ public static class DependencyInjection
 
         services.AddScoped<Scheduler>();
 
+        services.AddHttpClient<NodeHttpClient>();
+
         return services;
     }
 

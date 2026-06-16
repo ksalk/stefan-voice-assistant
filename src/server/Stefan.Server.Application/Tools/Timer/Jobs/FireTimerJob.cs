@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Quartz;
 using Stefan.Server.Application.Services;
@@ -9,7 +10,9 @@ namespace Stefan.Server.Application.Tools.Timer.Jobs;
 [DisallowConcurrentExecution]
 public class FireTimerJob(
     ToolsDbContext dbContext,
-    ITextToSpeechService ttsService,
+    StefanDbContext stefanDbContext,
+    //ITextToSpeechService ttsService,
+    NodeHttpClient nodeHttpClient,
     ILogger<FireTimerJob> logger) : IJob
 {
     public const string TimerIdKey = "TimerId";
@@ -31,15 +34,18 @@ public class FireTimerJob(
 
         try
         {
-            var ttsResult = await ttsService.SynthesizeAsync(message);
-            if(!ttsResult.IsSuccess)
-            {
-                logger.LogError("TTS synthesis failed for timer {TimerId}: {ErrorMessage}", timerId, ttsResult.Error);
-                return;
-            }
+            // var ttsResult = await ttsService.SynthesizeAsync(message);
+            // if(!ttsResult.IsSuccess)
+            // {
+            //     logger.LogError("TTS synthesis failed for timer {TimerId}: {ErrorMessage}", timerId, ttsResult.Error);
+            //     return;
+            // }
             
-            var notifier = new NodeNotifier();
-            await notifier.SendAudioNotification(deviceId, ttsResult.Value.AudioBytes);
+            var node = await stefanDbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, context.CancellationToken);
+            if (node != null)
+            {
+                await nodeHttpClient.SendTimerAlert(node, context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {
