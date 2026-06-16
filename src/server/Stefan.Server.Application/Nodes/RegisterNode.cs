@@ -1,4 +1,4 @@
-using Stefan.Server.Application.Nodes.Jobs;
+using Microsoft.EntityFrameworkCore;
 using Stefan.Server.Domain;
 using Stefan.Server.Infrastructure;
 
@@ -16,7 +16,7 @@ public class RegisterNode(StefanDbContext dbContext, ScheduleNodePing scheduleNo
 {
     public async Task Handle(RegisterNodeRequest request, CancellationToken cancellationToken)
     {
-        var node = dbContext.Nodes.FirstOrDefault(n => n.Name == request.NodeName);
+        var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == request.NodeName, cancellationToken);
         if (node == null)
         {
             node = Node.Create(request.NodeName, request.SessionId, request.IpAddress, request.Port);
