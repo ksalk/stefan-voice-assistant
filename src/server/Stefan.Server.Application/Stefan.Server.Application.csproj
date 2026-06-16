@@ -9,6 +9,7 @@
     <PackageReference Include="Whisper.net" />
     <PackageReference Include="Whisper.net.Runtime" />
     <PackageReference Include="PiperSharp" />
+    <PackageReference Include="SharpCompress" />
   </ItemGroup>
 
   <ItemGroup>

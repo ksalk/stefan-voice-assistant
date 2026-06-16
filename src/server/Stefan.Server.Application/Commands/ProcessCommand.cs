@@ -61,10 +61,18 @@ public class ProcessCommand(
             }
             
             var speechToTextTranscription = speechToTextResult.Value;
+            if(string.IsNullOrWhiteSpace(speechToTextTranscription.Transcript))
+            {
+                ConsoleLog.Write(LogCategory.STT, "STT produced empty transcript");
+                throw new Exception("STT produced empty transcript");
+            }
+
             commandRecord.SaveTranscriptionResult(speechToTextTranscription.Transcript, speechToTextTranscription.DurationMs);
+            
+
 
             ConsoleLog.Write(LogCategory.STT, $"Transcription result: {speechToTextTranscription.Transcript}");
-            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {speechToTextTranscription.DurationMs} ms");
+            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {speechToTextTranscription.DurationMs} ms");            
         }
         catch (Exception ex)
         {
@@ -79,7 +87,7 @@ public class ProcessCommand(
         // LLM
         try
         {
-            var llmResult = await llm.ProcessCommandAsync(commandRecord.Transcript, request.DeviceId, cancellationToken);
+            var llmResult = await llm.ProcessCommandAsync(commandRecord.Transcript!, request.DeviceId, cancellationToken);
             if (!llmResult.IsSuccess)
             {
                 throw new Exception(llmResult.Error ?? "Unknown LLM error");
@@ -102,7 +110,7 @@ public class ProcessCommand(
         byte[] wavOutputAudio;
         try
         {
-            var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText);
+            var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText!);
             if (!ttsResult.IsSuccess)
             {
                 throw new Exception(ttsResult.Error ?? "Unknown TTS error");

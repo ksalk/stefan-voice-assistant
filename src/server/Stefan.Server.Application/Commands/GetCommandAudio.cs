@@ -37,6 +37,11 @@ public class GetCommandAudio(
             ? command.InputAudio
             : command.OutputAudio;
 
+        if (compressedAudio == null)
+        {
+            return null;
+        }
+
         var audioFormat = request.Type == AudioType.Request
             ? command.InputAudioFormat
             : command.OutputAudioFormat;
