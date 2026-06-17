@@ -93,6 +93,11 @@ public class ProcessCommand(
                 throw new Exception(llmResult.Error ?? "Unknown LLM error");
             }
             var result  = llmResult.Value;
+            if(string.IsNullOrWhiteSpace(result.ResponseText))
+            {
+                ConsoleLog.Write(LogCategory.LLM, "LLM produced empty response");
+                throw new Exception("LLM produced empty response");
+            }
 
             ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {result.DurationMs} ms");
 
@@ -138,7 +143,7 @@ public class ProcessCommand(
         commandRecord.SetTotalDuration(totalDurationMs);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText };
+        return new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText! };
     }
 
     private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
