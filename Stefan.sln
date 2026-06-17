@@ -29,11 +29,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "server", "server", "{E6B480
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.TtsGenerator", "src\server\Stefan.Server.TtsGenerator\Stefan.Server.TtsGenerator.csproj", "{B9A30873-0B2E-41AF-9318-1C9B7BBA1A41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Node.IntegrationTests", "tests\Stefan.Node.IntegrationTests\Stefan.Node.IntegrationTests.csproj", "{03A90563-634A-4FB7-A334-C8C8D387D9F9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Node.IntegrationTests", "tests\node\Stefan.Node.IntegrationTests\Stefan.Node.IntegrationTests.csproj", "{03A90563-634A-4FB7-A334-C8C8D387D9F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Node.UnitTests", "tests\Stefan.Node.UnitTests\Stefan.Node.UnitTests.csproj", "{0921945A-3651-4669-906F-CB4E62BACBEC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Node.UnitTests", "tests\node\Stefan.Node.UnitTests\Stefan.Node.UnitTests.csproj", "{0921945A-3651-4669-906F-CB4E62BACBEC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.Domain.UnitTests", "tests\Stefan.Server.Domain.UnitTests\Stefan.Server.Domain.UnitTests.csproj", "{94FF7853-1371-44BA-AE93-D0516CC53BF3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.Domain.UnitTests", "tests\server\Stefan.Server.Domain.UnitTests\Stefan.Server.Domain.UnitTests.csproj", "{94FF7853-1371-44BA-AE93-D0516CC53BF3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -29,7 +29,7 @@ jobs:
         run: dotnet build src/server/Stefan.Server.API/Stefan.Server.API.csproj --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test tests/Stefan.Server.Domain.UnitTests/Stefan.Server.Domain.UnitTests.csproj --configuration Release --verbosity normal
+        run: dotnet test tests/server/Stefan.Server.Domain.UnitTests/Stefan.Server.Domain.UnitTests.csproj --configuration Release --verbosity normal
 
   node:
     name: Node (.NET)
@@ -53,4 +53,4 @@ jobs:
         run: dotnet build src/node/Stefan.Node/Stefan.Node.csproj --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test tests/Stefan.Node.UnitTests/Stefan.Node.UnitTests.csproj --configuration Release --verbosity normal
+        run: dotnet test tests/node/Stefan.Node.UnitTests/Stefan.Node.UnitTests.csproj --configuration Release --verbosity normal
