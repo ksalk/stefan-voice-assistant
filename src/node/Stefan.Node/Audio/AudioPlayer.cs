@@ -133,6 +133,12 @@ public class AudioPlayer : BackgroundService
 
         try
         {
+            var durationMs = TryGetWavDurationMs(filePath);
+            if (durationMs is > 0)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(durationMs.Value), cancellationToken);
+            }
+
             await process.WaitForExitAsync(cancellationToken);
         }
         catch (OperationCanceledException)
@@ -148,5 +154,86 @@ public class AudioPlayer : BackgroundService
 
             throw;
         }
+    }
+
+    private static long? TryGetWavDurationMs(string filePath)
+    {
+        try
+        {
+            using var fs = File.OpenRead(filePath);
+            using var br = new BinaryReader(fs);
+            if (fs.Length < 44)
+                return null;
+
+            if (!ReadTag(br, "RIFF"))
+                return null;
+            br.ReadUInt32();
+            if (!ReadTag(br, "WAVE"))
+                return null;
+
+            int sampleRate = 0, channels = 0, bitsPerSample = 0;
+            long dataOffset = -1;
+            long dataSize = 0;
+
+            while (fs.Position + 8 <= fs.Length)
+            {
+                var chunkId = br.ReadBytes(4);
+                var chunkSize = br.ReadInt32();
+
+                if (chunkId[0] == 'f' && chunkId[1] == 'm' && chunkId[2] == 't' && chunkId[3] == ' ')
+                {
+                    br.ReadUInt16();
+                    channels = br.ReadUInt16();
+                    sampleRate = br.ReadInt32();
+                    br.ReadInt32();
+                    br.ReadUInt16();
+                    bitsPerSample = br.ReadUInt16();
+                    fs.Seek(chunkSize - 16, SeekOrigin.Current);
+                    if (chunkSize % 2 == 1)
+                        fs.Seek(1, SeekOrigin.Current);
+                }
+                else if (chunkId[0] == 'd' && chunkId[1] == 'a' && chunkId[2] == 't' && chunkId[3] == 'a')
+                {
+                    dataOffset = fs.Position;
+                    dataSize = chunkSize;
+                    break;
+                }
+                else
+                {
+                    fs.Seek(chunkSize, SeekOrigin.Current);
+                    if (chunkSize % 2 == 1)
+                        fs.Seek(1, SeekOrigin.Current);
+                }
+            }
+
+            if (dataOffset < 0 || sampleRate <= 0 || channels <= 0 || bitsPerSample <= 0)
+                return null;
+
+            if (dataSize <= 0 || dataOffset + dataSize > fs.Length)
+                dataSize = fs.Length - dataOffset;
+
+            var byteRate = sampleRate * channels * (bitsPerSample / 8);
+            if (byteRate <= 0)
+                return null;
+
+            return (long)(dataSize * 1000.0 / byteRate);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool ReadTag(BinaryReader br, string expected)
+    {
+        if (br.BaseStream.Position + 4 > br.BaseStream.Length)
+            return false;
+        var bytes = br.ReadBytes(4);
+        for (var i = 0; i < 4; i++)
+        {
+            if (bytes[i] != expected[i])
+                return false;
+        }
+        return true;
     }
 }

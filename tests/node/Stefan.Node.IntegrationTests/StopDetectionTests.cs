@@ -45,6 +45,7 @@ public class StopDetectionTests : IntegrationTestBase
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await Task.Delay(TimeSpan.FromSeconds(1)); // Wait for notification sound to finish playing
         await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
 
@@ -55,38 +56,37 @@ public class StopDetectionTests : IntegrationTestBase
         Assert.Contains("[audio] No current audio playback to cancel.", appLogs.Stdout);
     }
 
-    // TODO: fix this one
-    // [Fact]
-    // public async Task StopKeywordDetected_StopsAudio_WhenAudioIsCurrentlyPlayed()
-    // {
-    //     // Arrange
-    //     await using var app = await CreateNodeApp(
-    //         configureServer: server =>
-    //         {
-    //             server.MapPost("/api/nodes/register", () => Results.Ok());
-    //         }
-    //     );
+    [Fact]
+    public async Task StopKeywordDetected_StopsAudio_WhenAudioIsCurrentlyPlayed()
+    {
+        // Arrange
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+            }
+        );
 
-    //     // Act
-    //     var loremIpsumAudioFileBytes = await File.ReadAllBytesAsync("TestAudioFiles/lorem-ipsum.wav");
-    //     var content = new MultipartFormDataContent();
-    //     var fileContent = new ByteArrayContent(loremIpsumAudioFileBytes);
-    //     fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-    //     content.Add(fileContent, "file", "lorem-ipsum.wav");
-    //     await app.HttpClient.PostAsync("/audio", content);
+        // Act
+        var loremIpsumAudioFileBytes = await File.ReadAllBytesAsync("TestAudioFiles/lorem-ipsum.wav");
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(loremIpsumAudioFileBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        content.Add(fileContent, "file", "lorem-ipsum.wav");
+        await app.HttpClient.PostAsync("/audio", content);
 
-    //     await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
-    //     await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
-    //     await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
-    //     await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
-    //     await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
 
-    //     await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
+        await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
 
-    //     // Assert
-    //     var appLogs = await app.GetLogsAsync();
-    //     Assert.Contains("[audio] Cancelling current audio playback.", appLogs.Stdout);
-    // }
+        // Assert
+        var appLogs = await app.GetLogsAsync();
+        Assert.Contains("[audio] Cancelling current audio playback.", appLogs.Stdout);
+    }
 
     [Fact]
     public async Task StopKeywordDetected_DoesNotSendCommandToServer()
