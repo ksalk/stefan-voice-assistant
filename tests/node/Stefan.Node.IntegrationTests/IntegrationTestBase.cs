@@ -169,8 +169,15 @@ public abstract class IntegrationTestBase
         {
             if (_pipeStream is null)
             {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(1));
+
+                while (!File.Exists(_pipePath))
+                {
+                    await Task.Delay(100, timeoutCts.Token);
+                }
+
                 _pipeStream = new FileStream(_pipePath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
-                await Task.CompletedTask;
             }
             return _pipeStream;
         }

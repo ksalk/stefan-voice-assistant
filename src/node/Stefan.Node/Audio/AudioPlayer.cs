@@ -62,6 +62,10 @@ public class AudioPlayer : BackgroundService
             _logger.LogInformation("[audio] Cancelling current audio playback.");
             cts.Cancel();
         }
+        else
+        {
+            _logger.LogInformation("[audio] No current audio playback to cancel.");
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

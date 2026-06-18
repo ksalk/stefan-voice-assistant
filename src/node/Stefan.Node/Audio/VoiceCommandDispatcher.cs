@@ -72,6 +72,9 @@ public class VoiceCommandDispatcher(
         using var keywordSpotter = CreateKeywordSpotter();
         var keywordStream = keywordSpotter.CreateStream();
 
+        using var stopKeywordSpotter = CreateStopKeywordSpotter();
+        var stopKeywordStream = stopKeywordSpotter.CreateStream();
+
         try
         {
             await foreach (var audioBytes in reader.ReadAllAsync(cancellationToken))
@@ -83,7 +86,7 @@ public class VoiceCommandDispatcher(
 
                 if (appStateService.CurrentState == VoiceAssistantState.RecordingCommand)
                 {
-                    await ProcessRecordingAsync(audioBytes);
+                    await ProcessRecordingAsync(audioBytes, stopKeywordSpotter, stopKeywordStream);
                 }
             }
         }
@@ -142,7 +145,10 @@ public class VoiceCommandDispatcher(
         }
     }
 
-    private async Task ProcessRecordingAsync(byte[] audioBytes)
+    private async Task ProcessRecordingAsync(
+        byte[] audioBytes,
+        KeywordSpotter stopKeywordSpotter,
+        OnlineStream stopKeywordStream)
     {
         var chunk = new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat };
         _commandAudioBuffer.Add(chunk);
@@ -160,6 +166,33 @@ public class VoiceCommandDispatcher(
         }
 
         var elapsedMs = (DateTime.UtcNow - _recordingStartTime).TotalMilliseconds;
+
+        // Check for stop keyword
+        var monoSamples = AudioProcessing.ConvertPcm16ToFloat(chunk);
+        if (monoSamples.Length == 0)
+        {
+            return;
+        }
+
+        stopKeywordStream.AcceptWaveform(chunk.Format.SampleRate, monoSamples);
+
+        while (stopKeywordSpotter.IsReady(stopKeywordStream))
+        {
+            stopKeywordSpotter.Decode(stopKeywordStream);
+
+            var keywordResult = stopKeywordSpotter.GetResult(stopKeywordStream);
+            if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
+            {
+                Console.WriteLine($"[listener] Stop keyword detected. Returning to wake word detection.");
+                _commandAudioBuffer.Clear();
+                _silentDurationMs = 0f;
+                audioPlayer.CancelCurrent();
+                
+                appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
+                stopKeywordSpotter.Reset(stopKeywordStream);
+                return;
+            }
+        }
 
         if (_silentDurationMs >= audioOptions.Value.SilenceTimeoutMs || elapsedMs >= audioOptions.Value.MaxRecordingMs)
         {
@@ -227,6 +260,35 @@ public class VoiceCommandDispatcher(
                 Provider = opts.Provider,
             },
             KeywordsFile = opts.KeywordsFile,
+            FeatConfig = new FeatureConfig()
+            {
+                SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
+                FeatureDim = opts.FeatureDim
+            }
+        };
+
+        return new KeywordSpotter(keywordSpotterConfig);
+    }
+
+    private KeywordSpotter CreateStopKeywordSpotter()
+    {
+        var opts = keywordSpotterOptions.Value;
+        var modelPath = opts.ModelPath;
+        var keywordSpotterConfig = new KeywordSpotterConfig()
+        {
+            ModelConfig = new OnlineModelConfig()
+            {
+                Transducer = new OnlineTransducerModelConfig()
+                {
+                    Encoder = Path.Combine(modelPath, opts.EncoderFile),
+                    Decoder = Path.Combine(modelPath, opts.DecoderFile),
+                    Joiner = Path.Combine(modelPath, opts.JoinerFile)
+                },
+                Tokens = Path.Combine(modelPath, opts.TokensPath),
+                NumThreads = opts.NumThreads,
+                Provider = opts.Provider,
+            },
+            KeywordsFile = opts.StopKeywordsFile,
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
