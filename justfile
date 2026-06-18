@@ -54,3 +54,12 @@ runui:
 
 buildnodetestimage:
     docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src/node/Dockerfile . --load
+
+builddashboardimage:
+    docker buildx build --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load
+
+publishdashboard VERSION:
+    docker buildx build --platform linux/amd64 --pull \
+      -t git.harnas.top/ksalk/stefan-dashboard:{{VERSION}} \
+      -t git.harnas.top/ksalk/stefan-dashboard:latest \
+      -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push

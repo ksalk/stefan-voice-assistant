@@ -1,0 +1,31 @@
+services:
+  stefan-server:
+    image: git.harnas.top/ksalk/stefan-server:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "5285:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__StefanDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      OpenAI__ApiKey: ${OPENAI_API_KEY}
+      xAI__ApiKey: ${XAI_API_KEY}
+      NodeSecret: ${NODE_SECRET}
+    networks:
+      - db-access
+
+  stefan-dashboard:
+    image: git.harnas.top/ksalk/stefan-dashboard:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "5286:80"
+    depends_on:
+      - stefan-server
+    build:
+      context: ./src/dashboard/stefan-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5285}
+
+networks:
+  db-access:
+    external: true
