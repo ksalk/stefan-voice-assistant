@@ -26,6 +26,8 @@ public class AudioPlayer : BackgroundService
             SingleReader = true,
             SingleWriter = false,
         });
+
+        Console.WriteLine($"[audio] AudioPlayer initialized with output device '{_outputDeviceName}' and volume control '{_volumeControlName}' with volume {Volume}.");
     }
 
     public void Queue(byte[] wavBytes)
