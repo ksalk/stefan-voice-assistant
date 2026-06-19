@@ -11,6 +11,9 @@ public sealed class NodeAppClient : IDisposable
     public Task<HttpResponseMessage> GetHealthAsync(CancellationToken cancellationToken = default)
         => _httpClient.GetAsync("/health", cancellationToken);
 
+    public Task<HttpResponseMessage> GetStatusAsync(CancellationToken cancellationToken = default)
+        => _httpClient.GetAsync("/status", cancellationToken);
+
     public async Task<HttpResponseMessage> PostAudioAsync(string filePath, CancellationToken cancellationToken = default)
     {
         var bytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
@@ -20,6 +23,9 @@ public sealed class NodeAppClient : IDisposable
         content.Add(fileContent, "file", Path.GetFileName(filePath));
         return await _httpClient.PostAsync("/audio", content, cancellationToken);
     }
+
+    public Task<HttpResponseMessage> DeleteCurrentAudioAsync(CancellationToken cancellationToken = default)
+        => _httpClient.DeleteAsync("/audio/current", cancellationToken);
 
     public void Dispose() => _httpClient.Dispose();
 }
