@@ -26,13 +26,22 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
         {
             if (!File.Exists(pipePath))
             {
+                // Create the FIFO under a temporary name, fix its permissions, then atomically rename
+                // it to the final path. The atomic rename ensures readers on the host never observe
+                // the FIFO before chmod has granted write permission (umask 0022 would otherwise leave
+                // it at 0644 between mkfifo and chmod, causing EACCES on the host's open() for writing).
+                var tempPath = pipePath + ".tmp";
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+
                 // Permissions need to be set in octal format, e.g. 0666 for read/write permissions for everyone
-                var result = mkfifo(pipePath, Convert.ToUInt32("666", 8));
+                var result = mkfifo(tempPath, Convert.ToUInt32("666", 8));
                 if (result != 0)
                 {
                     throw new IOException($"Failed to create named pipe at {pipePath}. Error code: {result}");
                 }
-                chmod(pipePath, Convert.ToUInt32("666", 8));
+                chmod(tempPath, Convert.ToUInt32("666", 8));
+                File.Move(tempPath, pipePath);
                 Console.WriteLine($"[pipe] Named pipe created: {pipePath}");
             }
 
