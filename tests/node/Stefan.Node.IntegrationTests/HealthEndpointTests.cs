@@ -11,7 +11,7 @@ public class HealthEndpointTests : IntegrationTestBase
         await using var app = await CreateNodeApp();
 
         // Act
-        var response = await app.HttpClient.GetAsync("/health");
+        var response = await app.Client.GetHealthAsync();
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -27,7 +27,7 @@ public class HealthEndpointTests : IntegrationTestBase
         await Task.Delay(500);
 
         // Act
-        var response = await app.HttpClient.GetAsync("/health");
+        var response = await app.Client.GetHealthAsync();
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

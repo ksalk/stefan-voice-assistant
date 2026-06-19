@@ -89,8 +89,9 @@ public abstract class IntegrationTestBase
             BaseAddress = new Uri($"http://{host}:{port}"),
             Timeout = TimeSpan.FromSeconds(5),
         };
+        var client = new NodeAppClient(httpClient);
 
-        return new NodeApp(httpClient, pipePath, pipeDirectory, mockServerPort, container, mockServer);
+        return new NodeApp(client, pipePath, pipeDirectory, mockServerPort, container, mockServer);
     }
 
     private static IWaitForContainerOS BuildWaitStrategy(ContainerStartMode startMode)
@@ -141,14 +142,14 @@ public abstract class IntegrationTestBase
         private FileStream? _pipeStream;
 
         public NodeApp(
-            HttpClient httpClient,
+            NodeAppClient client,
             string pipePath,
             string pipeDirectory,
             int mockServerPort,
             IContainer container,
             WebApplication mockServer)
         {
-            HttpClient = httpClient;
+            Client = client;
             MockServerPort = mockServerPort;
             _container = container;
             _mockServer = mockServer;
@@ -156,7 +157,7 @@ public abstract class IntegrationTestBase
             _pipePath = pipePath;
         }
 
-        public HttpClient HttpClient { get; }
+        public NodeAppClient Client { get; }
         public int MockServerPort { get; }
 
         public async Task<long> GetExitCodeAsync(CancellationToken cancellationToken = default) =>
@@ -227,7 +228,7 @@ public abstract class IntegrationTestBase
             await _mockServer.StopAsync();
             if (Directory.Exists(_pipeDirectory))
                Directory.Delete(_pipeDirectory, true);
-            HttpClient.Dispose();
+            Client.Dispose();
         }
     }
 }

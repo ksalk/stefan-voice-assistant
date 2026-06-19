@@ -68,12 +68,7 @@ public class StopDetectionTests : IntegrationTestBase
         );
 
         // Act
-        var loremIpsumAudioFileBytes = await File.ReadAllBytesAsync("TestAudioFiles/lorem-ipsum.wav");
-        var content = new MultipartFormDataContent();
-        var fileContent = new ByteArrayContent(loremIpsumAudioFileBytes);
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-        content.Add(fileContent, "file", "lorem-ipsum.wav");
-        await app.HttpClient.PostAsync("/audio", content);
+        await app.Client.PostAudioAsync("TestAudioFiles/lorem-ipsum.wav");
 
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
