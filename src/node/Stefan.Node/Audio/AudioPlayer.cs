@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Stefan.Node.Options;
@@ -12,12 +13,14 @@ public class AudioPlayer : BackgroundService
     private readonly Channel<AudioPlaybackItem> _queue;
     private readonly ILogger<AudioPlayer> _logger;
     private readonly string _outputDeviceName;
+    private readonly string _volumeControlName;
     private volatile CancellationTokenSource? _currentCts;
 
     public AudioPlayer(ILogger<AudioPlayer> logger, IOptions<AudioOptions> audioOptions)
     {
         _logger = logger;
         _outputDeviceName = audioOptions.Value.Output.DeviceName;
+        _volumeControlName = audioOptions.Value.Output.VolumeControlName;
         _queue = Channel.CreateUnbounded<AudioPlaybackItem>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -66,6 +69,102 @@ public class AudioPlayer : BackgroundService
         {
             _logger.LogInformation("[audio] No current audio playback to cancel.");
         }
+    }
+
+    public int? Volume
+    {
+        get => TryGetVolume();
+        set
+        {
+            if (value.HasValue)
+                TrySetVolume(value.Value);
+        }
+    }
+
+    private int? TryGetVolume()
+    {
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "amixer",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                }
+            };
+            process.StartInfo.ArgumentList.Add("-D");
+            process.StartInfo.ArgumentList.Add(_outputDeviceName);
+            process.StartInfo.ArgumentList.Add("sget");
+            process.StartInfo.ArgumentList.Add(_volumeControlName);
+
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("[audio] amixer sget exited with {ExitCode}", process.ExitCode);
+                return null;
+            }
+
+            return ParseVolumePercent(output);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[audio] Failed to read volume from amixer.");
+            return null;
+        }
+    }
+
+    private bool TrySetVolume(int value)
+    {
+        var clamped = Math.Clamp(value, 0, 100);
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "amixer",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                }
+            };
+            process.StartInfo.ArgumentList.Add("-D");
+            process.StartInfo.ArgumentList.Add(_outputDeviceName);
+            process.StartInfo.ArgumentList.Add("sset");
+            process.StartInfo.ArgumentList.Add(_volumeControlName);
+            process.StartInfo.ArgumentList.Add($"{clamped}%");
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("[audio] amixer sset exited with {ExitCode}", process.ExitCode);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[audio] Failed to set volume via amixer.");
+            return false;
+        }
+    }
+
+    private static int? ParseVolumePercent(string output)
+    {
+        var match = Regex.Match(output, @"\[(\d+)%\]");
+        if (!match.Success || !int.TryParse(match.Groups[1].Value, out var pct))
+            return null;
+
+        return Math.Clamp(pct, 0, 100);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

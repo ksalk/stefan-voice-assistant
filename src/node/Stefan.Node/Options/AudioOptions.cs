@@ -12,6 +12,7 @@ public class AudioInputOptions
 public class AudioOutputOptions
 {
     public string DeviceName { get; set; } = "default";
+    public string VolumeControlName { get; set; } = "Master";
 }
 
 public class AudioOptions

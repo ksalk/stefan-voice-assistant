@@ -15,7 +15,7 @@ public static class HttpServer
     {
         app.MapGet("/health", () => "OK");
 
-        app.MapGet("/status", async (AppStateService stateService) =>
+        app.MapGet("/status", async (AppStateService stateService, AudioPlayer audioPlayer) =>
         {
             var status = new NodeStatusResponse
             {
@@ -28,6 +28,7 @@ public static class HttpServer
                 CpuUsage = await GetCpuUsageAsync(),
                 MemoryUsage = GetMemoryUsage(),
                 DiskUsage = GetDiskUsage(),
+                AudioVolume = audioPlayer.Volume,
                 Version = ThisAssembly.AssemblyInformationalVersion,
                 GitCommit = ThisAssembly.GitCommitId
             };
@@ -57,6 +58,15 @@ public static class HttpServer
         {
             audioPlayer.CancelCurrent();
             return Results.Ok();
+        });
+
+        app.MapPost("/volume", (int? value, AudioPlayer audioPlayer) =>
+        {
+            if (!value.HasValue || value < 0 || value > 100)
+                return Results.BadRequest("Volume must be between 0 and 100.");
+
+            audioPlayer.Volume = value;
+            return Results.Ok(audioPlayer.Volume);
         });
 
         return app;
