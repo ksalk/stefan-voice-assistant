@@ -27,5 +27,8 @@ public sealed class NodeAppClient : IDisposable
     public Task<HttpResponseMessage> DeleteCurrentAudioAsync(CancellationToken cancellationToken = default)
         => _httpClient.DeleteAsync("/audio/current", cancellationToken);
 
+    public Task<HttpResponseMessage> PostVolumeAsync(int value, CancellationToken cancellationToken = default)
+        => _httpClient.PostAsync($"/volume?value={value}", content: null, cancellationToken);
+
     public void Dispose() => _httpClient.Dispose();
 }
