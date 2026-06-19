@@ -36,6 +36,30 @@ public class NodeRegistrationTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task NodeRegistersToServer_SendsCorrectSecret()
+    {
+        // Arrange
+        string expectedNodeSecret = "test-secret-value";
+        string? receivedNodeSecret = null;
+
+        await using var app = await CreateNodeApp(
+            configureContainer: builder => builder.WithEnvironment("RemoteServer__AuthSecret", expectedNodeSecret),
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", async (HttpRequest request) =>
+                {
+                    receivedNodeSecret = request.Headers["X-Node-Secret"].FirstOrDefault();
+                    return Results.Ok();
+                });
+            });
+
+        // Act — registration happens automatically on container start
+
+        // Assert
+        Assert.Equal(expectedNodeSecret, receivedNodeSecret);
+    }
+
+    [Fact]
     public async Task NodeRegistersToServer_ExistsWhenRegistrationFails()
     {
         // Arrange
