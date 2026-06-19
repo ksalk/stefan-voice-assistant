@@ -8,6 +8,8 @@ public class NodeRegistrationTests : IntegrationTestBase
     private class NodeRegistrationRequest
     {
         public string NodeName { get; set; } = null!;
+        public string SessionId { get; set; } = null!;
+        public int Port { get; set; }
     }
 
     [Fact]
@@ -83,5 +85,32 @@ public class NodeRegistrationTests : IntegrationTestBase
         // Assert
         Assert.Equal(1L, exitCode);
         Assert.Contains("[fatal] Node registration failed. Server responded with 401 status code. Exiting.", stderr);
+    }
+
+    [Fact]
+    public async Task NodeRegistersToServer_IncludesValidSessionIdAndConfiguredPort()
+    {
+        // Arrange
+        string? capturedSessionId = null;
+        int? capturedPort = null;
+
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", async (HttpRequest request) =>
+                {
+                    var payload = await request.ReadFromJsonAsync<NodeRegistrationRequest>();
+                    capturedSessionId = payload?.SessionId;
+                    capturedPort = payload?.Port;
+                    return Results.Ok();
+                });
+            });
+
+        // Act — registration happens automatically on container start
+
+        // Assert
+        Assert.NotNull(capturedSessionId);
+        Assert.True(Guid.TryParse(capturedSessionId, out _));
+        Assert.Equal(8080, capturedPort);
     }
 }
