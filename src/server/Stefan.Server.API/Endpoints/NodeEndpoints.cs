@@ -37,6 +37,7 @@ public static class NodeEndpoints
                 result.StatusReport!.CpuUsage,
                 result.StatusReport.MemoryUsage,
                 result.StatusReport.DiskUsage,
+                result.StatusReport.AudioVolume,
                 result.StatusReport.Status
             });
         })

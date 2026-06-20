@@ -11,6 +11,7 @@ public class NodeStatusResponse
     public double CpuUsage { get; set; }
     public MemoryUsageInfo MemoryUsage { get; set; } = new();
     public DiskUsageInfo DiskUsage { get; set; } = new();
+    public int? AudioVolume { get; set; }
     public string? Version { get; set; }
     public string? GitCommit { get; set; }
 }
@@ -95,6 +96,7 @@ public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
                     CpuUsage = statusData.CpuUsage,
                     MemoryUsage = statusData.MemoryUsage?.Percent,
                     DiskUsage = statusData.DiskUsage?.Percent,
+                    AudioVolume = statusData.AudioVolume,
                     Version = statusData.Version,
                     GitCommit = statusData.GitCommit
                 };

@@ -29,6 +29,7 @@ public class NodeStatusReportDto
     public double? CpuUsage { get; set; }
     public double? MemoryUsage { get; set; }
     public double? DiskUsage { get; set; }
+    public int? AudioVolume { get; set; }
     public string? Version { get; set; }
     public string? GitCommit { get; set; }
     public string Status { get; set; } = null!;
@@ -76,6 +77,7 @@ public class GetNodeDetails(StefanDbContext dbContext)
                 CpuUsage = r.CpuUsage,
                 MemoryUsage = r.MemoryUsage,
                 DiskUsage = r.DiskUsage,
+                AudioVolume = r.AudioVolume,
                 Version = r.Version,
                 GitCommit = r.GitCommit,
                 Status = r.Status.ToString()

@@ -11,6 +11,7 @@ public class NodeStatusReport
     public double? CpuUsage { get; set; }
     public double? MemoryUsage { get; set; }
     public double? DiskUsage { get; set; }
+    public int? AudioVolume { get; set; }
     public string? Version { get; set; }
     public string? GitCommit { get; set; }
 }

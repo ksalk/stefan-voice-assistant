@@ -51,11 +51,12 @@
 		<Table.Caption>Node status reports.</Table.Caption>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head class="w-[100px]">Timestamp</Table.Head>
-				<Table.Head>Status</Table.Head>
-				<Table.Head>CpuUsage</Table.Head>
-				<Table.Head>MemoryUsage</Table.Head>
-				<Table.Head>DiskUsage</Table.Head>
+			<Table.Head class="w-[100px]">Timestamp</Table.Head>
+			<Table.Head>Status</Table.Head>
+			<Table.Head>CpuUsage</Table.Head>
+			<Table.Head>MemoryUsage</Table.Head>
+			<Table.Head>DiskUsage</Table.Head>
+			<Table.Head>Volume</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -63,9 +64,10 @@
 				<Table.Row>
 					<Table.Cell class="font-medium">{formatDateTime(report.timestamp)}</Table.Cell>
 					<Table.Cell>{report.status}</Table.Cell>
-					<Table.Cell>{report.cpuUsage}</Table.Cell>
-					<Table.Cell>{report.memoryUsage}</Table.Cell>
-					<Table.Cell>{report.diskUsage}</Table.Cell>
+				<Table.Cell>{report.cpuUsage}</Table.Cell>
+				<Table.Cell>{report.memoryUsage}</Table.Cell>
+				<Table.Cell>{report.diskUsage}</Table.Cell>
+				<Table.Cell>{report.audioVolume}</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>
