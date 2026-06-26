@@ -10,7 +10,7 @@ services:
       OpenAI__ApiKey: ${OPENAI_API_KEY}
       xAI__ApiKey: ${XAI_API_KEY}
       NodeSecret: ${NODE_SECRET}
-      Cors__Dashboard__AllowedOrigins__0: ${DASHBOARD_CORS_ORIGIN:-http://localhost:5286}
+      Cors__Dashboard__AllowedOrigins: ${DASHBOARD_CORS_ORIGIN:-http://localhost:5286}
     networks:
       - db-access
 

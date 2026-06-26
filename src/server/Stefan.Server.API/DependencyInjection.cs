@@ -36,18 +36,22 @@ public static class DependencyInjection
         var corsOptions = configuration.GetSection(DashboardCorsOptions.SectionName).Get<DashboardCorsOptions>()
                           ?? new DashboardCorsOptions();
 
-        if (corsOptions.AllowedOrigins is null || corsOptions.AllowedOrigins.Length == 0)
+        var origins = corsOptions.AllowedOrigins
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToArray();
+
+        if (origins.Length == 0)
         {
             throw new InvalidOperationException(
                 "Cors:Dashboard:AllowedOrigins is not configured. " +
-                "Add 'Cors:Dashboard:AllowedOrigins' to appsettings with at least one origin.");
+                "Add 'Cors:Dashboard:AllowedOrigins' to appsettings with at least one origin (use '|' to separate multiple).");
         }
 
         services.AddCors(options =>
         {
             options.AddPolicy(CorsPolicy.DashboardPolicy, policy =>
             {
-                policy.WithOrigins(corsOptions.AllowedOrigins);
+                policy.WithOrigins(origins);
 
                 if (corsOptions.AllowAnyHeader)
                     policy.AllowAnyHeader();
