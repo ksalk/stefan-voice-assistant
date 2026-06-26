@@ -3,7 +3,6 @@ using Stefan.Server.API.Endpoints;
 using Stefan.Server.Application;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Services;
-using Stefan.Server.Infrastructure.Authentication;
 using Stefan.Server.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,36 +12,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddApplication(configuration);
 builder.Services.AddInfrastructure(configuration);
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(CorsPolicy.DashboardPolicy, policy =>
-    {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
-
-builder.Services.AddAuthentication()
-    .AddScheme<NodeSecretAuthenticationOptions, NodeSecretAuthenticationHandler>(
-        NodeSecretAuthenticationOptions.DefaultScheme,
-        options => { })
-    .AddScheme<DashboardAuthenticationOptions, DashboardAuthenticationHandler>(
-        DashboardAuthenticationOptions.DefaultScheme,
-        options => { });
-
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(AuthPolicy.NodePolicy, policy =>
-    {
-        policy.AddAuthenticationSchemes(NodeSecretAuthenticationOptions.DefaultScheme);
-        policy.RequireAuthenticatedUser();
-    })
-    .AddPolicy(AuthPolicy.DashboardPolicy, policy =>
-    {
-        policy.AddAuthenticationSchemes(DashboardAuthenticationOptions.DefaultScheme);
-        policy.RequireAuthenticatedUser();
-    });
+builder.Services.AddAuth();
+builder.Services.AddCors(configuration);
 
 var app = builder.Build();
 
