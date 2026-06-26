@@ -3,7 +3,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { formatDateTime } from '$lib/utils/date';
 	import { api } from '$lib/api';
-	import type { PageProps } from '../$types';
+	import type { PageProps } from './$types';
 
 	let node: any = $state({});
 	let loading = $state(true);
