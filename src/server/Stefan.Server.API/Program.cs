@@ -16,7 +16,7 @@ builder.Services.AddInfrastructure(configuration);
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DashboardPolicy", policy =>
+    options.AddPolicy(CorsPolicy.DashboardPolicy, policy =>
     {
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()

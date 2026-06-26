@@ -22,7 +22,7 @@ public static class CommandEndpoints
         })
         .WithName("GetCommands")
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors("DashboardPolicy");
+        .RequireCors(CorsPolicy.DashboardPolicy);
 
         app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
         {
@@ -81,6 +81,6 @@ public static class CommandEndpoints
         })
         .WithName("GetCommandAudio")
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors("DashboardPolicy");
+        .RequireCors(CorsPolicy.DashboardPolicy);
     }
 }

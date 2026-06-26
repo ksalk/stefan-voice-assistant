@@ -43,7 +43,7 @@ public static class NodeEndpoints
             });
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors("DashboardPolicy");
+        .RequireCors(CorsPolicy.DashboardPolicy);
 
         app.MapGet("/api/nodes/{nodeId:guid}", async (Guid nodeId, [FromServices] GetNodeDetails getNodeDetails) =>
         {
@@ -51,7 +51,7 @@ public static class NodeEndpoints
             return Results.Ok(result);
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors("DashboardPolicy");
+        .RequireCors(CorsPolicy.DashboardPolicy);
 
         app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
         {
@@ -59,7 +59,7 @@ public static class NodeEndpoints
             return Results.Ok(result);
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors("DashboardPolicy");
+        .RequireCors(CorsPolicy.DashboardPolicy);
     }
 
     private static string? GetNodeIpAddress(HttpContext context)
