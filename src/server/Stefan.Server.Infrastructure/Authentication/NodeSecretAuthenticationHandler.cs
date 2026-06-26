@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
@@ -41,9 +43,11 @@ public class NodeSecretAuthenticationHandler : AuthenticationHandler<NodeSecretA
             return Task.FromResult(AuthenticateResult.Fail("X-Node-Secret header is empty"));
         }
 
-        if (providedSecret != expectedSecret)
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(providedSecret),
+                Encoding.UTF8.GetBytes(expectedSecret)))
         {
-            Logger.LogWarning("Invalid X-Node-Secert header provided");
+            Logger.LogWarning("Invalid X-Node-Secret header provided");
             return Task.FromResult(AuthenticateResult.Fail("Invalid node secret"));
         }
 

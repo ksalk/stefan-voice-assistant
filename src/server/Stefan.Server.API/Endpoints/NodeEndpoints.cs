@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Stefan.Server.API;
 using Stefan.Server.Application.Nodes;
 
 namespace Stefan.Server.API.Endpoints;
@@ -41,6 +42,7 @@ public static class NodeEndpoints
                 result.StatusReport.Status
             });
         })
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors("DashboardPolicy");
 
         app.MapGet("/api/nodes/{nodeId:guid}", async (Guid nodeId, [FromServices] GetNodeDetails getNodeDetails) =>
@@ -48,6 +50,7 @@ public static class NodeEndpoints
             var result = await getNodeDetails.Handle(new GetNodeDetailsRequest { NodeId = nodeId }, CancellationToken.None);
             return Results.Ok(result);
         })
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors("DashboardPolicy");
 
         app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
@@ -55,6 +58,7 @@ public static class NodeEndpoints
             var result = await getNodes.Handle(new GetNodesRequest(), CancellationToken.None);
             return Results.Ok(result);
         })
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors("DashboardPolicy");
     }
 

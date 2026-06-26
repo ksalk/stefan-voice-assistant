@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Stefan.Server.API;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Common;
 using Stefan.Server.Domain;
@@ -20,6 +21,7 @@ public static class CommandEndpoints
             return Results.Ok(result);
         })
         .WithName("GetCommands")
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors("DashboardPolicy");
 
         app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
@@ -78,6 +80,7 @@ public static class CommandEndpoints
             return Results.File(result.AudioBytes, result.ContentType, result.FileName);
         })
         .WithName("GetCommandAudio")
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors("DashboardPolicy");
     }
 }

@@ -13,8 +13,6 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddApplication(configuration);
 builder.Services.AddInfrastructure(configuration);
-// builder.Services.AddSingleton<NodeRegistry>();
-// builder.Services.AddSingleton<NodeWebSocketHandler>();
 
 builder.Services.AddCors(options =>
 {
@@ -26,9 +24,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddAuthentication(NodeSecretAuthenticationOptions.DefaultScheme)
+builder.Services.AddAuthentication()
     .AddScheme<NodeSecretAuthenticationOptions, NodeSecretAuthenticationHandler>(
         NodeSecretAuthenticationOptions.DefaultScheme,
+        options => { })
+    .AddScheme<DashboardAuthenticationOptions, DashboardAuthenticationHandler>(
+        DashboardAuthenticationOptions.DefaultScheme,
         options => { });
 
 builder.Services.AddAuthorizationBuilder()
@@ -36,13 +37,20 @@ builder.Services.AddAuthorizationBuilder()
     {
         policy.AddAuthenticationSchemes(NodeSecretAuthenticationOptions.DefaultScheme);
         policy.RequireAuthenticatedUser();
+    })
+    .AddPolicy(AuthPolicy.DashboardPolicy, policy =>
+    {
+        policy.AddAuthenticationSchemes(DashboardAuthenticationOptions.DefaultScheme);
+        policy.RequireAuthenticatedUser();
     });
 
 var app = builder.Build();
 
 // app.UseWebSockets();
+app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
+app.UseAuthorization();
 
 // Reschedule ping jobs for all online nodes after server restart
 using (var scope = app.Services.CreateScope())
@@ -62,8 +70,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
 
 app.MapHealthEndpoints();
 app.MapNodeEndpoints();
