@@ -16,7 +16,7 @@ public class ScheduleNodePing(Scheduler scheduler, ILogger<ScheduleNodePing> log
         };
         var jobKey = new JobKey($"PingNode-{nodeId}", PingNodeJob.JobGroup);
 
-        await scheduler.ScheduleJob<PingNodeJob>(jobKey, jobDataMap, Schedule.Every(TimeSpan.FromMinutes(5)), cancellationToken);
+        await scheduler.ScheduleJob<PingNodeJob>(jobKey, jobDataMap, Schedule.Every(TimeSpan.FromMinutes(5)), TimeSpan.FromMinutes(5), cancellationToken);
         logger.LogInformation("Scheduled ping job for node {NodeId}", nodeId);
     }
 }

@@ -28,7 +28,7 @@ public class RescheduleNodePings(StefanDbContext dbContext, Scheduler scheduler,
                 [PingNodeJob.FailureCountKey] = 0
             };
             var jobKey = new JobKey($"PingNode-{node.Id}", PingNodeJob.JobGroup);
-            await scheduler.ScheduleJob<PingNodeJob>(jobKey, jobDataMap, Schedule.Every(TimeSpan.FromMinutes(1)), cancellationToken);
+            await scheduler.ScheduleJob<PingNodeJob>(jobKey, jobDataMap, Schedule.Every(TimeSpan.FromMinutes(5)), TimeSpan.FromMinutes(1), cancellationToken);
         }
         logger.LogInformation("Rescheduled ping jobs for {Count} online nodes", onlineNodes.Count);
     }

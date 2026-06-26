@@ -11,6 +11,14 @@ public class Scheduler(ISchedulerFactory schedulerFactory, ILogger<Scheduler> lo
         JobDataMap jobDataMap,
         IScheduleBuilder scheduleBuilder,
         CancellationToken cancellationToken) where TJob : IJob
+        => await ScheduleJob<TJob>(jobKey, jobDataMap, scheduleBuilder, null, cancellationToken);
+
+    public async Task ScheduleJob<TJob>(
+        JobKey jobKey,
+        JobDataMap jobDataMap,
+        IScheduleBuilder scheduleBuilder,
+        TimeSpan? startDelay,
+        CancellationToken cancellationToken) where TJob : IJob
     {
         var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
 
@@ -29,6 +37,7 @@ public class Scheduler(ISchedulerFactory schedulerFactory, ILogger<Scheduler> lo
         var trigger = TriggerBuilder.Create()
            //.WithIdentity(triggerKey)
             .ForJob(jobKey)
+            .StartAt(DateTimeOffset.UtcNow.Add(startDelay ?? TimeSpan.Zero))
             .WithSchedule(scheduleBuilder)
             .Build();
 
