@@ -28,6 +28,14 @@ publishserver VERSION:
       -t git.harnas.top/ksalk/stefan-server:latest \
       -f src/server/Dockerfile . --push
 
+buildservertestimage:
+    docker buildx build --platform linux/amd64 -t stefan-server:test -f src/server/Dockerfile . --load
+
+buildserverdbtestimage:
+    docker buildx build --platform linux/amd64 -t stefan-db:test -f src/server/Stefan.Db.Dockerfile . --load
+
+buildservertestimages: buildservertestimage buildserverdbtestimage
+
 buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
 
