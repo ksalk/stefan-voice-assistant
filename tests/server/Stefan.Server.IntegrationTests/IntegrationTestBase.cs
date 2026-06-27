@@ -2,6 +2,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Stefan.Server.IntegrationTests;
@@ -69,7 +70,9 @@ public abstract class IntegrationTestBase
         };
         var client = new ServerAppClient(httpClient);
 
-        return new ServerApp(client, db, serverContainer, network);
+        var hostConnectionString = db.GetConnectionString();
+
+        return new ServerApp(client, db, serverContainer, network, hostConnectionString);
     }
 
     public sealed class ServerApp : IAsyncDisposable
@@ -78,21 +81,36 @@ public abstract class IntegrationTestBase
             ServerAppClient client,
             PostgreSqlContainer dbContainer,
             IContainer serverContainer,
-            INetwork network)
+            INetwork network,
+            string dbConnectionString)
         {
             Client = client;
             DbContainer = dbContainer;
             ServerContainer = serverContainer;
             Network = network;
+            DbConnectionString = dbConnectionString;
         }
 
         public ServerAppClient Client { get; }
         public PostgreSqlContainer DbContainer { get; }
         public IContainer ServerContainer { get; }
         public INetwork Network { get; }
+        public string DbConnectionString { get; }
 
         public async Task<(string Stdout, string Stderr)> GetLogsAsync(CancellationToken cancellationToken = default) =>
             await ServerContainer.GetLogsAsync(DateTime.MinValue, DateTime.MaxValue, false, cancellationToken);
+
+        public async Task<T> QueryScalarAsync<T>(string sql, IReadOnlyDictionary<string, object?>? args = null)
+        {
+            await using var conn = new NpgsqlConnection(DbConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            if (args is not null)
+                foreach (var (name, value) in args)
+                    cmd.Parameters.AddWithValue(name, value ?? DBNull.Value);
+            var result = await cmd.ExecuteScalarAsync();
+            return (T)result!;
+        }
 
         public async ValueTask DisposeAsync()
         {
