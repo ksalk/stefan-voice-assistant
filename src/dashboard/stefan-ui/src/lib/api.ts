@@ -1,3 +1,5 @@
+import type { GetNodeDetailsResult, GetNodesResult } from './types';
+
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 async function send({
@@ -27,9 +29,9 @@ async function send({
 	const f = customFetch || fetch;
 	const res = await f(`${BASE_URL}/${path}`, opts);
 
-    console.log(`API request: ${method} ${BASE_URL}/${path}`, { method, path, data, token });
+	console.log(`API request: ${method} ${BASE_URL}/${path}`, { method, path, data, token });
 	if (!res.ok) {
-        console.error(`API error: ${res.status} ${res.statusText}`);
+		console.error(`API error: ${res.status} ${res.statusText}`);
 		const errorData = await res.json().catch(() => ({}));
 		throw new Error(errorData.message || 'Something went wrong');
 	}
@@ -38,10 +40,10 @@ async function send({
 }
 
 export const api = {
-	getNodes: (customFetch?: typeof fetch) =>
+	getNodes: (customFetch?: typeof fetch): Promise<GetNodesResult> =>
 		send({ method: 'GET', path: 'nodes', fetch: customFetch }),
 
-	getNode: (id: string, customFetch?: typeof fetch) =>
+	getNode: (id: string, customFetch?: typeof fetch): Promise<GetNodeDetailsResult> =>
 		send({ method: 'GET', path: `nodes/${id}`, fetch: customFetch }),
 
 	pingNode: (id: string, customFetch?: typeof fetch) =>
