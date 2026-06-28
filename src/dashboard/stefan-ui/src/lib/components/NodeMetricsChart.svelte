@@ -23,10 +23,10 @@
 	let range = $state<RangeKey>('30d');
 
 	const chartConfig = {
-		cpuUsage: { label: 'CPU', color: 'var(--chart-1)' },
-		memoryUsage: { label: 'Memory', color: 'var(--chart-2)' },
-		diskUsage: { label: 'Disk', color: 'var(--chart-3)' },
-		audioVolume: { label: 'Volume', color: 'var(--chart-4)' }
+		cpuUsage: { label: 'CPU', color: '#ef4444' },
+		memoryUsage: { label: 'Memory', color: '#3b82f6' },
+		diskUsage: { label: 'Disk', color: '#22c55e' },
+		audioVolume: { label: 'Volume', color: '#a855f7' }
 	} satisfies Chart.ChartConfig;
 
 	const sortedReports = $derived(
@@ -136,7 +136,7 @@
 				x="timestamp"
 				{series}
 				yDomain={[0, 100]}
-				axis="x"
+				axis
 				legend
 				props={{ xAxis: { format: formatXTick }, yAxis: { format: formatYTick } }}
 			>
