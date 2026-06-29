@@ -32,6 +32,12 @@
 		assistant: 'Assistant'
 	};
 
+	const roleBgClasses: Record<string, string> = {
+		system: 'bg-muted/30',
+		user: 'bg-blue-500/5',
+		assistant: 'bg-green-500/5'
+	};
+
 	interface RawToolCall {
 		Id: string;
 		FunctionName: string;
@@ -84,7 +90,7 @@
 		</Card.Header>
 		<Card.Content class="space-y-3">
 			{#each parsedMessages as msg, i (i)}
-				<div class="rounded-lg border p-3 {msg.role === 'system' ? 'bg-muted/30' : ''}">
+				<div class="rounded-lg border p-3 {roleBgClasses[msg.role] ?? ''}">
 					<button
 						onclick={() => toggleExpanded(i)}
 						class="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -110,7 +116,7 @@
 						{#if msg.toolCalls && msg.toolCalls.length > 0}
 							<div class="mt-2 space-y-2">
 								{#each msg.toolCalls as tc (tc.id)}
-									<div class="rounded-md border bg-muted/20 p-2.5 text-sm">
+									<div class="rounded-md border bg-cyan-500/10 p-2.5 text-sm">
 										<div class="flex items-center gap-2 font-medium text-foreground">
 											<Zap class="size-4 text-amber-500" />
 											<span>{tc.functionName}</span>
