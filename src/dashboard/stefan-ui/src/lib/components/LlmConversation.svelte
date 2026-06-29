@@ -2,7 +2,8 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Bot from '@lucide/svelte/icons/bot';
 	import User from '@lucide/svelte/icons/user';
-	import Terminal from '@lucide/svelte/icons/terminal';
+	import Settings from '@lucide/svelte/icons/settings';
+	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Zap from '@lucide/svelte/icons/zap';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import type { ConversationMessage } from '$lib/types';
@@ -103,13 +104,13 @@
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
 								{#if msg.role === 'system'}
-									<Terminal class="size-4" />
+									<Settings class="size-4 mt-0.5" />
 								{:else if msg.role === 'user'}
 									<User class="size-4" />
 								{:else if msg.role === 'assistant'}
 									<Bot class="size-4" />
 								{:else}
-									<Terminal class="size-4" />
+									<MessageSquare class="size-4 mt-0.5" />
 								{/if}
 								<span>{roleLabels[msg.role]}</span>
 							</div>
