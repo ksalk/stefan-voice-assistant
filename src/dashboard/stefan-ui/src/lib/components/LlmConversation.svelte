@@ -91,46 +91,52 @@
 		<Card.Content class="space-y-3">
 			{#each parsedMessages as msg, i (i)}
 				<div class="rounded-lg border p-3 {roleBgClasses[msg.role] ?? ''}">
-					<button
-						onclick={() => toggleExpanded(i)}
-						class="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-					>
-						<ChevronRight
-							class="size-3.5 transition-transform {isExpanded(i, msg.role) ? 'rotate-90' : ''}"
-						/>
-						{#if msg.role === 'system'}
-							<Terminal class="size-4" />
-						{:else if msg.role === 'user'}
-							<User class="size-4" />
-						{:else if msg.role === 'assistant'}
-							<Bot class="size-4" />
-						{:else}
-							<Terminal class="size-4" />
-						{/if}
-						<span>{roleLabels[msg.role]}</span>
-					</button>
-					{#if isExpanded(i, msg.role)}
-						{#if msg.content}
-							<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
-						{/if}
-						{#if msg.toolCalls && msg.toolCalls.length > 0}
-							<div class="mt-2 space-y-2">
-								{#each msg.toolCalls as tc (tc.id)}
-									<div class="rounded-md border bg-cyan-500/10 p-2.5 text-sm">
-										<div class="flex items-center gap-2 font-medium text-foreground">
-											<Zap class="size-4 text-amber-500" />
-											<span>{tc.functionName}</span>
-										</div>
-										<pre
-											class="mt-1.5 overflow-x-auto rounded bg-muted/50 p-2 text-xs">{tc.arguments}</pre>
-										{#if tc.result}
-											<p class="mt-1 text-xs text-muted-foreground">→ {tc.result}</p>
-										{/if}
-									</div>
-								{/each}
+					<div class="flex gap-2 items-start">
+						<button
+							onclick={() => toggleExpanded(i)}
+							class="mt-1 shrink-0 text-muted-foreground hover:text-foreground"
+						>
+							<ChevronRight
+								class="size-3.5 transition-transform {isExpanded(i, msg.role) ? 'rotate-90' : ''}"
+							/>
+						</button>
+						<div class="min-w-0 flex-1">
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								{#if msg.role === 'system'}
+									<Terminal class="size-4" />
+								{:else if msg.role === 'user'}
+									<User class="size-4" />
+								{:else if msg.role === 'assistant'}
+									<Bot class="size-4" />
+								{:else}
+									<Terminal class="size-4" />
+								{/if}
+								<span>{roleLabels[msg.role]}</span>
 							</div>
-						{/if}
-					{/if}
+							{#if isExpanded(i, msg.role)}
+								{#if msg.content}
+									<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
+								{/if}
+								{#if msg.toolCalls && msg.toolCalls.length > 0}
+									<div class="mt-2 space-y-2">
+										{#each msg.toolCalls as tc (tc.id)}
+											<div class="rounded-md border bg-cyan-500/10 p-2.5 text-sm">
+												<div class="flex items-center gap-2 font-medium text-foreground">
+													<Zap class="size-4 text-amber-500" />
+													<span>{tc.functionName}</span>
+												</div>
+												<pre
+													class="mt-1.5 overflow-x-auto rounded bg-muted/50 p-2 text-xs">{tc.arguments}</pre>
+												{#if tc.result}
+													<p class="mt-1 text-xs text-muted-foreground">→ {tc.result}</p>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								{/if}
+							{/if}
+						</div>
+					</div>
 				</div>
 			{/each}
 		</Card.Content>
