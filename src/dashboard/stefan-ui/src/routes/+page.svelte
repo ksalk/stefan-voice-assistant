@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table';
@@ -238,7 +239,10 @@
 							{#each offlineNodes as node (node.id)}
 								<div class="flex items-center justify-between gap-2">
 									<div class="min-w-0">
-										<a href="/nodes/{node.id}" class="truncate font-medium hover:underline">
+										<a
+											href={resolve(`/nodes/${node.id}`)}
+											class="truncate font-medium hover:underline"
+										>
 											{node.name}
 										</a>
 										<p class="text-xs text-muted-foreground">

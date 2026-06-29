@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -81,13 +82,13 @@
 		<div>
 			<h1>Command Details</h1>
 			<p class="text-sm text-muted-foreground">
-				From <a href={`/nodes/${command.nodeId}`} class="font-medium hover:underline"
+				From <a href={resolve(`/nodes/${command.nodeId}`)} class="font-medium hover:underline"
 					>{command.nodeName}</a
 				>
 				· <TimeAgo date={command.receivedAt} />
 			</p>
 		</div>
-		<Button variant="outline" size="sm" href="/commands">
+		<Button variant="outline" size="sm" href={resolve('/commands')}>
 			<ArrowLeft class="size-4" />
 			Back to Commands
 		</Button>

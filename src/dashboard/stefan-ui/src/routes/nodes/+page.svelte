@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as Table from '$lib/components/ui/table';
 	import * as Alert from '$lib/components/ui/alert/index.js';
@@ -155,7 +156,7 @@
 				{#each filteredNodes as node (node.id)}
 					<Table.Row>
 						<Table.Cell class="font-medium">
-							<a href={`/nodes/${node.id}`} class="hover:underline">{node.name}</a>
+							<a href={resolve(`/nodes/${node.id}`)} class="hover:underline">{node.name}</a>
 						</Table.Cell>
 						<Table.Cell>
 							{#if node.status === 'Online'}
