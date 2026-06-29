@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import Bot from '@lucide/svelte/icons/bot';
 	import User from '@lucide/svelte/icons/user';
@@ -11,12 +12,11 @@
 	let { llmConversationJson }: { llmConversationJson: string | null } = $props();
 
 	let parsedMessages = $state<ConversationMessage[]>([]);
-	let expandedMap = $state<Map<string, boolean>>(new Map());
+	let expandedMap = new SvelteMap<string, boolean>();
 
 	function toggleExpanded(idx: number) {
 		const key = String(idx);
 		expandedMap.set(key, !expandedMap.get(key));
-		expandedMap = new Map(expandedMap);
 	}
 
 	function isExpanded(idx: number, role: string): boolean {
