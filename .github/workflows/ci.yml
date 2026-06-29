@@ -54,3 +54,39 @@ jobs:
 
       - name: Test
         run: dotnet test tests/node/Stefan.Node.UnitTests/Stefan.Node.UnitTests.csproj --configuration Release --verbosity normal
+
+  dashboard:
+    name: Dashboard (SvelteKit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/dashboard/stefan-ui
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: src/dashboard/stefan-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check
+        run: pnpm check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
