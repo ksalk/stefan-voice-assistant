@@ -5,32 +5,7 @@
 	import CirclePlay from '@lucide/svelte/icons/circle-play';
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import { api } from '$lib/api';
-
-	interface Command {
-		id: string;
-		nodeId: string;
-		nodeName: string;
-		sessionId: string;
-		receivedAt: string;
-		inputAudioFormat: string;
-		inputAudioDurationMs: number;
-		transcript: string;
-		responseText: string;
-		outputAudioFormat: string;
-		sttDurationMs: number;
-		llmDurationMs: number;
-		ttsDurationMs: number;
-		totalDurationMs: number;
-		status: string;
-		errorMessage: string | null;
-	}
-
-	interface CommandsResult {
-		items: Command[];
-		totalCount: number;
-		page: number;
-		pageSize: number;
-	}
+	import type { Command, CommandsResult } from '$lib/types';
 
 	let commands: Command[] = $state([]);
 	let totalCount = $state(0);

@@ -35,3 +35,29 @@ export interface GetNodesResult {
 export interface GetNodeDetailsResult {
 	node: Node;
 }
+
+export interface Command {
+	id: string;
+	nodeId: string;
+	nodeName: string;
+	sessionId: string;
+	receivedAt: string;
+	inputAudioFormat: string;
+	inputAudioDurationMs: number;
+	transcript: string;
+	responseText: string;
+	outputAudioFormat: string;
+	sttDurationMs: number;
+	llmDurationMs: number;
+	ttsDurationMs: number;
+	totalDurationMs: number;
+	status: string;
+	errorMessage: string | null;
+}
+
+export interface CommandsResult {
+	items: Command[];
+	totalCount: number;
+	page: number;
+	pageSize: number;
+}
