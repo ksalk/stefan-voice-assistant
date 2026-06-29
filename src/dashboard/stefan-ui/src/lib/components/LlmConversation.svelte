@@ -92,7 +92,7 @@
 		<Card.Content class="space-y-3">
 			{#each parsedMessages as msg, i (i)}
 				<div class="rounded-lg border p-3 {roleBgClasses[msg.role] ?? ''}">
-					<div class="flex gap-2 items-start">
+					<div class="flex items-start gap-2">
 						<button
 							onclick={() => toggleExpanded(i)}
 							class="mt-1 shrink-0 text-muted-foreground hover:text-foreground"
@@ -104,13 +104,13 @@
 						<div class="min-w-0 flex-1">
 							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
 								{#if msg.role === 'system'}
-									<Settings class="size-4 mt-0.5" />
+									<Settings class="mt-0.5 size-4" />
 								{:else if msg.role === 'user'}
 									<User class="size-4" />
 								{:else if msg.role === 'assistant'}
 									<Bot class="size-4" />
 								{:else}
-									<MessageSquare class="size-4 mt-0.5" />
+									<MessageSquare class="mt-0.5 size-4" />
 								{/if}
 								<span>{roleLabels[msg.role]}</span>
 							</div>
