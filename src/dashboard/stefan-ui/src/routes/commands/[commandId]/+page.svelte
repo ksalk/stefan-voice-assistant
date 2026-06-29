@@ -105,7 +105,7 @@
 
 	<div class="mt-4 grid gap-4 md:grid-cols-2">
 		<Card.Root>
-			<Card.Header class="flex-row items-center justify-between">
+			<Card.Header class="flex flex-row items-center justify-between">
 				<Card.Title class="text-base">Transcript</Card.Title>
 				<Button
 					variant="outline"
@@ -117,14 +117,14 @@
 				</Button>
 			</Card.Header>
 			<Card.Content>
-				<p class="text-sm whitespace-pre-wrap">
+				<p class="text-base whitespace-pre-wrap">
 					{command.transcript || 'No transcript available.'}
 				</p>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Header class="flex-row items-center justify-between">
+			<Card.Header class="flex flex-row items-center justify-between">
 				<Card.Title class="text-base">Response</Card.Title>
 				<Button
 					variant="outline"
@@ -136,7 +136,7 @@
 				</Button>
 			</Card.Header>
 			<Card.Content>
-				<p class="text-sm whitespace-pre-wrap">
+				<p class="text-base whitespace-pre-wrap">
 					{command.responseText || 'No response available.'}
 				</p>
 			</Card.Content>
