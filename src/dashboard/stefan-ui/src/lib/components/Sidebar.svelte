@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { page } from '$app/state';
+	import ScanFace from '@lucide/svelte/icons/scan-face';
 
 	const menuItems = [
 		{
@@ -28,7 +29,8 @@
 
 <aside class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300">
 	<div class="flex h-16 items-center px-6">
-		<span class="text-lg font-bold text-white">Admin</span>
+		<span class="text-lg font-bold text-white pr-3">Stefan</span>
+		<ScanFace />
 	</div>
 
 	<nav class="mt-4 px-3">
