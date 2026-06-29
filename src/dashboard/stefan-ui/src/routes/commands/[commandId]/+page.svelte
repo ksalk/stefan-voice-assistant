@@ -10,19 +10,46 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Mic from '@lucide/svelte/icons/mic';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
+	import Bot from '@lucide/svelte/icons/bot';
+	import User from '@lucide/svelte/icons/user';
+	import Terminal from '@lucide/svelte/icons/terminal';
+	import Zap from '@lucide/svelte/icons/zap';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { api } from '$lib/api';
 	import { formatDuration, getStatusBadgeVariant } from '$lib/commands';
 	import { toast } from 'svelte-sonner';
-	import type { Command } from '$lib/types';
+	import type { Command, ConversationMessage } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let command = $state<Command | null>(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
 	let showAdvanced = $state(false);
+	let systemExpanded = $state(false);
+	let parsedMessages = $state<ConversationMessage[]>([]);
 
 	let { params }: PageProps = $props();
 	let commandId = $derived(params.commandId);
+
+	interface RawToolCall {
+		Id: string;
+		FunctionName: string;
+		Arguments: string;
+		Result: string | null;
+	}
+
+	interface RawMessage {
+		Role: string;
+		Content: string | null;
+		ToolCalls: RawToolCall[] | null;
+	}
+
+	const roleLabels: Record<string, string> = {
+		system: 'System prompt',
+		user: 'User input',
+		assistant: 'Assistant',
+		tool: 'Tool result',
+	};
 
 	onMount(async () => {
 		await fetchCommand(commandId);
@@ -32,11 +59,39 @@
 		loading = true;
 		error = null;
 		try {
-			command = await api.getCommand(id);
+			const cmd = await api.getCommand(id);
+			command = cmd;
+			parseConversation(cmd);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load command details';
 		} finally {
 			loading = false;
+		}
+	}
+
+	function parseConversation(cmd: Command) {
+		if (!cmd.llmConversationJson) {
+			parsedMessages = [];
+			return;
+		}
+		try {
+			const parsed = JSON.parse(cmd.llmConversationJson) as RawMessage[];
+			parsedMessages = Array.isArray(parsed)
+				? parsed.map((m) => ({
+						role: m.Role as ConversationMessage['role'],
+						content: m.Content ?? null,
+						toolCalls: m.ToolCalls
+							? m.ToolCalls.map((tc) => ({
+									id: tc.Id,
+									functionName: tc.FunctionName,
+									arguments: tc.Arguments,
+									result: tc.Result ?? null,
+								}))
+							: null,
+					}))
+				: [];
+		} catch {
+			parsedMessages = [];
 		}
 	}
 
@@ -66,6 +121,7 @@
 		<Skeleton class="h-40 w-full" />
 	</div>
 	<Skeleton class="mt-4 h-48 w-full" />
+	<Skeleton class="mt-4 h-64 w-full" />
 {:else if error}
 	<Alert.Root variant="destructive" class="mt-4">
 		<Alert.Title>Error</Alert.Title>
@@ -103,8 +159,11 @@
 
 	<div class="mt-4 grid gap-4 md:grid-cols-2">
 		<Card.Root>
-			<Card.Header>
+			<Card.Header class="flex-row items-center justify-between">
 				<Card.Title class="text-base">Transcript</Card.Title>
+				<Button variant="outline" size="icon" aria-label="Play request audio" onclick={() => playAudio('Request')}>
+					<Mic class="size-4" />
+				</Button>
 			</Card.Header>
 			<Card.Content>
 				<p class="text-sm whitespace-pre-wrap">
@@ -114,8 +173,11 @@
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Header>
+			<Card.Header class="flex-row items-center justify-between">
 				<Card.Title class="text-base">Response</Card.Title>
+				<Button variant="outline" size="icon" aria-label="Play response audio" onclick={() => playAudio('Response')}>
+					<Volume2 class="size-4" />
+				</Button>
 			</Card.Header>
 			<Card.Content>
 				<p class="text-sm whitespace-pre-wrap">
@@ -151,23 +213,67 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="mt-4">
-		<Card.Header>
-			<Card.Title class="text-base">Audio Playback</Card.Title>
-		</Card.Header>
-		<Card.Content>
-			<div class="flex gap-2">
-				<Button variant="outline" onclick={() => playAudio('Request')}>
-					<Mic class="mr-2 size-4" />
-					Play Request
-				</Button>
-				<Button variant="outline" onclick={() => playAudio('Response')}>
-					<Volume2 class="mr-2 size-4" />
-					Play Response
-				</Button>
-			</div>
-		</Card.Content>
-	</Card.Root>
+	{#if parsedMessages.length > 0}
+		<Card.Root class="mt-4">
+			<Card.Header>
+				<Card.Title class="text-base">LLM Conversation</Card.Title>
+			</Card.Header>
+			<Card.Content class="space-y-3">
+				{#each parsedMessages as msg, i (i)}
+					<div class="rounded-lg border p-3 {msg.role === 'system' ? 'bg-muted/30' : ''}">
+						<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+							{#if msg.role === 'system'}
+								<button
+									onclick={() => (systemExpanded = !systemExpanded)}
+									class="flex items-center gap-2 hover:text-foreground"
+								>
+									<ChevronRight
+										class="size-3.5 transition-transform {systemExpanded ? 'rotate-90' : ''}"
+									/>
+									<Terminal class="size-4" />
+									<span>{roleLabels[msg.role]}</span>
+								</button>
+							{:else if msg.role === 'user'}
+								<User class="size-4" />
+								<span>{roleLabels[msg.role]}</span>
+							{:else if msg.role === 'assistant'}
+								<Bot class="size-4" />
+								<span>{roleLabels[msg.role]}</span>
+							{:else}
+								<Terminal class="size-4" />
+								<span>{roleLabels[msg.role]}</span>
+							{/if}
+						</div>
+						{#if msg.role === 'system'}
+							{#if systemExpanded}
+								<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
+							{/if}
+						{:else}
+							{#if msg.content}
+								<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
+							{/if}
+							{#if msg.toolCalls && msg.toolCalls.length > 0}
+								<div class="mt-2 space-y-2">
+									{#each msg.toolCalls as tc (tc.id)}
+										<div class="rounded-md border bg-muted/20 p-2.5 text-sm">
+											<div class="flex items-center gap-2 font-medium text-foreground">
+												<Zap class="size-4 text-amber-500" />
+												<span>{tc.functionName}</span>
+											</div>
+											<pre class="mt-1.5 overflow-x-auto rounded bg-muted/50 p-2 text-xs">{tc.arguments}</pre>
+											{#if tc.result}
+												<p class="mt-1 text-xs text-muted-foreground">→ {tc.result}</p>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{/if}
+						{/if}
+					</div>
+				{/each}
+			</Card.Content>
+		</Card.Root>
+	{/if}
 
 	<div class="mt-4">
 		<Button variant="ghost" size="sm" onclick={() => (showAdvanced = !showAdvanced)}>

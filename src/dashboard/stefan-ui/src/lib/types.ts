@@ -50,6 +50,19 @@ export type CommandStatus =
 
 export type StatusGroup = 'all' | 'inProgress' | 'completed' | 'failed';
 
+export interface ToolCallRecord {
+	id: string;
+	functionName: string;
+	arguments: string;
+	result: string | null;
+}
+
+export interface ConversationMessage {
+	role: 'system' | 'user' | 'assistant' | 'tool';
+	content: string | null;
+	toolCalls: ToolCallRecord[] | null;
+}
+
 export interface Command {
 	id: string;
 	nodeId: string;
@@ -67,6 +80,7 @@ export interface Command {
 	totalDurationMs: number;
 	status: CommandStatus;
 	errorMessage: string | null;
+	llmConversationJson: string | null;
 }
 
 export interface CommandsResult {

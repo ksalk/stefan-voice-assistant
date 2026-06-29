@@ -30,6 +30,7 @@ public class CommandSummaryDto
     public double? TotalDurationMs { get; set; }
     public CommandStatus Status { get; set; }
     public string? ErrorMessage { get; set; }
+    public string? LlmConversationJson { get; set; }
 }
 
 public class GetCommandsResult

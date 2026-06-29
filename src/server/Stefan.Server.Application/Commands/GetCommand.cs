@@ -33,6 +33,7 @@ public class GetCommand(StefanDbContext dbContext)
                 TotalDurationMs = r.TotalDurationMs,
                 Status = r.Status,
                 ErrorMessage = r.ErrorMessage,
+                LlmConversationJson = r.LlmConversationJson,
             })
             .FirstOrDefaultAsync(cancellationToken);
 

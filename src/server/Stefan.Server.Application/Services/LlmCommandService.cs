@@ -84,10 +84,9 @@ public class LlmCommandService(
                             messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
 
                             toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
-                            conversationMessages.Add(new ConversationMessage("tool", toolResult, null));
                         }
 
-                        conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
+                        conversationMessages.Add(new ConversationMessage("assistant", completion.Content[0].Text, toolCalls));
 
                         requiresAction = true;
                         break;
