@@ -8,6 +8,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import LlmConversation from '$lib/components/LlmConversation.svelte';
+	import DurationBar from '$lib/components/DurationBar.svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Mic from '@lucide/svelte/icons/mic';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
@@ -166,6 +167,7 @@
 					<p class="text-lg font-medium">{formatDuration(command.totalDurationMs)}</p>
 				</div>
 			</div>
+			<DurationBar {command} />
 		</Card.Content>
 	</Card.Root>
 
