@@ -57,6 +57,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ProcessCommand>();
         services.AddScoped<GetCommands>();
+        services.AddScoped<GetCommand>();
         services.AddScoped<GetCommandAudio>();
         return services;
     }

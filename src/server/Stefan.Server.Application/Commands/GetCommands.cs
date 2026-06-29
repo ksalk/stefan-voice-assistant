@@ -9,6 +9,7 @@ public class GetCommandsRequest
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public Guid? NodeId { get; set; }
+    public List<CommandStatus> Statuses { get; set; } = [];
 }
 
 public class CommandSummaryDto
@@ -54,6 +55,11 @@ public class GetCommands(StefanDbContext dbContext)
         if (request.NodeId.HasValue)
         {
             query = query.Where(r => r.NodeId == request.NodeId.Value);
+        }
+
+        if (request.Statuses.Count > 0)
+        {
+            query = query.Where(r => request.Statuses.Contains(r.Status));
         }
 
         query = query.OrderByDescending(r => r.ReceivedAt);

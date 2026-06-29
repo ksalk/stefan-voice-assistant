@@ -10,17 +10,39 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
-        app.MapGet("api/commands", async ([FromQuery] int page, [FromQuery] int pageSize, [FromServices] GetCommands getCommands) =>
+        app.MapGet("api/commands", async (
+            [FromQuery] int page,
+            [FromQuery] int pageSize,
+            [FromQuery] Guid? nodeId,
+            [FromQuery] CommandStatus[] status,
+            [FromServices] GetCommands getCommands) =>
         {
             var result = await getCommands.Handle(new GetCommandsRequest
             {
                 Page = page,
                 PageSize = pageSize,
+                NodeId = nodeId,
+                Statuses = status.ToList(),
             }, CancellationToken.None);
 
             return Results.Ok(result);
         })
         .WithName("GetCommands")
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
+        .RequireCors(CorsPolicy.DashboardPolicy);
+
+        app.MapGet("api/commands/{commandId:guid}", async (Guid commandId, [FromServices] GetCommand getCommand) =>
+        {
+            var result = await getCommand.Handle(new GetCommandRequest { Id = commandId }, CancellationToken.None);
+
+            if (result == null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(result);
+        })
+        .WithName("GetCommand")
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
 
