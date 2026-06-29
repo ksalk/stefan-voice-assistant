@@ -15,6 +15,7 @@
 	import { api } from '$lib/api';
 	import type { Node } from '$lib/types';
 	import type { PageProps } from './$types';
+	import { toast } from 'svelte-sonner';
 
 	let node = $state<Node | null>(null);
 	let loading = $state(true);
@@ -56,9 +57,16 @@
 		pinging = true;
 		try {
 			await api.pingNode(node.id);
-			await fetchNode(node.id);
+			toast.success(`Pinged ${node.name}`);
+			try {
+				await fetchNode(node.id);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : 'Unknown error';
+				toast.error(`Failed to refresh ${node.name}: ${msg}`);
+			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to ping node';
+			const msg = e instanceof Error ? e.message : 'Unknown error';
+			toast.error(`Failed to ping ${node.name}: ${msg}`);
 		} finally {
 			pinging = false;
 		}

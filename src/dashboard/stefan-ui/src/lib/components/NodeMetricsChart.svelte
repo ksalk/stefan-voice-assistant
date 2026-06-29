@@ -20,7 +20,7 @@
 		{ key: 'All', label: 'All', ms: null }
 	];
 
-	let range = $state<RangeKey>('30d');
+	let range = $state<RangeKey>('7d');
 
 	const chartConfig = {
 		cpuUsage: { label: 'CPU', color: '#ef4444' },
