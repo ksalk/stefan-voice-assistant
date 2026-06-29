@@ -250,11 +250,6 @@
 			</Table.Body>
 		</Table.Root>
 
-		<Pagination
-			{currentPage}
-			{totalPages}
-			onPrev={() => goToPage(currentPage - 1)}
-			onNext={() => goToPage(currentPage + 1)}
-		/>
+		<Pagination {currentPage} {totalPages} onPageChange={(page) => goToPage(page)} />
 	</div>
 {/if}

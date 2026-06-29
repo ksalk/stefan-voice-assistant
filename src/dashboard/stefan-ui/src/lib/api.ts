@@ -1,4 +1,4 @@
-import type { GetNodeDetailsResult, GetNodesResult } from './types';
+import type { Command, CommandsResult, GetNodeDetailsResult, GetNodesResult } from './types';
 
 const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
@@ -11,7 +11,7 @@ async function send({
 }: {
 	method: string;
 	path: string;
-	data?: any;
+	data?: unknown;
 	token?: string;
 	fetch?: typeof fetch;
 }) {
@@ -49,8 +49,26 @@ export const api = {
 	pingNode: (id: string, customFetch?: typeof fetch) =>
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch }),
 
-	getCommands: (page: number, pageSize: number, customFetch?: typeof fetch) =>
-		send({ method: 'GET', path: `commands?page=${page}&pageSize=${pageSize}`, fetch: customFetch }),
+	getCommands: (
+		page: number,
+		pageSize: number,
+		options: { nodeId?: string; statuses?: string[] } = {},
+		customFetch?: typeof fetch
+	): Promise<CommandsResult> => {
+		const params = new URLSearchParams();
+		params.set('page', String(page));
+		params.set('pageSize', String(pageSize));
+		if (options.nodeId) {
+			params.set('nodeId', options.nodeId);
+		}
+		for (const status of options.statuses ?? []) {
+			params.append('status', status);
+		}
+		return send({ method: 'GET', path: `commands?${params.toString()}`, fetch: customFetch });
+	},
+
+	getCommand: (id: string, customFetch?: typeof fetch): Promise<Command> =>
+		send({ method: 'GET', path: `commands/${id}`, fetch: customFetch }),
 
 	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);

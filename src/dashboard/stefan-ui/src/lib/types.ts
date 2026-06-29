@@ -36,6 +36,20 @@ export interface GetNodeDetailsResult {
 	node: Node;
 }
 
+export type CommandStatus =
+	| 'Received'
+	| 'SttFailed'
+	| 'SttSuccess'
+	| 'LlmFailed'
+	| 'LlmSuccess'
+	| 'TtsFailed'
+	| 'TtsSuccess'
+	| 'HttpFailed'
+	| 'Completed'
+	| 'Failed';
+
+export type StatusGroup = 'all' | 'inProgress' | 'completed' | 'failed';
+
 export interface Command {
 	id: string;
 	nodeId: string;
@@ -51,7 +65,7 @@ export interface Command {
 	llmDurationMs: number;
 	ttsDurationMs: number;
 	totalDurationMs: number;
-	status: string;
+	status: CommandStatus;
 	errorMessage: string | null;
 }
 

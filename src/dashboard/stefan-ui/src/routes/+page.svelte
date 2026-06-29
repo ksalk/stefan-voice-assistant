@@ -3,8 +3,10 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import StatCard from '$lib/components/StatCard.svelte';
+	import { getStatusBadgeVariant, truncate } from '$lib/commands';
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -85,32 +87,6 @@
 		} finally {
 			pingingId = null;
 		}
-	}
-
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case 'Completed':
-				return 'text-green-600';
-			case 'SttFailed':
-			case 'LlmFailed':
-			case 'TtsFailed':
-			case 'HttpFailed':
-			case 'Failed':
-				return 'text-red-600';
-			case 'SttSuccess':
-			case 'LlmSuccess':
-			case 'TtsSuccess':
-				return 'text-blue-600';
-			case 'Received':
-				return 'text-yellow-600';
-			default:
-				return 'text-slate-600';
-		}
-	}
-
-	function truncate(text: string, maxLength: number = 40): string {
-		if (text.length <= maxLength) return text;
-		return text.slice(0, maxLength) + '...';
 	}
 </script>
 
@@ -229,7 +205,9 @@
 							{#each commands.slice(0, 10) as command (command.id)}
 								<Table.Row>
 									<Table.Cell class="font-medium">{command.nodeName}</Table.Cell>
-									<Table.Cell class={getStatusColor(command.status)}>{command.status}</Table.Cell>
+									<Table.Cell>
+										<Badge variant={getStatusBadgeVariant(command.status)}>{command.status}</Badge>
+									</Table.Cell>
 									<Table.Cell>{truncate(command.transcript)}</Table.Cell>
 									<Table.Cell class="whitespace-nowrap">
 										<TimeAgo date={command.receivedAt} />
