@@ -133,7 +133,9 @@
 {/snippet}
 
 {#if totalMs > 0}
-	<div class="mt-3 h-2 w-full min-w-0">
+	<div
+		class="mt-3 h-4 w-full min-w-0 [&_.lc-axis-tick-label]:fill-muted-foreground [&_.lc-axis-tick-label]:stroke-0 [&_.lc-axis-tick-label]:font-normal"
+	>
 		<BarChart
 			data={barData}
 			y="category"
@@ -142,6 +144,9 @@
 			orientation="horizontal"
 			xDomain={[0, totalMs]}
 			padding={0}
+			axis="x"
+			grid={false}
+			rule={false}
 		>
 			{#snippet tooltip()}
 				<Chart.Tooltip hideLabel formatter={tooltipFormatter} />
