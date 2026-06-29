@@ -9,8 +9,22 @@
 
 	let { llmConversationJson }: { llmConversationJson: string | null } = $props();
 
-	let systemExpanded = $state(false);
 	let parsedMessages = $state<ConversationMessage[]>([]);
+	let expandedMap = $state<Map<string, boolean>>(new Map());
+
+	function toggleExpanded(idx: number) {
+		const key = String(idx);
+		expandedMap.set(key, !expandedMap.get(key));
+		expandedMap = new Map(expandedMap);
+	}
+
+	function isExpanded(idx: number, role: string): boolean {
+		const key = String(idx);
+		if (!expandedMap.has(key)) {
+			return role !== 'system';
+		}
+		return expandedMap.get(key) ?? true;
+	}
 
 	const roleLabels: Record<string, string> = {
 		system: 'System prompt',
@@ -71,34 +85,25 @@
 		<Card.Content class="space-y-3">
 			{#each parsedMessages as msg, i (i)}
 				<div class="rounded-lg border p-3 {msg.role === 'system' ? 'bg-muted/30' : ''}">
-					<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+					<button
+						onclick={() => toggleExpanded(i)}
+						class="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+					>
+						<ChevronRight
+							class="size-3.5 transition-transform {isExpanded(i, msg.role) ? 'rotate-90' : ''}"
+						/>
 						{#if msg.role === 'system'}
-							<button
-								onclick={() => (systemExpanded = !systemExpanded)}
-								class="flex items-center gap-2 hover:text-foreground"
-							>
-								<ChevronRight
-									class="size-3.5 transition-transform {systemExpanded ? 'rotate-90' : ''}"
-								/>
-								<Terminal class="size-4" />
-								<span>{roleLabels[msg.role]}</span>
-							</button>
+							<Terminal class="size-4" />
 						{:else if msg.role === 'user'}
 							<User class="size-4" />
-							<span>{roleLabels[msg.role]}</span>
 						{:else if msg.role === 'assistant'}
 							<Bot class="size-4" />
-							<span>{roleLabels[msg.role]}</span>
 						{:else}
 							<Terminal class="size-4" />
-							<span>{roleLabels[msg.role]}</span>
 						{/if}
-					</div>
-					{#if msg.role === 'system'}
-						{#if systemExpanded}
-							<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
-						{/if}
-					{:else}
+						<span>{roleLabels[msg.role]}</span>
+					</button>
+					{#if isExpanded(i, msg.role)}
 						{#if msg.content}
 							<p class="mt-2 text-sm whitespace-pre-wrap">{msg.content}</p>
 						{/if}
