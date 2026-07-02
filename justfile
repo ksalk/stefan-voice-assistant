@@ -1,5 +1,6 @@
 # https://just.systems
 
+# Database
 dbup:
     docker compose --profile db up -d
 
@@ -13,6 +14,7 @@ migrate-update:
     dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext
     dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext
 
+# Server
 buildserver:
     dotnet build --project src/server/Stefan.Server.API
     
@@ -36,6 +38,7 @@ buildserverdbtestimage:
 
 buildservertestimages: buildservertestimage buildserverdbtestimage
 
+# Node
 buildnodeimage:
     docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load
 
@@ -57,11 +60,12 @@ runnodetest:
 runnodeplaytest FILEPATH:
     dotnet run --project src/node/Stefan.Node --play-file {{FILEPATH}}
 
-runui:
-    pnpm --prefix src/dashboard/stefan-ui run dev
-
 buildnodetestimage:
     docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src/node/Dockerfile . --load
+
+# Dashboard
+runui:
+    pnpm --prefix src/dashboard/stefan-ui run dev
 
 builddashboardimage:
     docker buildx build --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load
