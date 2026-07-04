@@ -29,7 +29,7 @@
 
 <aside class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-slate-300">
 	<div class="flex h-16 items-center px-6">
-		<span class="text-lg font-bold text-white pr-3">Stefan</span>
+		<span class="pr-3 text-lg font-bold text-white">Stefan</span>
 		<ScanFace />
 	</div>
 
