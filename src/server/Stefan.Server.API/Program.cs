@@ -17,7 +17,6 @@ builder.Services.AddCors(configuration);
 
 var app = builder.Build();
 
-// app.UseWebSockets();
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
@@ -45,9 +44,6 @@ if (app.Environment.IsDevelopment())
 app.MapHealthEndpoints();
 app.MapNodeEndpoints();
 app.MapCommandEndpoints();
-
-// app.Map("/ws", (HttpContext context, NodeWebSocketHandler wsHandler, CancellationToken cancellationToken) =>
-//     wsHandler.HandleAsync(context, cancellationToken));
 
 
 app.Run();
