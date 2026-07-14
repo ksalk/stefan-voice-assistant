@@ -75,6 +75,29 @@ public abstract class IntegrationTestBase
         return new ServerApp(client, db, serverContainer, network, hostConnectionString);
     }
 
+    public sealed class JobStore
+    {
+        private readonly string _connectionString;
+
+        public JobStore(string connectionString)
+        {
+            _connectionString = connectionString;
+        }
+
+        public async Task<long> CountJobs(string group, string name)
+        {
+            await using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(
+                "SELECT COUNT(*) FROM jobs.qrtz_job_details WHERE job_group = @group AND job_name = @name",
+                conn);
+            cmd.Parameters.AddWithValue("group", group);
+            cmd.Parameters.AddWithValue("name", name);
+            var result = await cmd.ExecuteScalarAsync();
+            return (long)result!;
+        }
+    }
+
     public sealed class ServerApp : IAsyncDisposable
     {
         public ServerApp(
@@ -89,9 +112,11 @@ public abstract class IntegrationTestBase
             ServerContainer = serverContainer;
             Network = network;
             DbConnectionString = dbConnectionString;
+            JobStore = new JobStore(dbConnectionString);
         }
 
         public ServerAppClient Client { get; }
+        public JobStore JobStore { get; }
         public PostgreSqlContainer DbContainer { get; }
         public IContainer ServerContainer { get; }
         public INetwork Network { get; }
@@ -99,18 +124,6 @@ public abstract class IntegrationTestBase
 
         public async Task<(string Stdout, string Stderr)> GetLogsAsync(CancellationToken cancellationToken = default) =>
             await ServerContainer.GetLogsAsync(DateTime.MinValue, DateTime.MaxValue, false, cancellationToken);
-
-        public async Task<T> QueryScalarAsync<T>(string sql, IReadOnlyDictionary<string, object?>? args = null)
-        {
-            await using var conn = new NpgsqlConnection(DbConnectionString);
-            await conn.OpenAsync();
-            await using var cmd = new NpgsqlCommand(sql, conn);
-            if (args is not null)
-                foreach (var (name, value) in args)
-                    cmd.Parameters.AddWithValue(name, value ?? DBNull.Value);
-            var result = await cmd.ExecuteScalarAsync();
-            return (T)result!;
-        }
 
         public async ValueTask DisposeAsync()
         {

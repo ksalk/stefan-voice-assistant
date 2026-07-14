@@ -30,13 +30,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         Assert.NotNull(node.LastSeenAt);
         Assert.Null(node.LastPingAt);
 
-        var scheduledCount = await app.QueryScalarAsync<long>(
-            "SELECT COUNT(*) FROM jobs.qrtz_job_details WHERE job_group = @group AND job_name = @name",
-            new Dictionary<string, object?>
-            {
-                ["group"] = "NodePings",
-                ["name"] = $"PingNode-{node.Id}",
-            });
+        var scheduledCount = await app.JobStore.CountJobs("NodePings", $"PingNode-{node.Id}");
         Assert.Equal(1, scheduledCount);
     }
 
