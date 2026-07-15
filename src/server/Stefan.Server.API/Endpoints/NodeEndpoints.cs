@@ -1,6 +1,5 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
-using Stefan.Server.API;
 using Stefan.Server.Application.Nodes;
 
 namespace Stefan.Server.API.Endpoints;

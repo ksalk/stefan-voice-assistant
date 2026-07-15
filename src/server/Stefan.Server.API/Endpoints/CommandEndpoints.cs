@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Stefan.Server.API;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Common;
 using Stefan.Server.Domain;
