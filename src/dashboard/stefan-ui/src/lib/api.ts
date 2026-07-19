@@ -1,6 +1,6 @@
 import type { Command, CommandsResult, GetNodeDetailsResult, GetNodesResult } from './types';
 
-const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+const BASE_URL = 'http://localhost:5285/api';
 
 async function send({
 	method,
