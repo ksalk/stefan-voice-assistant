@@ -59,7 +59,8 @@ export function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
 }
 
-export function truncate(text: string, maxLength: number = 50): string {
+export function truncate(text: string | null | undefined, maxLength: number = 50): string {
+	if (!text) return '';
 	if (text.length <= maxLength) return text;
 	return text.slice(0, maxLength) + '...';
 }
