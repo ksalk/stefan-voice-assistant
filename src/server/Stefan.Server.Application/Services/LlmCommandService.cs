@@ -67,13 +67,14 @@ public class LlmCommandService(
                         ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
                         conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
                         var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+                       
                         return new LlmCommandResult(assistantMessage, conversationMessages, durationMs);
                     }
 
                 case ChatFinishReason.ToolCalls:
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"LLM requested tool calls: {string.Join(", ", completion.ToolCalls.Select(c => c.FunctionName))}");
-                        messages.Add(new AssistantChatMessage(completion));
+                        messages.Add(new AssistantChatMessage(completion.ToolCalls));
 
                         var toolCalls = new List<ToolCallRecord>();
 
@@ -84,6 +85,7 @@ public class LlmCommandService(
                             messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
 
                             toolCalls.Add(new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), toolResult));
+                            conversationMessages.Add(new ConversationMessage("tool", toolResult, null));
                         }
 
                         conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
