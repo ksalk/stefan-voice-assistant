@@ -1,3 +1,4 @@
+using System.ClientModel;
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -102,6 +103,16 @@ public class ProcessCommand(
             ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {result.DurationMs} ms");
 
             commandRecord.SaveLlmResult(result.ResponseText, JsonSerializer.Serialize(result.Messages, JsonOptions), result.DurationMs);
+        }
+        catch (ClientResultException ex)
+        {
+            ConsoleLog.Write(LogCategory.LLM, $"LLM failed: {ex.Message}");
+            
+            // This will print the exact OpenRouter validation error (e.g., "message.tool_calls is missing")
+            var llmError =  ex.GetRawResponse()?.Content?.ToString();
+            commandRecord.SaveLlmError(ex.Message + " " + llmError);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return null;
         }
         catch (Exception ex)
         {
