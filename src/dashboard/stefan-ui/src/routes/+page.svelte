@@ -123,18 +123,18 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row>
+							<Table.Head>Command</Table.Head>
 							<Table.Head>Node</Table.Head>
 							<Table.Head class="w-[100px]">Status</Table.Head>
-							<Table.Head>Transcript</Table.Head>
 							<Table.Head class="w-[120px]">Received</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
 						{#each [0, 1, 2, 3] as i (i)}
 							<Table.Row>
+								<Table.Cell><Skeleton class="h-4 w-48" /></Table.Cell>
 								<Table.Cell><Skeleton class="h-4 w-24" /></Table.Cell>
 								<Table.Cell><Skeleton class="h-5 w-16 rounded-full" /></Table.Cell>
-								<Table.Cell><Skeleton class="h-4 w-48" /></Table.Cell>
 								<Table.Cell><Skeleton class="h-4 w-16" /></Table.Cell>
 							</Table.Row>
 						{/each}
@@ -196,20 +196,34 @@
 					<Table.Root>
 						<Table.Header>
 							<Table.Row>
+								<Table.Head>Command</Table.Head>
 								<Table.Head>Node</Table.Head>
 								<Table.Head class="w-[100px]">Status</Table.Head>
-								<Table.Head>Transcript</Table.Head>
 								<Table.Head class="w-[120px]">Received</Table.Head>
 							</Table.Row>
 						</Table.Header>
 						<Table.Body>
 							{#each commands.slice(0, 10) as command (command.id)}
 								<Table.Row>
-									<Table.Cell class="font-medium">{command.nodeName}</Table.Cell>
+									<Table.Cell>
+										<a
+											href={resolve(`/commands/${command.id}`)}
+											class="font-medium hover:underline"
+										>
+											{truncate(command.transcript)}
+										</a>
+									</Table.Cell>
+									<Table.Cell>
+										<a
+											href={resolve(`/nodes/${command.nodeId}`)}
+											class="font-medium hover:underline"
+										>
+											{command.nodeName}
+										</a>
+									</Table.Cell>
 									<Table.Cell>
 										<Badge variant={getStatusBadgeVariant(command.status)}>{command.status}</Badge>
 									</Table.Cell>
-									<Table.Cell>{truncate(command.transcript)}</Table.Cell>
 									<Table.Cell class="whitespace-nowrap">
 										<TimeAgo date={command.receivedAt} />
 									</Table.Cell>

@@ -262,7 +262,11 @@
 								{command.transcript ? truncate(command.transcript, 40) : '(no transcript)'}
 							</a>
 						</Table.Cell>
-						<Table.Cell>{command.nodeName}</Table.Cell>
+						<Table.Cell>
+							<a href={resolve(`/nodes/${command.nodeId}`)} class="font-medium hover:underline">
+								{command.nodeName}
+							</a>
+						</Table.Cell>
 						<Table.Cell>
 							<Badge variant={getStatusBadgeVariant(command.status)}>{command.status}</Badge>
 						</Table.Cell>
