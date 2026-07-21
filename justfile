@@ -55,7 +55,7 @@ runnode:
     dotnet run --project src/node/Stefan.Node
 
 runnodetest:
-    dotnet run --project src/node/Stefan.Node --send-file ../../../tests/Stefan.Node.IntegrationTests/TestAudioFiles/how-much-longer.wav
+    dotnet run --project src/node/Stefan.Node --send-file ../../../tests/node/Stefan.Node.IntegrationTests/TestAudioFiles/how-much-longer.wav
 
 runnodeplaytest FILEPATH:
     dotnet run --project src/node/Stefan.Node --play-file {{FILEPATH}}
