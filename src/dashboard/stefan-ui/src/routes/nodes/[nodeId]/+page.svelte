@@ -140,9 +140,9 @@
 			</div>
 		</Card.Root>
 		<StatCard label="Restarts" value={node.restartCount} />
-		<StatCard label="CPU" value={latestReport?.cpuUsage ?? null} unit="%" />
-		<StatCard label="Memory" value={latestReport?.memoryUsage ?? null} unit="%" />
-		<StatCard label="Disk" value={latestReport?.diskUsage ?? null} unit="%" />
+		<StatCard label="CPU Used" value={latestReport?.cpuUsage ?? null} unit="%" />
+		<StatCard label="Memory Used" value={latestReport?.memoryUsage ?? null} unit="%" />
+		<StatCard label="Disk Used" value={latestReport?.diskUsage ?? null} unit="%" />
 	</div>
 
 	<!-- Details + metrics -->
@@ -224,10 +224,10 @@
 				<Table.Row>
 					<Table.Head class="w-[150px]">Timestamp</Table.Head>
 					<Table.Head>Status</Table.Head>
-					<Table.Head>CPU</Table.Head>
-					<Table.Head>Memory</Table.Head>
-					<Table.Head>Disk</Table.Head>
-					<Table.Head>Volume</Table.Head>
+					<Table.Head>CPU Used %</Table.Head>
+					<Table.Head>Memory Used %</Table.Head>
+					<Table.Head>Disk Used %</Table.Head>
+					<Table.Head>Audio Volume</Table.Head>
 					<Table.Head>Version</Table.Head>
 					<Table.Head>Git Commit</Table.Head>
 				</Table.Row>
