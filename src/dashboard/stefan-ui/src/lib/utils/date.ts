@@ -10,36 +10,27 @@ const divisions: Array<{ amount: number; unit: Intl.RelativeTimeFormatUnit }> = 
 	{ amount: Number.POSITIVE_INFINITY, unit: 'years' }
 ];
 
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(date: string | Date | null | undefined): string {
+	if (date == null) return '';
 	const dateObj = typeof date === 'string' ? new Date(date) : date;
-	const now = new Date();
-	const diffMs = dateObj.getTime() - now.getTime();
-	const diffSeconds = diffMs / 1000;
+	if (Number.isNaN(dateObj.getTime())) return '';
 
-	const absoluteDiff = Math.abs(diffSeconds);
-
-	let unit: Intl.RelativeTimeFormatUnit = 'seconds';
-	let value = diffSeconds;
+	let duration = (dateObj.getTime() - Date.now()) / 1000;
 
 	for (const division of divisions) {
-		if (absoluteDiff < division.amount) {
-			break;
+		if (Math.abs(duration) < division.amount) {
+			return relativeTimeFormatter.format(Math.round(duration), division.unit);
 		}
-		value = value / division.amount;
-		unit = division.unit;
+		duration /= division.amount;
 	}
 
-	// Use singular form for Intl.RelativeTimeFormat
-	const singularUnit = unit.endsWith('s')
-		? (unit.slice(0, -1) as Intl.RelativeTimeFormatUnit)
-		: unit;
-
-	return relativeTimeFormatter.format(Math.round(value), singularUnit);
+	return relativeTimeFormatter.format(Math.round(duration), 'years');
 }
 
 export function formatDateTime(date: string | Date | null | undefined): string {
 	if (date == null) return '';
 	const dateObj = typeof date === 'string' ? new Date(date) : date;
+	if (Number.isNaN(dateObj.getTime())) return '';
 
 	const day = String(dateObj.getDate()).padStart(2, '0');
 	const month = String(dateObj.getMonth() + 1).padStart(2, '0');
