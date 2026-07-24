@@ -75,3 +75,8 @@ publishdashboard VERSION:
       -t git.harnas.top/ksalk/stefan-dashboard:{{VERSION}} \
       -t git.harnas.top/ksalk/stefan-dashboard:latest \
       -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+
+# Tests
+test:
+    dotnet test Stefan.sln
+    pnpm --prefix src/dashboard/stefan-ui test
