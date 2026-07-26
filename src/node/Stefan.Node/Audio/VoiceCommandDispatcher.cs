@@ -69,10 +69,10 @@ public class VoiceCommandDispatcher(
         Action<string> onKeywordDetected,
         CancellationToken cancellationToken)
     {
-        using var keywordSpotter = CreateKeywordSpotter();
+        using var keywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.KeywordsFile);
         var keywordStream = keywordSpotter.CreateStream();
 
-        using var stopKeywordSpotter = CreateStopKeywordSpotter();
+        using var stopKeywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.StopKeywordsFile);
         var stopKeywordStream = stopKeywordSpotter.CreateStream();
 
         try
@@ -241,7 +241,7 @@ public class VoiceCommandDispatcher(
         }
     }
 
-    private KeywordSpotter CreateKeywordSpotter()
+    private KeywordSpotter CreateKeywordSpotter(string keywordsFile)
     {
         var opts = keywordSpotterOptions.Value;
         var modelPath = opts.ModelPath;
@@ -259,36 +259,7 @@ public class VoiceCommandDispatcher(
                 NumThreads = opts.NumThreads,
                 Provider = opts.Provider,
             },
-            KeywordsFile = opts.KeywordsFile,
-            FeatConfig = new FeatureConfig()
-            {
-                SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
-                FeatureDim = opts.FeatureDim
-            }
-        };
-
-        return new KeywordSpotter(keywordSpotterConfig);
-    }
-
-    private KeywordSpotter CreateStopKeywordSpotter()
-    {
-        var opts = keywordSpotterOptions.Value;
-        var modelPath = opts.ModelPath;
-        var keywordSpotterConfig = new KeywordSpotterConfig()
-        {
-            ModelConfig = new OnlineModelConfig()
-            {
-                Transducer = new OnlineTransducerModelConfig()
-                {
-                    Encoder = Path.Combine(modelPath, opts.EncoderFile),
-                    Decoder = Path.Combine(modelPath, opts.DecoderFile),
-                    Joiner = Path.Combine(modelPath, opts.JoinerFile)
-                },
-                Tokens = Path.Combine(modelPath, opts.TokensPath),
-                NumThreads = opts.NumThreads,
-                Provider = opts.Provider,
-            },
-            KeywordsFile = opts.StopKeywordsFile,
+            KeywordsFile = keywordsFile,
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
