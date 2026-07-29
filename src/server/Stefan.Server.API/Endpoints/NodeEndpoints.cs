@@ -59,6 +59,26 @@ public static class NodeEndpoints
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
+
+        app.MapPost("/api/nodes/{nodeId:guid}/speak-text", async (
+            Guid nodeId,
+            [FromBody] SendNodeAudioMessageRequest request,
+            [FromServices] SendNodeAudioMessage sendNodeAudioMessage) =>
+        {
+            request.NodeId = nodeId;
+            var result = await sendNodeAudioMessage.Handle(request, CancellationToken.None);
+
+            if (!result.IsSuccess)
+            {
+                if (result.Error == "Node not found.")
+                    return Results.NotFound(result.Error);
+                return Results.BadRequest(result.Error);
+            }
+
+            return Results.Ok(new { message = "Audio sent", ttsDurationMs = result.Value!.TtsDurationMs });
+        })
+        .RequireAuthorization(AuthPolicy.DashboardPolicy)
+        .RequireCors(CorsPolicy.DashboardPolicy);
     }
 
     private static string? GetNodeIpAddress(HttpContext context)

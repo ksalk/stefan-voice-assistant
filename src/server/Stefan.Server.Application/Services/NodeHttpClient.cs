@@ -25,16 +25,18 @@ public class NodeHttpClient(HttpClient httpClient, ILogger<NodeHttpClient> logge
         return await SendWavAudio(node, alertAudioBytes, cancellationToken);
     }
 
-    private async Task<HttpResponseMessage> SendWavAudio(Node node, byte[] audioBytes, CancellationToken cancellationToken)
+    public async Task<HttpResponseMessage> SendWavAudio(Node node, byte[] audioBytes, CancellationToken cancellationToken)
     {
         var uriBuilder = new UriBuilder("http", node.LastKnownIpAddress, node.Port, "audio");
         var sendAudioUrl = uriBuilder.ToString();
-        logger.LogDebug("Sending command response audio to node {NodeName} at {SendAudioUrl}", node.Name, sendAudioUrl);
+        logger.LogDebug("Sending audio to node {NodeName} at {SendAudioUrl}", node.Name, sendAudioUrl);
 
-        var requestContent = new ByteArrayContent(audioBytes);
-        requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        using var formContent = new MultipartFormDataContent();
+        var audioContent = new ByteArrayContent(audioBytes);
+        audioContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        formContent.Add(audioContent, "audio", "audio.wav");
 
-        var response = await httpClient.PostAsync(sendAudioUrl, requestContent, cancellationToken);
+        var response = await httpClient.PostAsync(sendAudioUrl, formContent, cancellationToken);
 
         response.EnsureSuccessStatusCode();
         return response;

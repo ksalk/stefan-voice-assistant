@@ -49,6 +49,14 @@ export const api = {
 	pingNode: (id: string, customFetch?: typeof fetch) =>
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch }),
 
+	speakText: (nodeId: string, text: string, customFetch?: typeof fetch) =>
+		send({
+			method: 'POST',
+			path: `nodes/${nodeId}/speak-text`,
+			data: { text },
+			fetch: customFetch
+		}),
+
 	getCommands: (
 		page: number,
 		pageSize: number,

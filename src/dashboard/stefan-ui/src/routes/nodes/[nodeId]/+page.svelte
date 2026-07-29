@@ -11,6 +11,7 @@
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Radio from '@lucide/svelte/icons/radio';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { formatDateTime } from '$lib/utils/date';
 	import { api } from '$lib/api';
 	import type { Node } from '$lib/types';
@@ -21,6 +22,8 @@
 	let loading = $state(true);
 	let pinging = $state(false);
 	let error: string | null = $state(null);
+	let audioText = $state('');
+	let sendingAudio = $state(false);
 	let { params }: PageProps = $props();
 	let nodeId: string = $derived(params.nodeId);
 
@@ -69,6 +72,21 @@
 			toast.error(`Failed to ping ${node.name}: ${msg}`);
 		} finally {
 			pinging = false;
+		}
+	}
+
+	async function sendAudioMessage() {
+		if (!node || !audioText.trim() || sendingAudio) return;
+		sendingAudio = true;
+		try {
+			await api.speakText(node.id, audioText.trim());
+			toast.success(`Sent audio to ${node.name}`);
+			audioText = '';
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : 'Failed to send audio';
+			toast.error(msg);
+		} finally {
+			sendingAudio = false;
 		}
 	}
 
@@ -144,6 +162,29 @@
 		<StatCard label="Memory Used" value={latestReport?.memoryUsage ?? null} unit="%" />
 		<StatCard label="Disk Used" value={latestReport?.diskUsage ?? null} unit="%" />
 	</div>
+
+	<!-- Send audio message -->
+	<Card.Root class="mt-4">
+		<Card.Header>
+			<Card.Title>Send audio message</Card.Title>
+		</Card.Header>
+		<Card.Content>
+			<div class="flex gap-2">
+				<input
+					type="text"
+					bind:value={audioText}
+					placeholder="Type a message…"
+					maxlength="250"
+					class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				/>
+				<Button disabled={!node || sendingAudio || !audioText.trim()} onclick={sendAudioMessage}>
+					<Volume2 class="size-4" />
+					{sendingAudio ? 'Sending…' : 'Play'}
+				</Button>
+			</div>
+			<span class="text-xs text-muted-foreground">{audioText.length}/250</span>
+		</Card.Content>
+	</Card.Root>
 
 	<!-- Details + metrics -->
 	<div class="mt-4 grid gap-4 lg:grid-cols-2">

@@ -50,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<RescheduleNodePings>();
 
         services.AddScoped<PingNodeJob>();
+
+        services.AddScoped<SendNodeAudioMessage>();
         return services;
     }
 
