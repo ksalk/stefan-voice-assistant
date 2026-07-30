@@ -22,7 +22,8 @@ public class FireTimerJob(
 
     public async Task Execute(IJobExecutionContext context)
     {
-        var timerId = context.MergedJobDataMap.GetInt(TimerIdKey);
+        var timerIdString = context.MergedJobDataMap.GetString(TimerIdKey) ?? string.Empty;
+        var timerId = Guid.Parse(timerIdString);
         var deviceId = context.MergedJobDataMap.GetString(DeviceIdKey) ?? string.Empty;
         var label = context.MergedJobDataMap.GetString(LabelKey);
 
