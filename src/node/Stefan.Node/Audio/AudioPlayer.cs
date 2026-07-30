@@ -55,7 +55,7 @@ public class AudioPlayer : BackgroundService
         }
         finally
         {
-            try { /* File.Delete(tempPath); */ } catch { }
+            try { File.Delete(tempPath); } catch { }
         }
     }
 
@@ -205,7 +205,7 @@ public class AudioPlayer : BackgroundService
                 {
                     try
                     {
-                        //File.Delete(item.FilePath);
+                        File.Delete(item.FilePath);
                     }
                     catch (Exception ex)
                     {
