@@ -175,7 +175,7 @@
 					bind:value={audioText}
 					placeholder="Type a message…"
 					maxlength="250"
-					class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
 				/>
 				<Button disabled={!node || sendingAudio || !audioText.trim()} onclick={sendAudioMessage}>
 					<Volume2 class="size-4" />
