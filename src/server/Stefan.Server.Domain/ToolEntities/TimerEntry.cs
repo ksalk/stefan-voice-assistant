@@ -8,4 +8,6 @@ public class TimerEntry
     public DateTime CreatedAt { get; set; }
 
     public DateTime ExpiresAt => CreatedAt.AddSeconds(DurationInSeconds);
+
+    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
 }
