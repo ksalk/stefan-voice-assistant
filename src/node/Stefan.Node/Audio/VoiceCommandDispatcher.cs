@@ -70,10 +70,10 @@ public class VoiceCommandDispatcher(
         CancellationToken cancellationToken)
     {
         using var keywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.KeywordsFile);
-        var keywordStream = keywordSpotter.CreateStream();
+        using var keywordStream = keywordSpotter.CreateStream();
 
         using var stopKeywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.StopKeywordsFile);
-        var stopKeywordStream = stopKeywordSpotter.CreateStream();
+        using var stopKeywordStream = stopKeywordSpotter.CreateStream();
 
         try
         {
