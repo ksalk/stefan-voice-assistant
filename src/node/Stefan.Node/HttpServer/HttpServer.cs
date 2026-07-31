@@ -29,7 +29,7 @@ public static class HttpServer
                 MemoryUsage = GetMemoryUsage(),
                 DiskUsage = GetDiskUsage(),
                 AudioVolume = audioPlayer.Volume,
-                Version = ThisAssembly.AssemblyInformationalVersion,
+                Version = ThisAssembly.AssemblyInformationalVersion.Split('+', 2)[0],
                 GitCommit = ThisAssembly.GitCommitId
             };
             return Results.Json(status, NodeJsonContext.Default.NodeStatusResponse);
