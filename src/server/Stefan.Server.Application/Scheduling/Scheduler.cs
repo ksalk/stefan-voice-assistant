@@ -67,5 +67,5 @@ public class Scheduler(ISchedulerFactory schedulerFactory, ILogger<Scheduler> lo
 public static class Schedule
 {
     public static IScheduleBuilder Every(TimeSpan interval) => SimpleScheduleBuilder.RepeatSecondlyForever((int)interval.TotalSeconds);
-    public static IScheduleBuilder OnceAfter(TimeSpan interval) => SimpleScheduleBuilder.Create().WithInterval(interval).WithRepeatCount(0);
+    public static IScheduleBuilder Once() => SimpleScheduleBuilder.Create().WithRepeatCount(0);
 }

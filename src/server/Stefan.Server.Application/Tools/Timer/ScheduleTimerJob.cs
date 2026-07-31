@@ -18,7 +18,7 @@ public class ScheduleTimerJob(Scheduler scheduler)
             [FireTimerJob.LabelKey] = entry.Label ?? string.Empty,
         };
 
-        await scheduler.ScheduleJob<FireTimerJob>(jobKey, jobDataMap, Schedule.OnceAfter(TimeSpan.FromSeconds(entry.DurationInSeconds)), cancellationToken);
+        await scheduler.ScheduleJob<FireTimerJob>(jobKey, jobDataMap, Schedule.Once(), TimeSpan.FromSeconds(entry.DurationInSeconds), cancellationToken);
     }
 
     private static JobKey GetJobKey(Guid timerId) => new($"Timer-{timerId}", FireTimerJob.JobGroup);
