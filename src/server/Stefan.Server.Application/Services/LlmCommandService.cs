@@ -121,10 +121,18 @@ public class LlmCommandService(
 
     private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken)
     {
-        var chatTool = toolRegistry.GetTool(toolCall.FunctionName) ?? throw new NotImplementedException($"Unknown tool call: {toolCall.FunctionName}");
-        var toolResult = await chatTool.Execute(toolCall, context, cancellationToken);
+        try
+        {
+            var chatTool = toolRegistry.GetTool(toolCall.FunctionName);
+            return await chatTool.Execute(toolCall, context, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ConsoleLog.Write(LogCategory.Tool, $"Tool '{toolCall.FunctionName}' failed: {ex.Message}");
 
-        return toolResult;
+            var availableTools = string.Join(", ", toolRegistry.GetAllToolDefinitions().Select(t => t.FunctionName));
+            return $"Error: {ex.Message} Available tools: {availableTools}.";
+        }
     }
 
     private ChatCompletionOptions GetChatCompletionOptions()
