@@ -25,6 +25,8 @@ public class LlmCommandService(
         The current date and time is {DateTime.Now:dddd, MMMM d, yyyy h:mm tt}.
         """;
 
+    private const int MaxToolCallIterations = 5;
+
     // TODO: remove async from name
     public async Task<Result<LlmCommandResult>> ProcessCommandAsync(string command, string deviceId, CancellationToken cancellationToken = default)
     {
@@ -47,6 +49,7 @@ public class LlmCommandService(
         {
             SourceDeviceId = deviceId
         };
+        var toolCallIterations = 0;
         bool requiresAction;
 
         do
@@ -73,6 +76,13 @@ public class LlmCommandService(
                 case ChatFinishReason.ToolCalls:
                     {
                         ConsoleLog.Write(LogCategory.LLM, $"LLM requested tool calls: {string.Join(", ", completion.ToolCalls.Select(c => c.FunctionName))}");
+
+                        if (++toolCallIterations > MaxToolCallIterations)
+                        {
+                            ConsoleLog.Write(LogCategory.LLM, $"Tool call limit of {MaxToolCallIterations} exceeded, aborting command");
+                            return Result<LlmCommandResult>.Failure($"Model exceeded the maximum of {MaxToolCallIterations} tool call iterations.");
+                        }
+
                         messages.Add(new AssistantChatMessage(completion.ToolCalls));
 
                         var toolCalls = new List<ToolCallRecord>();
