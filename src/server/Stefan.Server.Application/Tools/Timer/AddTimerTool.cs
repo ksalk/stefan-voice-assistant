@@ -7,10 +7,10 @@ namespace Stefan.Server.Application.Tools.Timer;
 
 public class AddTimerTool(ToolsDbContext toolsDbContext, ScheduleTimerJob scheduleTimerJob) : ITool
 {
-    public string Name => nameof(AddTimerTool);
+    public string Name => "add_timer";
 
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(AddTimerTool),
+        functionName: Name,
         functionDescription: "Add a timer",
         functionParameters: BinaryData.FromBytes("""
         {

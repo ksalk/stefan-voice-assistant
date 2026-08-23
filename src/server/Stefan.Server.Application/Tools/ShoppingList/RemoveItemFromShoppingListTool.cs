@@ -7,10 +7,10 @@ namespace Stefan.Server.Application.Tools.ShoppingList;
 
 public class RemoveItemFromShoppingListTool(ToolsDbContext toolsDbContext) : ITool
 {
-    public string Name => nameof(RemoveItemFromShoppingListTool);
+    public string Name => "remove_shopping_list_item";
 
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(RemoveItemFromShoppingListTool),
+        functionName: Name,
         functionDescription: "Remove an item from the shopping list",
         functionParameters: BinaryData.FromBytes("""
         {

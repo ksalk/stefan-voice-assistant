@@ -6,10 +6,10 @@ namespace Stefan.Server.Application.Tools.Timer;
 
 public class ListTimersTool(ToolsDbContext dbContext) : ITool
 {
-    public string Name => nameof(ListTimersTool);
+    public string Name => "list_timers";
 
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(ListTimersTool),
+        functionName: Name,
         functionDescription: "List active timers"
     );
 

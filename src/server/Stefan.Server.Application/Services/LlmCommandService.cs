@@ -14,7 +14,7 @@ public class LlmCommandService(
 
         Rules:
         - Always use tools to create, list, and cancel timers — never track state yourself.
-        - To cancel a timer by name, first call ListTimersTool to find its ID, then call CancelTimerTool.
+        - To cancel a timer by name, first call list_timers to find its ID, then call cancel_timer.
         - You have access to the current time. You can convert absolute times (e.g. "6pm", "in 20 minutes") to seconds from now.
 
         Response format (critical — this is spoken aloud via TTS):

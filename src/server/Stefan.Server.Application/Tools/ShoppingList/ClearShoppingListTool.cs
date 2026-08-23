@@ -5,10 +5,10 @@ namespace Stefan.Server.Application.Tools.ShoppingList;
 
 public class ClearShoppingListTool(ToolsDbContext toolsDbContext) : ITool
 {
-    public string Name => nameof(ClearShoppingListTool);
+    public string Name => "clear_shopping_list";
 
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(ClearShoppingListTool),
+        functionName: Name,
         functionDescription: "Clear all items from the shopping list",
         functionParameters: BinaryData.FromBytes("""
         {

@@ -6,10 +6,10 @@ namespace Stefan.Server.Application.Tools.Timer;
 
 public class CancelTimerTool(ToolsDbContext toolsDbContext, CancelTimerJob cancelTimerJob) : ITool
 {
-    public string Name => nameof(CancelTimerTool);
-    
+    public string Name => "cancel_timer";
+
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(CancelTimerTool),
+        functionName: Name,
         functionDescription: "Cancel a timer by its ID",
         functionParameters: BinaryData.FromBytes("""
         {

@@ -9,7 +9,7 @@ public class ToolRegistry
 
     public ToolRegistry(IEnumerable<ITool> tools)
     {
-        _toolsByName = tools.ToDictionary(t => t.GetType().Name, t => t);
+        _toolsByName = tools.ToDictionary(t => t.Name, t => t);
         _toolDefinitions = _toolsByName.Values.Select(t => t.Definition).ToList();
     }
 

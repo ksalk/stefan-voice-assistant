@@ -7,10 +7,10 @@ namespace Stefan.Server.Application.Tools.ShoppingList;
 
 public class AddItemToShoppingListTool(ToolsDbContext toolsDbContext) : ITool
 {
-    public string Name => nameof(AddItemToShoppingListTool);
+    public string Name => "add_shopping_list_item";
 
     public ChatTool Definition => ChatTool.CreateFunctionTool(
-        functionName: nameof(AddItemToShoppingListTool),
+        functionName: Name,
         functionDescription: "Add an item to the shopping list",
         functionParameters: BinaryData.FromBytes("""
         {
