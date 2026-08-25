@@ -135,7 +135,7 @@ public class VoiceCommandDispatcher(
 
                     onKeywordDetected(keywordResult.Keyword);
                     audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
-                    audioPlayer.Dim(audioOptions.Value.Output.DimVolumePercent);
+                    audioPlayer.DimIfPlaying(audioOptions.Value.Output.DimVolumePercent);
                     keywordSpotter.Reset(keywordStream);
                 }
             }

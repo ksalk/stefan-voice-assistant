@@ -103,6 +103,20 @@ public class AudioPlayer : BackgroundService
     }
 
     /// <summary>
+    /// Dims the volume via <see cref="Dim"/> only when playback is active — either an item
+    /// is currently playing or one is still waiting in the queue. Queued items count too,
+    /// because the queue reader picks them up asynchronously after <see cref="Queue"/>,
+    /// so a just-queued sound may not yet have set the active-playback flag. No-op when idle.
+    /// </summary>
+    public void DimIfPlaying(int dimPercent)
+    {
+        if (_currentCts is null && _queue.Reader.Count == 0)
+            return;
+
+        Dim(dimPercent);
+    }
+
+    /// <summary>
     /// Restores the device output volume to the level it had before <see cref="Dim"/> was called.
     /// No-op if not currently dimmed.
     /// </summary>
