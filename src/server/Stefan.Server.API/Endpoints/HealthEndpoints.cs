@@ -1,4 +1,6 @@
 using System.Reflection;
+using Microsoft.Extensions.Options;
+using Stefan.Server.Application.AI;
 
 namespace Stefan.Server.API.Endpoints;
 
@@ -6,7 +8,7 @@ public static class HealthEndpoints
 {
     public static void MapHealthEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/health", (IConfiguration configuration) => 
+        app.MapGet("/api/health", (IConfiguration configuration, IOptions<OpenAiOptions> openAiOptions) =>
         {
             var assembly = Assembly.GetExecutingAssembly();
             var informationalVersion = assembly
@@ -26,7 +28,8 @@ public static class HealthEndpoints
                 Version = version,
                 CommitHash = commitHash,
                 SttProvider = sttProvider,
-                TtsProvider = ttsProvider
+                TtsProvider = ttsProvider,
+                LlmModel = openAiOptions.Value.Model
             });
         }).AllowAnonymous();
     }
