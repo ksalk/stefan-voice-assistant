@@ -135,7 +135,6 @@ public class VoiceCommandDispatcher(
 
                     onKeywordDetected(keywordResult.Keyword);
                     audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
-                    audioPlayer.DimIfPlaying(audioOptions.Value.Output.DimVolumePercent);
                     keywordSpotter.Reset(keywordStream);
                 }
             }
@@ -188,8 +187,7 @@ public class VoiceCommandDispatcher(
                 _commandAudioBuffer.Clear();
                 _silentDurationMs = 0f;
                 audioPlayer.CancelCurrent();
-                audioPlayer.Undim();
-
+                
                 appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
                 stopKeywordSpotter.Reset(stopKeywordStream);
                 return;
@@ -201,7 +199,6 @@ public class VoiceCommandDispatcher(
             await SendCommandToServerAsync(_commandAudioBuffer);
             _commandAudioBuffer.Clear();
             _silentDurationMs = 0f;
-            audioPlayer.Undim();
             appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
             Console.WriteLine("[listener] Finished command processing. Returning to wake word detection.");
         }

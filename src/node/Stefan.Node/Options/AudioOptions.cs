@@ -13,7 +13,6 @@ public class AudioOutputOptions
 {
     public string DeviceName { get; set; } = "default";
     public string VolumeControlName { get; set; } = "Master";
-    public int DimVolumePercent { get; set; } = 20;
 }
 
 public class AudioOptions

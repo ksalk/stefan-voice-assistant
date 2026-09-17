@@ -15,8 +15,6 @@ public class AudioPlayer : BackgroundService
     private readonly string _outputDeviceName;
     private readonly string _volumeControlName;
     private volatile CancellationTokenSource? _currentCts;
-    private int? _preDimVolume;
-    private bool _isDimmed;
 
     public AudioPlayer(ILogger<AudioPlayer> logger, IOptions<AudioOptions> audioOptions)
     {
@@ -83,53 +81,6 @@ public class AudioPlayer : BackgroundService
             if (value.HasValue)
                 TrySetVolume(value.Value);
         }
-    }
-
-    /// <summary>
-    /// Temporarily reduces the device output volume (live, mid-playback) so that ongoing
-    /// playback does not interfere with command recording. The previous volume is restored
-    /// by <see cref="Undim"/>. Idempotent: calling it again while already dimmed does not
-    /// overwrite the captured pre-dim volume.
-    /// </summary>
-    public void Dim(int dimPercent)
-    {
-        if (!_isDimmed)
-        {
-            _preDimVolume = Volume;
-            _isDimmed = true;
-        }
-
-        Volume = dimPercent;
-    }
-
-    /// <summary>
-    /// Dims the volume via <see cref="Dim"/> only when playback is active — either an item
-    /// is currently playing or one is still waiting in the queue. Queued items count too,
-    /// because the queue reader picks them up asynchronously after <see cref="Queue"/>,
-    /// so a just-queued sound may not yet have set the active-playback flag. No-op when idle.
-    /// </summary>
-    public void DimIfPlaying(int dimPercent)
-    {
-        if (_currentCts is null && _queue.Reader.Count == 0)
-            return;
-
-        Dim(dimPercent);
-    }
-
-    /// <summary>
-    /// Restores the device output volume to the level it had before <see cref="Dim"/> was called.
-    /// No-op if not currently dimmed.
-    /// </summary>
-    public void Undim()
-    {
-        if (!_isDimmed)
-            return;
-
-        if (_preDimVolume.HasValue)
-            Volume = _preDimVolume.Value;
-
-        _isDimmed = false;
-        _preDimVolume = null;
     }
 
     private int? TryGetVolume()
