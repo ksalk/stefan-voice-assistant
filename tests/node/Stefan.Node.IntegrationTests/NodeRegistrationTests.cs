@@ -111,6 +111,6 @@ public class NodeRegistrationTests : IntegrationTestBase
         // Assert
         Assert.NotNull(capturedSessionId);
         Assert.True(Guid.TryParse(capturedSessionId, out _));
-        Assert.Equal(8080, capturedPort);
+        Assert.Equal(app.NodePort, capturedPort);
     }
 }

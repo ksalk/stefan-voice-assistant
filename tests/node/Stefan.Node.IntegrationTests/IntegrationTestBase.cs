@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -48,15 +50,25 @@ public abstract class IntegrationTestBase
 
         var hostPipeDir = Path.GetFullPath($"./audio-pipes/{testRunId}");
 
+        // Host networking: the container shares the host's network namespace, so it reaches the
+        // mock server via 127.0.0.1. This avoids depending on host firewalls (e.g. UFW), which
+        // drop TCP from docker bridge interfaces to host ports. Side effect: the container can
+        // also reach other host loopback services (e.g. a local database) during the test.
+        var nodePort = GetAvailablePort();
+
         var containerBuilder = new ContainerBuilder(ImageName)
             // Enable to show logs from container
             .WithOutputConsumer(Consume.RedirectStdoutAndStderrToConsole())
             .WithName($"stefan-node-integration-test-{testRunId}")
-            .WithExtraHost("host.docker.internal", "host-gateway")
+            .WithCreateParameterModifier(parameters =>
+            {
+                parameters.HostConfig ??= new Docker.DotNet.Models.HostConfig();
+                parameters.HostConfig.NetworkMode = "host";
+            })
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("Node__Name", "stefan-node-test")
-            .WithEnvironment("Server__Url", "http://0.0.0.0:8080")
-            .WithEnvironment("RemoteServer__Url", $"http://host.docker.internal:{mockServerPort}")
+            .WithEnvironment("Server__Url", $"http://0.0.0.0:{nodePort}")
+            .WithEnvironment("RemoteServer__Url", $"http://127.0.0.1:{mockServerPort}")
             .WithEnvironment("RemoteServer__AuthSecret", AuthSecret)
             .WithEnvironment("Audio__InputSource", "pipe")
             .WithEnvironment("Audio__PipePath", $"/tmp/audio-pipes/{testRunId}/audio-input")
@@ -71,9 +83,8 @@ public abstract class IntegrationTestBase
             .WithEnvironment("KeywordSpotter__NumThreads", "2")
             .WithEnvironment("KeywordSpotter__Provider", "cpu")
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
-            .WithPortBinding(8080, true)
             .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{testRunId}")
-            .WithWaitStrategy(BuildWaitStrategy(startMode));
+            .WithWaitStrategy(BuildWaitStrategy(startMode, nodePort));
 
         if (configureContainer is not null)
             containerBuilder = configureContainer(containerBuilder);
@@ -81,33 +92,64 @@ public abstract class IntegrationTestBase
         var container = containerBuilder.Build();
         await container.StartAsync();
 
-        var port = container.GetMappedPublicPort(8080);
-        var host = container.Hostname;
-
         var httpClient = new HttpClient
         {
-            BaseAddress = new Uri($"http://{host}:{port}"),
+            BaseAddress = new Uri($"http://127.0.0.1:{nodePort}"),
             Timeout = TimeSpan.FromSeconds(5),
         };
         var client = new NodeAppClient(httpClient);
 
-        return new NodeApp(client, pipePath, pipeDirectory, mockServerPort, container, mockServer);
+        return new NodeApp(client, pipePath, pipeDirectory, mockServerPort, nodePort, container, mockServer);
     }
 
-    private static IWaitForContainerOS BuildWaitStrategy(ContainerStartMode startMode)
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static IWaitForContainerOS BuildWaitStrategy(ContainerStartMode startMode, int nodePort)
     {
         var baseStrategy = Wait.ForUnixContainer();
 
         return startMode switch
         {
             ContainerStartMode.ExpectRunning => baseStrategy
-                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)),
+                .AddCustomWaitStrategy(new HealthWaitUntil(nodePort)),
 
             ContainerStartMode.ExpectExit => baseStrategy
                 .AddCustomWaitStrategy(new ExitWaitUntil(TimeSpan.FromSeconds(30))),
 
             _ => throw new ArgumentOutOfRangeException(nameof(startMode)),
         };
+    }
+
+    private class HealthWaitUntil(int port) : IWaitUntil
+    {
+        private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            using var cts = new CancellationTokenSource(Timeout);
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
+                var response = await client.GetAsync(new Uri($"http://127.0.0.1:{port}/health"), cts.Token);
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 
     private class ExitWaitUntil(TimeSpan timeout) : IWaitUntil
@@ -146,11 +188,13 @@ public abstract class IntegrationTestBase
             string pipePath,
             string pipeDirectory,
             int mockServerPort,
+            int nodePort,
             IContainer container,
             WebApplication mockServer)
         {
             Client = client;
             MockServerPort = mockServerPort;
+            NodePort = nodePort;
             _container = container;
             _mockServer = mockServer;
             _pipeDirectory = pipeDirectory;
@@ -159,6 +203,7 @@ public abstract class IntegrationTestBase
 
         public NodeAppClient Client { get; }
         public int MockServerPort { get; }
+        public int NodePort { get; }
 
         public async Task<long> GetExitCodeAsync(CancellationToken cancellationToken = default) =>
             await _container.GetExitCodeAsync(cancellationToken);
