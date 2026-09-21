@@ -150,4 +150,43 @@ public class CommandProcessingTests : IntegrationTestBase
         Assert.Equal(expectedNodeName, commandDeviceId);
         Assert.Equal(registeredSessionId, commandSessionId);
     }
+
+    [Fact]
+    public async Task CommandSentToServer_SendsCommandIdHeader_AndCorrelatesNodeLogsWithIt()
+    {
+        // Arrange
+        string? commandId = null; 
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", (HttpRequest request) =>
+                {
+                    commandId = request.Headers["X-Command-ID"].FirstOrDefault();
+                    return Results.Ok();
+                });
+            });
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.5));
+        await app.WriteAudioFileAsync("TestAudioFiles/how-much-longer.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+
+        // Wait for the command request to land and the header to be captured
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        while (commandId is null && !cts.IsCancellationRequested)
+            await Task.Delay(250, cts.Token);
+
+        // Assert
+        Assert.NotNull(commandId);
+        Assert.True(Guid.TryParse(commandId, out var parsedCommandId));
+        Assert.NotEqual(Guid.Empty, parsedCommandId);
+
+        // The command id the node generated and sent must appear in its own logs,
+        // so node side logs can be correlated with the server side ones.
+        var appLogs = await app.GetLogsAsync();
+        Assert.Contains(commandId, appLogs.Stdout);
+    }
 }

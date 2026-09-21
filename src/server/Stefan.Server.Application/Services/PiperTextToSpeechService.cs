@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PiperSharp;
 using PiperSharp.Models;
-using Stefan.Server.Common;
 
 namespace Stefan.Server.Application.Services;
 
@@ -10,39 +10,39 @@ public class PiperTextToSpeechService : ITextToSpeechService
 {
     private readonly PiperProvider _piper;
 
-    public PiperTextToSpeechService(IConfiguration configuration)
+    public PiperTextToSpeechService(IConfiguration configuration, ILogger<PiperTextToSpeechService> logger)
     {
         var section = configuration.GetSection("Piper");
         var executablePath = section["ExecutablePath"] ?? "piper/piper";
         var workingDirectory = section["WorkingDirectory"] ?? "piper";
         var modelKey = section["ModelKey"] ?? "en_US-hfc_female-medium";
 
-        ConsoleLog.Write(LogCategory.TTS, "Initializing Piper TTS...");
+        logger.LogInformation("Initializing Piper TTS...");
 
         // Ensure piper executable exists, download if missing
         var fullExePath = Path.GetFullPath(executablePath);
         if (!File.Exists(fullExePath))
         {
-            ConsoleLog.Write(LogCategory.TTS, $"Piper executable not found at '{fullExePath}', downloading...");
+            logger.LogInformation("Piper executable not found at {ExecutablePath}, downloading...", fullExePath);
             var cwd = Path.GetFullPath(workingDirectory);
             var parentDir = Directory.GetParent(cwd)?.FullName ?? cwd;
             PiperDownloader.DownloadPiper().ExtractPiper(parentDir).GetAwaiter().GetResult();
-            ConsoleLog.Write(LogCategory.TTS, "Piper executable downloaded and extracted.");
+            logger.LogInformation("Piper executable downloaded and extracted.");
         }
 
         // Load or download the voice model
         VoiceModel model;
         try
         {
-            ConsoleLog.Write(LogCategory.TTS, $"Loading voice model '{modelKey}'...");
+            logger.LogInformation("Loading voice model {ModelKey}...", modelKey);
             model = VoiceModel.LoadModelByKey(modelKey).GetAwaiter().GetResult();
-            ConsoleLog.Write(LogCategory.TTS, "Voice model loaded from disk.");
+            logger.LogInformation("Voice model loaded from disk.");
         }
         catch
         {
-            ConsoleLog.Write(LogCategory.TTS, $"Voice model '{modelKey}' not found locally, downloading...");
+            logger.LogInformation("Voice model {ModelKey} not found locally, downloading...", modelKey);
             model = PiperDownloader.DownloadModelByKey(modelKey).GetAwaiter().GetResult();
-            ConsoleLog.Write(LogCategory.TTS, "Voice model downloaded.");
+            logger.LogInformation("Voice model downloaded.");
         }
 
         _piper = new PiperProvider(new PiperConfiguration
@@ -52,7 +52,7 @@ public class PiperTextToSpeechService : ITextToSpeechService
             Model = model,
         });
 
-        ConsoleLog.Write(LogCategory.TTS, "Piper TTS initialized successfully.");
+        logger.LogInformation("Piper TTS initialized successfully.");
     }
 
     /// <summary>

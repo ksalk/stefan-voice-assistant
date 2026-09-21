@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
@@ -44,6 +45,36 @@ public sealed class ServerAppClient : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/nodes/register");
         request.Headers.Add("X-Node-Secret", nodeSecret);
         request.Content = new StringContent(rawBody, Encoding.UTF8, contentType);
+        return await _httpClient.SendAsync(request, cancellationToken);
+    }
+
+    public async Task<HttpResponseMessage> PostCommandAsync(
+        string? nodeSecret,
+        string? deviceId,
+        string? sessionId,
+        string? commandId,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/commands");
+        if (nodeSecret is not null)
+            request.Headers.Add("X-Node-Secret", nodeSecret);
+        if (deviceId is not null)
+            request.Headers.Add("X-Node-Device-ID", deviceId);
+        if (sessionId is not null)
+            request.Headers.Add("X-Node-Session-ID", sessionId);
+        if (commandId is not null)
+            request.Headers.Add("X-Command-ID", commandId);
+
+        var audio = new byte[] { 82, 73, 70, 70, 36, 0, 0, 0, 87, 65, 86, 0x00 };
+        request.Content = new MultipartFormDataContent
+        {
+            {
+                new ByteArrayContent(audio) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } },
+                "file",
+                "command.wav"
+            }
+        };
+
         return await _httpClient.SendAsync(request, cancellationToken);
     }
 

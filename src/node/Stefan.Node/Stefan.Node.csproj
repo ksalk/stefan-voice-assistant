@@ -8,6 +8,10 @@
   <ItemGroup>
     <PackageReference Include="Alsa.Net" />
     <PackageReference Include="org.k2fsa.sherpa.onnx" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>

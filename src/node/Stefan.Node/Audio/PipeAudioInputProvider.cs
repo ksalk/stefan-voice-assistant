@@ -5,7 +5,9 @@ using Stefan.Node.Options;
 
 namespace Stefan.Node.Audio;
 
-public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudioInputProvider
+public class PipeAudioInputProvider(
+    IOptions<AudioOptions> audioOptions,
+    ILogger<PipeAudioInputProvider> logger) : IAudioInputProvider
 {
     private const int ChunkSize = 4096;
 
@@ -20,7 +22,7 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
         var pipePath = audioOptions.Value.PipePath ?? "/tmp/audio-input";
         var input = audioOptions.Value.Input;
 
-        Console.WriteLine($"[pipe] Setting up named pipe: {pipePath}");
+        logger.LogInformation("[pipe] Setting up named pipe: {PipePath}", pipePath);
 
         try
         {
@@ -42,14 +44,14 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
                 }
                 chmod(tempPath, Convert.ToUInt32("666", 8));
                 File.Move(tempPath, pipePath);
-                Console.WriteLine($"[pipe] Named pipe created: {pipePath}");
+                logger.LogInformation("[pipe] Named pipe created: {PipePath}", pipePath);
             }
 
-            Console.WriteLine($"[pipe] Waiting for writer to open pipe: {pipePath}");
+            logger.LogInformation("[pipe] Waiting for writer to open pipe: {PipePath}", pipePath);
 
             await using var pipeStream = new FileStream(pipePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: ChunkSize, useAsync: true);
 
-            Console.WriteLine("[pipe] Writer connected, reading audio data");
+            logger.LogInformation("[pipe] Writer connected, reading audio data");
 
             var buffer = new byte[ChunkSize];
             int bytesRead;
@@ -70,15 +72,15 @@ public class PipeAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudi
                 await audioWriter.WriteAsync(output.Bytes, cancellationToken);
             }
 
-            Console.WriteLine("[pipe] Pipe closed by sender");
+            logger.LogInformation("[pipe] Pipe closed by sender");
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("[pipe] Reading cancelled");
+            logger.LogInformation("[pipe] Reading cancelled");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[pipe] Error reading from pipe: {ex}");
+            logger.LogError(ex, "[pipe] Error reading from pipe");
         }
         finally
         {

@@ -1,36 +1,50 @@
 ﻿using Microsoft.Extensions.Options;
+using Serilog;
 using Stefan.Node.Audio;
 using Stefan.Node.HttpServer;
+using Stefan.Node.Logging;
 using Stefan.Node.Options;
 using Stefan.Node.Services;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
+Log.Logger = NodeLogger.Create(builder.Configuration);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog(Log.Logger);
+
 ConfigureServices(builder);
 
-var app = builder.Build();
-
-if (!await RegisterNode(app))
+try
 {
-    return 1;
-}
+    var app = builder.Build();
 
-if (IsSendTestCommandRequested(app, out var sendFilePath))
-{
-    await TrySendTestCommand(app, sendFilePath!);
+    if (!await RegisterNode(app))
+    {
+        return 1;
+    }
+
+    if (IsSendTestCommandRequested(app, out var sendFilePath))
+    {
+        await TrySendTestCommand(app, sendFilePath!);
+        return 0;
+    }
+
+    if (IsPlayFileCommandRequested(app, out var playFilePath))
+    {
+        var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
+        await audioPlayer.PlayAsync(await File.ReadAllBytesAsync(playFilePath!));
+        return 0;
+    }
+
+    var serverUrl = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.Url;
+    await app.RunServerAsync(serverUrl);
     return 0;
 }
-
-if (IsPlayFileCommandRequested(app, out var playFilePath))
+finally
 {
-    var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
-    await audioPlayer.PlayAsync(await File.ReadAllBytesAsync(playFilePath!));
-    return 0;
+    Log.CloseAndFlush();
 }
-
-var serverUrl = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.Url;
-await app.RunServerAsync(serverUrl);
-return 0;
 
 WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
 {
@@ -75,18 +89,18 @@ void RegisterAudioInputProvider(WebApplicationBuilder builder)
     var audioOptions = builder.Configuration.GetSection(AudioOptions.SectionName).Get<AudioOptions>() ?? new AudioOptions();
     var inputSource = audioOptions.InputSource.ToLowerInvariant();
 
-    Console.WriteLine($"[audio] Input source: {inputSource}");
+    Log.Information("[audio] Input source: {InputSource}", inputSource);
 
     switch (inputSource)
     {
         case "pipe":
             builder.Services.AddSingleton<IAudioInputProvider, PipeAudioInputProvider>();
-            Console.WriteLine($"[audio] Using pipe input (path: {audioOptions.PipePath ?? "/tmp/audio-input"})");
+            Log.Information("[audio] Using pipe input (path: {PipePath})", audioOptions.PipePath ?? "/tmp/audio-input");
             break;
         case "mic":
         default:
             builder.Services.AddSingleton<IAudioInputProvider, MicAudioInputProvider>();
-            Console.WriteLine("[audio] Using microphone input");
+            Log.Information("[audio] Using microphone input");
             break;
     }
 }
@@ -97,7 +111,7 @@ async Task<bool> RegisterNode(WebApplication app)
     var result = await remoteClient.RegisterNodeAsync();
     if (!result.IsSuccess)
     {
-        Console.Error.WriteLine($"[fatal] Node registration failed. {result.Error}. Exiting.");
+        Log.Error("[fatal] Node registration failed. {Error}. Exiting.", result.Error);
         return false;
     }
     return true;
@@ -120,15 +134,15 @@ async Task<bool> TrySendTestCommand(WebApplication app, string filePath)
     var remoteClient = app.Services.GetRequiredService<RemoteServerClient>();
     var audioPlayer = app.Services.GetRequiredService<AudioPlayer>();
 
-    Console.WriteLine($"[info] Sending file: {filePath}");
+    Log.Information("[info] Sending file: {FilePath}", filePath);
     var audioBytes = await File.ReadAllBytesAsync(filePath!);
-    var result = await remoteClient.SendCommandAsync(audioBytes);
+    var result = await remoteClient.SendCommandAsync(audioBytes, Guid.NewGuid());
     if (result.IsSuccess)
     {
-        Console.WriteLine($"[info] File sent successfully. Response: {result.Value.ResponseText}");
+        Log.Information("[info] File sent successfully. Response: {ResponseText}", result.Value.ResponseText);
         await audioPlayer.PlayAsync(result.Value.Audio);
         return true;
     }
-    Console.Error.WriteLine($"[error] Failed to send file: {result.Error}");
+    Log.Error("[error] Failed to send file: {Error}", result.Error);
     return false;
 }

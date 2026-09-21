@@ -5,7 +5,9 @@ using Stefan.Node.Options;
 
 namespace Stefan.Node.Audio;
 
-public class MicAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudioInputProvider
+public class MicAudioInputProvider(
+    IOptions<AudioOptions> audioOptions,
+    ILogger<MicAudioInputProvider> logger) : IAudioInputProvider
 {
     public Task WriteAudioInput(ChannelWriter<byte[]> audioWriter, CancellationToken cancellationToken)
     {
@@ -40,7 +42,7 @@ public class MicAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudio
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error in ALSA record callback: {ex}");
+                    logger.LogError(ex, "[audio] Error in ALSA record callback");
                 }
             }, cancellationToken);
         }
@@ -49,7 +51,7 @@ public class MicAudioInputProvider(IOptions<AudioOptions> audioOptions) : IAudio
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in ALSA record loop: {ex}");
+            logger.LogError(ex, "[audio] Error in ALSA record loop");
         }
         finally
         {

@@ -9,6 +9,9 @@ public static class CommandEndpoints
 {
     public static void MapCommandEndpoints(this WebApplication app)
     {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Stefan.Server.API.Endpoints.CommandEndpoints");
+
         app.MapGet("api/commands", async (
             [FromQuery] int page,
             [FromQuery] int pageSize,
@@ -50,24 +53,35 @@ public static class CommandEndpoints
             var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(deviceId))
             {
-                ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: missing X-Node-Device-ID header");
+                logger.LogWarning("Command request rejected: missing X-Node-Device-ID header");
                 return Results.BadRequest("Missing X-Node-Device-ID header");
             }
 
             var sessionId = context.Request.Headers["X-Node-Session-ID"].FirstOrDefault();
             if (string.IsNullOrEmpty(sessionId))
             {
-                ConsoleLog.Write(LogCategory.HTTP, "Command request rejected: missing X-Node-Session-ID header");
+                logger.LogWarning("Command request rejected: missing X-Node-Session-ID header (device {DeviceId})", deviceId);
                 return Results.BadRequest("Missing X-Node-Session-ID header");
             }
 
-            ConsoleLog.WriteSeparator();
-            ConsoleLog.Write(LogCategory.HTTP, $"Received file: {file.FileName}, size: {file.Length} bytes");
+            var rawCommandId = context.Request.Headers[Correlation.CommandIdHeader].FirstOrDefault();
+            if (!Guid.TryParse(rawCommandId, out var commandId) || commandId == Guid.Empty)
+            {
+                logger.LogWarning(
+                    "Command request rejected: missing or invalid {Header} header '{Value}' (device {DeviceId})",
+                    Correlation.CommandIdHeader, rawCommandId, deviceId);
+                return Results.BadRequest($"Missing or invalid {Correlation.CommandIdHeader} header");
+            }
+
+            logger.LogInformation(
+                "Received command {CommandId} from device {DeviceId}: {FileName}, {FileSize} bytes",
+                commandId, deviceId, file.FileName, file.Length);
 
             await using var fileStream = file.OpenReadStream();
 
             var result = await processCommand.Handle(new ProcessCommandRequest
             {
+                CommandId = commandId,
                 DeviceId = deviceId,
                 SessionId = sessionId,
                 AudioStream = fileStream,
@@ -78,6 +92,7 @@ public static class CommandEndpoints
                 return Results.Unauthorized();
             }
 
+            context.Response.Headers[Correlation.CommandIdHeader] = commandId.ToString();
             context.Response.Headers["X-Response-Text"] = Uri.EscapeDataString(result.ResponseText);
             return Results.File(result.AudioBytes, "audio/wav", "response.wav");
         })

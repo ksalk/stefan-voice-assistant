@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Alsa.Net;
 using Microsoft.Extensions.Options;
 using SherpaOnnx;
+using Stefan.Node;
 using Stefan.Node.Audio;
 using Stefan.Node.Options;
 using Stefan.Node.Services;
@@ -12,11 +13,16 @@ public class VoiceCommandDispatcher(
     AppStateService appStateService,
     AudioPlayer audioPlayer,
     IOptions<KeywordSpotterOptions> keywordSpotterOptions,
-    IOptions<AudioOptions> audioOptions) : BackgroundService
+    IOptions<AudioOptions> audioOptions,
+    ILogger<VoiceCommandDispatcher> logger) : BackgroundService
 {
     private readonly List<RawPcmChunk> _commandAudioBuffer = [];
     private float _silentDurationMs;
     private DateTime _recordingStartTime = DateTime.MinValue;
+    private Guid _currentCommandId;
+
+    /// <summary>Log scope carrying the id of the command currently being processed.</summary>
+    private Dictionary<string, object> CommandScope() => new() { [Correlation.CommandIdProperty] = _currentCommandId };
 
     private AudioFormat ProcessingAudioFormat => new AudioFormat
     {
@@ -40,7 +46,11 @@ public class VoiceCommandDispatcher(
 
             var audioProcessingTask = RunAudioProcessingAsync(
                 audioChannel.Reader,
-                keyword => Console.WriteLine($"[listener] Keyword detected: {keyword} \nStarting command recording..."),
+                keyword =>
+                {
+                    using var scope = logger.BeginScope(CommandScope());
+                    logger.LogInformation("[listener] Keyword detected: {Keyword} \nStarting command recording...", keyword);
+                },
                 cancellationToken);
 
             var recordMicTask = Task.Factory.StartNew(
@@ -49,7 +59,7 @@ public class VoiceCommandDispatcher(
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
 
-            Console.WriteLine("[listener] VoiceCommandDispatcher started. Listening for wake word...");
+            logger.LogInformation("[listener] VoiceCommandDispatcher started. Listening for wake word...");
 
             await Task.WhenAll(recordMicTask, audioProcessingTask);
         }
@@ -59,7 +69,7 @@ public class VoiceCommandDispatcher(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[listener] Fatal error in VoiceCommandDispatcher: {ex}");
+            logger.LogError(ex, "[listener] Fatal error in VoiceCommandDispatcher");
             throw;
         }
     }
@@ -100,7 +110,7 @@ public class VoiceCommandDispatcher(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[listener] Error in inference worker: {ex}");
+            logger.LogError(ex, "[listener] Error in inference worker");
         }
     }
 
@@ -132,6 +142,7 @@ public class VoiceCommandDispatcher(
                     _commandAudioBuffer.Clear();
                     _silentDurationMs = 0f;
                     _recordingStartTime = DateTime.UtcNow;
+                    _currentCommandId = Guid.NewGuid();
 
                     onKeywordDetected(keywordResult.Keyword);
                     audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
@@ -141,7 +152,7 @@ public class VoiceCommandDispatcher(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[listener] Error during keyword inference: {ex}");
+            logger.LogError(ex, "[listener] Error during keyword inference");
         }
     }
 
@@ -183,7 +194,11 @@ public class VoiceCommandDispatcher(
             var keywordResult = stopKeywordSpotter.GetResult(stopKeywordStream);
             if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
             {
-                Console.WriteLine($"[listener] Stop keyword detected. Returning to wake word detection.");
+                using (logger.BeginScope(CommandScope()))
+                {
+                    logger.LogInformation("[listener] Stop keyword detected. Returning to wake word detection.");
+                }
+
                 _commandAudioBuffer.Clear();
                 _silentDurationMs = 0f;
                 audioPlayer.CancelCurrent();
@@ -196,11 +211,13 @@ public class VoiceCommandDispatcher(
 
         if (_silentDurationMs >= audioOptions.Value.SilenceTimeoutMs || elapsedMs >= audioOptions.Value.MaxRecordingMs)
         {
+            using var commandScope = logger.BeginScope(CommandScope());
+
             await SendCommandToServerAsync(_commandAudioBuffer);
             _commandAudioBuffer.Clear();
             _silentDurationMs = 0f;
             appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
-            Console.WriteLine("[listener] Finished command processing. Returning to wake word detection.");
+            logger.LogInformation("[listener] Finished command processing. Returning to wake word detection.");
         }
     }
 
@@ -211,7 +228,7 @@ public class VoiceCommandDispatcher(
         var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
         var wavBytes = AudioProcessing.BuildWavBytes(monoChunks);
         await File.WriteAllBytesAsync(filePath, wavBytes);
-        Console.WriteLine($"[listener] Saved: {filePath}");
+        logger.LogInformation("[listener] Saved: {FilePath}", filePath);
     }
 
     private async Task SendCommandToServerAsync(List<RawPcmChunk> monoChunks)
@@ -219,24 +236,24 @@ public class VoiceCommandDispatcher(
         byte[] wavBytes;
         try
         {
-            Console.WriteLine("[listener] Sending command audio to server...");
+            logger.LogInformation("[listener] Sending command audio to server...");
             wavBytes = AudioProcessing.BuildWavBytes(monoChunks);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[listener] Error building WAV data: {ex}");
+            logger.LogError(ex, "[listener] Error building WAV data");
             return;
         }
 
-        var result = await remoteServerClient.SendCommandAsync(wavBytes);
+        var result = await remoteServerClient.SendCommandAsync(wavBytes, _currentCommandId);
         if (result.IsSuccess)
         {
-            Console.WriteLine("[listener] Command sent successfully. Queuing response audio for playback.");
+            logger.LogInformation("[listener] Command sent successfully. Queuing response audio for playback.");
             audioPlayer.Queue(result.Value.Audio);
         }
         else
         {
-            Console.WriteLine($"[listener] Failed to send command: {result.Error}");
+            logger.LogWarning("[listener] Failed to send command: {Error}", result.Error);
             audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "command_failed.wav"));
         }
     }

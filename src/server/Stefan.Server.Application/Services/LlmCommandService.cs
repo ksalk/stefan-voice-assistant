@@ -1,13 +1,14 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
 using Stefan.Server.Application.Tools;
-using Stefan.Server.Common;
 
 namespace Stefan.Server.Application.Services;
 
 public class LlmCommandService(
     ChatClient chatClient,
-    ToolRegistry toolRegistry) : ILlmCommandService
+    ToolRegistry toolRegistry,
+    ILogger<LlmCommandService> logger) : ILlmCommandService
 {
     private static string BuildSystemPrompt() => $"""
         You are Stefan, a voice home assistant that manages timers using the provided tools.
@@ -54,11 +55,11 @@ public class LlmCommandService(
 
         do
         {
-            ConsoleLog.Write(LogCategory.LLM, $"[llm] Sending command to LLM (message count: {messages.Count})...");
+            logger.LogInformation("Sending command to LLM (message count: {MessageCount})...", messages.Count);
             requiresAction = false;
             ChatCompletion completion = await chatClient.CompleteChatAsync(messages, GetChatCompletionOptions(), cancellationToken);
 
-            ConsoleLog.Write(LogCategory.LLM, $"[llm] Received response from LLM (finish reason: {completion.FinishReason})");
+            logger.LogInformation("Received response from LLM (finish reason: {FinishReason})", completion.FinishReason);
 
             switch (completion.FinishReason)
             {
@@ -66,7 +67,7 @@ public class LlmCommandService(
                     {
                         messages.Add(new AssistantChatMessage(completion));
                         var assistantMessage = completion.Content[0].Text;
-                        ConsoleLog.Write(LogCategory.LLM, $"Assistant response: {assistantMessage}");
+                        logger.LogInformation("Assistant response: {AssistantMessage}", assistantMessage);
                         conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
                         var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
                        
@@ -75,11 +76,11 @@ public class LlmCommandService(
 
                 case ChatFinishReason.ToolCalls:
                     {
-                        ConsoleLog.Write(LogCategory.LLM, $"LLM requested tool calls: {string.Join(", ", completion.ToolCalls.Select(c => c.FunctionName))}");
+                        logger.LogInformation("LLM requested tool calls: {ToolCalls}", string.Join(", ", completion.ToolCalls.Select(c => c.FunctionName)));
 
                         if (++toolCallIterations > MaxToolCallIterations)
                         {
-                            ConsoleLog.Write(LogCategory.LLM, $"Tool call limit of {MaxToolCallIterations} exceeded, aborting command");
+                            logger.LogWarning("Tool call limit of {MaxToolCallIterations} exceeded, aborting command", MaxToolCallIterations);
                             return Result<LlmCommandResult>.Failure($"Model exceeded the maximum of {MaxToolCallIterations} tool call iterations.");
                         }
 
@@ -89,7 +90,7 @@ public class LlmCommandService(
 
                         foreach (ChatToolCall toolCall in completion.ToolCalls)
                         {
-                            ConsoleLog.Write(LogCategory.LLM, $"Tool call: {toolCall.FunctionName} with arguments {toolCall.FunctionArguments}");
+                            logger.LogInformation("Tool call: {ToolName} with arguments {ToolArguments}", toolCall.FunctionName, toolCall.FunctionArguments);
                             var toolResult = await DispatchToolCallAsync(toolCall, toolCallContext, cancellationToken);
                             messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
 
@@ -128,7 +129,7 @@ public class LlmCommandService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            ConsoleLog.Write(LogCategory.Tool, $"Tool '{toolCall.FunctionName}' failed: {ex.Message}");
+            logger.LogError(ex, "Tool {ToolName} failed: {Error}", toolCall.FunctionName, ex.Message);
 
             var availableTools = string.Join(", ", toolRegistry.GetAllToolDefinitions().Select(t => t.FunctionName));
             return $"Error: {ex.Message} Available tools: {availableTools}.";

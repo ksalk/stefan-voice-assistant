@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Domain;
@@ -11,6 +12,7 @@ namespace Stefan.Server.Application.Commands;
 
 public class ProcessCommandRequest
 {
+    public required Guid CommandId { get; set; }
     public required string DeviceId { get; set; }
     public required string SessionId { get; set; }
     public required Stream AudioStream { get; set; }
@@ -21,7 +23,8 @@ public class ProcessCommand(
     LlmCommandService llm,
     ITextToSpeechService tts,
     AudioConverterService audioConverter,
-    StefanDbContext dbContext)
+    StefanDbContext dbContext,
+    ILogger<ProcessCommand> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
@@ -30,10 +33,17 @@ public class ProcessCommand(
         // TODO: also extract some methods to make it shorter
         var totalTimestamp = Stopwatch.GetTimestamp();
 
+        using var correlationScope = logger.BeginScope(
+            new Dictionary<string, object> { [Correlation.CommandIdProperty] = request.CommandId });
+
+        logger.LogInformation(
+            "Processing command {CommandId} for device {DeviceId}, session {SessionId}",
+            request.CommandId, request.DeviceId, request.SessionId);
+
         var node = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
         if (node == null)
         {
-            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{request.DeviceId}' not registered or invalid session");
+            logger.LogWarning("Command rejected: device {DeviceId} not registered or invalid session", request.DeviceId);
             return null;
         }
 
@@ -48,7 +58,7 @@ public class ProcessCommand(
         var compressedInputAudio = await CompressAudio(inputWavBytes, cancellationToken);
 
         // Create initial command record with input audio and duration, so we have a record even if STT fails
-        var commandRecord = await CreateAndSaveCommandRecord(node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
+        var commandRecord = await CreateAndSaveCommandRecord(request.CommandId, node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
 
         // STT
         try
@@ -64,7 +74,7 @@ public class ProcessCommand(
             var speechToTextTranscription = speechToTextResult.Value;
             if(string.IsNullOrWhiteSpace(speechToTextTranscription.Transcript))
             {
-                ConsoleLog.Write(LogCategory.STT, "STT produced empty transcript");
+                logger.LogWarning("STT produced empty transcript");
                 throw new Exception("STT produced empty transcript");
             }
 
@@ -72,13 +82,13 @@ public class ProcessCommand(
             
 
 
-            ConsoleLog.Write(LogCategory.STT, $"Transcription result: {speechToTextTranscription.Transcript}");
-            ConsoleLog.Write(LogCategory.STT, $"Speech processing time: {speechToTextTranscription.DurationMs} ms");            
+            logger.LogInformation("Transcription result: {Transcript}", speechToTextTranscription.Transcript);
+            logger.LogInformation("Speech processing time: {SttDurationMs} ms", speechToTextTranscription.DurationMs);
         }
         catch (Exception ex)
         {
             commandRecord.SaveTranscriptionError(ex.Message);
-            ConsoleLog.Write(LogCategory.STT, $"STT failed: {ex.Message}");
+            logger.LogError(ex, "STT failed: {Error}", ex.Message);
     
             // TODO: return more detailed error response to client
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -96,27 +106,27 @@ public class ProcessCommand(
             var result  = llmResult.Value;
             if(string.IsNullOrWhiteSpace(result.ResponseText))
             {
-                ConsoleLog.Write(LogCategory.LLM, "LLM produced empty response");
+                logger.LogWarning("LLM produced empty response");
                 throw new Exception("LLM produced empty response");
             }
 
-            ConsoleLog.Write(LogCategory.LLM, $"LLM processing time: {result.DurationMs} ms");
+            logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.DurationMs);
 
             commandRecord.SaveLlmResult(result.ResponseText, JsonSerializer.Serialize(result.Messages, JsonOptions), result.DurationMs);
         }
         catch (ClientResultException ex)
         {
-            ConsoleLog.Write(LogCategory.LLM, $"LLM failed: {ex.Message}");
-            
             // This will print the exact OpenRouter validation error (e.g., "message.tool_calls is missing")
             var llmError =  ex.GetRawResponse()?.Content?.ToString();
+            logger.LogError(ex, "LLM failed: {Error} {RawResponse}", ex.Message, llmError);
+
             commandRecord.SaveLlmError(ex.Message + " " + llmError);
             await dbContext.SaveChangesAsync(cancellationToken);
             return null;
         }
         catch (Exception ex)
         {
-            ConsoleLog.Write(LogCategory.LLM, $"LLM failed: {ex.Message}");
+            logger.LogError(ex, "LLM failed: {Error}", ex.Message);
             commandRecord.SaveLlmError(ex.Message);
             await dbContext.SaveChangesAsync(cancellationToken);
             return null;
@@ -135,13 +145,15 @@ public class ProcessCommand(
             wavOutputAudio = ttsResult.Value.AudioBytes;
             var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
 
-            ConsoleLog.Write(LogCategory.TTS, $"TTS synthesis time: {ttsResult.Value.DurationMs} ms, compressed size: {compressedOutputAudio.Length} bytes");
+            logger.LogInformation(
+                "TTS synthesis time: {TtsDurationMs} ms, compressed size: {CompressedSize} bytes",
+                ttsResult.Value.DurationMs, compressedOutputAudio.Length);
         
             commandRecord.SaveTtsResult(compressedOutputAudio, "opus", ttsResult.Value.DurationMs);
         }
         catch (Exception ex)
         {
-            ConsoleLog.Write(LogCategory.TTS, $"TTS failed: {ex.Message}");
+            logger.LogError(ex, "TTS failed: {Error}", ex.Message);
             commandRecord.SaveTtsError(ex.Message);
 
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -154,6 +166,9 @@ public class ProcessCommand(
         commandRecord.SetTotalDuration(totalDurationMs);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        logger.LogInformation(
+            "Command {CommandId} completed in {TotalDurationMs} ms", request.CommandId, totalDurationMs);
+
         return new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText! };
     }
 
@@ -162,13 +177,13 @@ public class ProcessCommand(
         var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, cancellationToken);
         if (node == null)
         {
-            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: device '{deviceId}' not registered");
+            logger.LogWarning("Command rejected: device {DeviceId} not registered", deviceId);
             return null;
         }
 
         if (node.CurrentSessionId != sessionId)
         {
-            ConsoleLog.Write(LogCategory.HTTP, $"Command request rejected: invalid session ID for device '{deviceId}'");
+            logger.LogWarning("Command rejected: invalid session {SessionId} for device {DeviceId}", sessionId, deviceId);
             return null;
         }
 
@@ -184,7 +199,7 @@ public class ProcessCommand(
         catch (Exception ex)
         {
             // TODO: also log error, but continue processing with uncompressed audio to avoid failing the whole command just because compression failed. We can compress it later when we save the record to db, so at least we have compressed audio stored even if compression fails here.
-            ConsoleLog.Write(LogCategory.HTTP, $"Audio compression failed: {ex.Message}");
+            logger.LogWarning(ex, "Audio compression failed, falling back to uncompressed audio");
             return inputWavBytes;
         }
     }
@@ -209,12 +224,12 @@ public class ProcessCommand(
         return byteRate > 0 ? (double)dataSize / byteRate * 1000 : 0;
     }
 
-    private async Task<CommandRecord> CreateAndSaveCommandRecord(Guid nodeId, string sessionId,
+    private async Task<CommandRecord> CreateAndSaveCommandRecord(Guid commandId, Guid nodeId, string sessionId,
         byte[] inputAudio, double inputAudioDurationMs, CancellationToken cancellationToken)
     {
         var record = new CommandRecord
         {
-            Id = Guid.NewGuid(),
+            Id = commandId,
             NodeId = nodeId,
             SessionId = sessionId,
             ReceivedAt = DateTime.UtcNow,

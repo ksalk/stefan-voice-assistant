@@ -42,8 +42,11 @@ public class RemoteServerClient(
         return Result.Success();
     }
 
-    public async Task<Result<CommandResponse>> SendCommandAsync(byte[] commandAudio)
+    public async Task<Result<CommandResponse>> SendCommandAsync(byte[] commandAudio, Guid commandId)
     {
+        using var commandScope = logger.BeginScope(
+            new Dictionary<string, object> { [Correlation.CommandIdProperty] = commandId });
+
         var audioContent = new ByteArrayContent(commandAudio);
         audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
 
@@ -59,6 +62,7 @@ public class RemoteServerClient(
 
         request.Headers.Add("X-Node-Device-ID", nodeOptions.Value.Name);
         request.Headers.Add("X-Node-Session-ID", _sessionId);
+        request.Headers.Add(Correlation.CommandIdHeader, commandId.ToString());
 
         logger.LogInformation("[http] Sending command to server at {ServerUrl}...",
             request.RequestUri);
@@ -74,8 +78,23 @@ public class RemoteServerClient(
         var responseText = Uri.UnescapeDataString(rawText);
         var audio = await response.Content.ReadAsByteArrayAsync();
 
+        var acknowledgedCommandId = response.Headers.TryGetValues(Correlation.CommandIdHeader, out var commandIdValues)
+            ? commandIdValues.FirstOrDefault()
+            : null;
+
         logger.LogInformation("[http] Command sent successfully. Received response text: {ResponseText}",
             responseText == string.Empty ? "(none)" : responseText);
+
+        if (acknowledgedCommandId is null)
+        {
+            logger.LogWarning("[http] Server response did not echo the {Header} header", Correlation.CommandIdHeader);
+        }
+        else if (!Guid.TryParse(acknowledgedCommandId, out var acknowledged) || acknowledged != commandId)
+        {
+            logger.LogWarning(
+                "[http] Server acknowledged a different command id: sent {CommandId}, received {AcknowledgedCommandId}",
+                commandId, acknowledgedCommandId);
+        }
 
         return Result<CommandResponse>.Success(new CommandResponse(audio, responseText));
     }
