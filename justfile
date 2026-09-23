@@ -16,7 +16,7 @@ migrate-update:
 
 # Server
 buildserver:
-    dotnet build --project src/server/Stefan.Server.API
+    dotnet build src/server/Stefan.Server.API
     
 runserver:
     dotnet run --project src/server/Stefan.Server.API
@@ -49,7 +49,7 @@ publishnode VERSION:
       -f src/node/Dockerfile . --push
 
 buildnode:
-    dotnet build --project src/node/Stefan.Node
+    dotnet build src/node/Stefan.Node
 
 runnode:
     dotnet run --project src/node/Stefan.Node
