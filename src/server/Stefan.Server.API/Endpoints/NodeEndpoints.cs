@@ -26,20 +26,16 @@ public static class NodeEndpoints
         {
             var result = await pingNode.Handle(new PingNodeRequest { NodeId = nodeId }, CancellationToken.None);
 
-            if (result.ErrorMessage == "Node not found")
-                return Results.NotFound(result.ErrorMessage);
-
-            if (!result.Success)
-                return Results.BadRequest(result.ErrorMessage);
-
-            return Results.Ok(new
-            {
-                result.StatusReport!.CpuUsage,
-                result.StatusReport.MemoryUsage,
-                result.StatusReport.DiskUsage,
-                result.StatusReport.AudioVolume,
-                result.StatusReport.Status
-            });
+            return result.ToHttpResult(statusReport => statusReport == null
+                ? Results.Ok()
+                : Results.Ok(new
+                {
+                    statusReport.CpuUsage,
+                    statusReport.MemoryUsage,
+                    statusReport.DiskUsage,
+                    statusReport.AudioVolume,
+                    statusReport.Status
+                }));
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
@@ -68,14 +64,7 @@ public static class NodeEndpoints
             request.NodeId = nodeId;
             var result = await sendNodeAudioMessage.Handle(request, CancellationToken.None);
 
-            if (!result.IsSuccess)
-            {
-                if (result.Error == "Node not found.")
-                    return Results.NotFound(result.Error);
-                return Results.BadRequest(result.Error);
-            }
-
-            return Results.Ok(new { message = "Audio sent", ttsDurationMs = result.Value!.TtsDurationMs });
+            return result.ToHttpResult(v => Results.Ok(new { message = "Audio sent", ttsDurationMs = v.TtsDurationMs }));
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);

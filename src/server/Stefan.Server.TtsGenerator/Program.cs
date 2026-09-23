@@ -25,7 +25,7 @@ if (result.IsSuccess)
 }
 else
 {
-    Console.Error.WriteLine($"Error: {result.Error}");
+    Console.Error.WriteLine($"Error: {result.Error?.Message}");
     Environment.Exit(1);
 }
 

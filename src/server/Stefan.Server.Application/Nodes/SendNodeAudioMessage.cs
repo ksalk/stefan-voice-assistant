@@ -27,18 +27,18 @@ public class SendNodeAudioMessage(
     public async Task<Result<SendNodeAudioMessageResult>> Handle(SendNodeAudioMessageRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Text))
-            return Result<SendNodeAudioMessageResult>.Failure("Text is required.");
+            return Result<SendNodeAudioMessageResult>.Failure(Error.Validation("Text is required."));
 
         if (request.Text.Length > MaxTextLength)
-            return Result<SendNodeAudioMessageResult>.Failure($"Text must not exceed {MaxTextLength} characters.");
+            return Result<SendNodeAudioMessageResult>.Failure(Error.Validation($"Text must not exceed {MaxTextLength} characters."));
 
         var node = await dbContext.Nodes.FindAsync([request.NodeId], cancellationToken);
         if (node is null)
-            return Result<SendNodeAudioMessageResult>.Failure("Node not found.");
+            return Result<SendNodeAudioMessageResult>.Failure(Error.NotFound("Node not found."));
 
         var ttsResult = await tts.SynthesizeAsync(request.Text);
         if (!ttsResult.IsSuccess)
-            return Result<SendNodeAudioMessageResult>.Failure($"Text-to-speech failed: {ttsResult.Error}");
+            return Result<SendNodeAudioMessageResult>.Failure(Error.External($"Text-to-speech failed: {ttsResult.Error?.Message}"));
 
         try
         {
@@ -47,7 +47,7 @@ public class SendNodeAudioMessage(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to send audio to node {NodeName}", node.Name);
-            return Result<SendNodeAudioMessageResult>.Failure($"Failed to deliver audio: {ex.Message}");
+            return Result<SendNodeAudioMessageResult>.Failure(Error.External($"Failed to deliver audio: {ex.Message}"));
         }
 
         return Result<SendNodeAudioMessageResult>.Success(new SendNodeAudioMessageResult

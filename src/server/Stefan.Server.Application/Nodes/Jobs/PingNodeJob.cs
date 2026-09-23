@@ -19,21 +19,14 @@ public class PingNodeJob(StefanDbContext dbContext, ILogger<PingNodeJob> logger,
 
         var result = await pingNode.Handle(new PingNodeRequest { NodeId = Guid.Parse(nodeId!) }, context.CancellationToken);
 
-        if (result.ErrorMessage == "Node not found")
+        if (result.Error is { Kind: ErrorKind.NotFound })
         {
             logger.LogWarning("Node {NodeId} not found, removing ping job", nodeId);
             await context.Scheduler.DeleteJob(context.JobDetail.Key, context.CancellationToken);
             return;
         }
 
-        if (result.ErrorMessage == "Node is not online")
-        {
-            logger.LogInformation("Node {NodeId} is not online, removing ping job", nodeId);
-            await context.Scheduler.DeleteJob(context.JobDetail.Key, context.CancellationToken);
-            return;
-        }
-
-        if (result.Success)
+        if (result.IsSuccess)
         {
             if (failureCount > 0)
             {

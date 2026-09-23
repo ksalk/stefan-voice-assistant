@@ -69,14 +69,16 @@ public class NodeTests
     }
 
     [Fact]
-    public void MarkPinged_UpdatesLastPingAt()
+    public void MarkPinged_UpdatesLastPingAtAndRestoresOnlineStatus()
     {
         var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080);
         Assert.Null(node.LastPingAt);
+        node.MarkOffline();
 
         node.MarkPinged();
 
         Assert.NotNull(node.LastPingAt);
+        Assert.Equal(NodeStatus.Online, node.Status);
     }
 
     [Fact]

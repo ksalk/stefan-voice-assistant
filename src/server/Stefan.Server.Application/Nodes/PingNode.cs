@@ -37,28 +37,16 @@ public class PingNodeRequest
     public Guid NodeId { get; set; }
 }
 
-public class PingNodeResult
-{
-    public bool Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public NodeStatusReport? StatusReport { get; set; }
-}
-
 public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
 {
     private static readonly HttpClient HttpClient = new();
 
-    public async Task<PingNodeResult> Handle(PingNodeRequest request, CancellationToken cancellationToken)
+    public async Task<Result<NodeStatusReport?>> Handle(PingNodeRequest request, CancellationToken cancellationToken)
     {
         var node = await dbContext.Nodes.FindAsync([request.NodeId], cancellationToken);
         if (node == null)
         {
-            return new PingNodeResult { ErrorMessage = "Node not found" };
-        }
-
-        if (node.Status != NodeStatus.Online)
-        {
-            return new PingNodeResult { ErrorMessage = "Node is not online" };
+            return Result<NodeStatusReport?>.Failure(Error.NotFound("Node not found"));
         }
 
         try
@@ -72,7 +60,7 @@ public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("Node {NodeName} returned status code {StatusCode}", node.Name, response.StatusCode);
-                return new PingNodeResult { ErrorMessage = $"Node returned status code {response.StatusCode}" };
+                return Result<NodeStatusReport?>.Failure(Error.External($"Node returned status code {response.StatusCode}"));
             }
 
             node.MarkPinged();
@@ -110,16 +98,12 @@ public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
 
             logger.LogDebug("Node {NodeName} ping successful", node.Name);
 
-            return new PingNodeResult
-            {
-                Success = true,
-                StatusReport = statusReport
-            };
+            return Result<NodeStatusReport?>.Success(statusReport);
         }
         catch (Exception ex)
         {
             logger.LogWarning("Failed to ping node {NodeName} with exception: {ExceptionMessage}", node.Name, ex.Message);
-            return new PingNodeResult { ErrorMessage = "Failed to reach node" };
+            return Result<NodeStatusReport?>.Failure(Error.External("Failed to reach node"));
         }
     }
 

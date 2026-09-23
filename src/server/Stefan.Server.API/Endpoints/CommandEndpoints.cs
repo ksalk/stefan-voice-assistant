@@ -87,14 +87,12 @@ public static class CommandEndpoints
                 AudioStream = fileStream,
             }, CancellationToken.None);
 
-            if (result == null)
+            return result.ToHttpResult(response =>
             {
-                return Results.Unauthorized();
-            }
-
-            context.Response.Headers[Correlation.CommandIdHeader] = commandId.ToString();
-            context.Response.Headers["X-Response-Text"] = Uri.EscapeDataString(result.ResponseText);
-            return Results.File(result.AudioBytes, "audio/wav", "response.wav");
+                context.Response.Headers[Correlation.CommandIdHeader] = commandId.ToString();
+                context.Response.Headers["X-Response-Text"] = Uri.EscapeDataString(response.ResponseText);
+                return Results.File(response.AudioBytes, "audio/wav", "response.wav");
+            });
         })
         .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery()

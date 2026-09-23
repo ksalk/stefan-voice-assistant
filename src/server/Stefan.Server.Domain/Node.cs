@@ -57,6 +57,7 @@ public class Node
     public void MarkPinged()
     {
         LastPingAt = DateTime.UtcNow;
+        Status = NodeStatus.Online;
     }
 
     public void MarkOffline()

@@ -28,7 +28,7 @@ public class ProcessCommand(
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
-    public async Task<ProcessCommandResponse?> Handle(ProcessCommandRequest request, CancellationToken cancellationToken)
+    public async Task<Result<ProcessCommandResponse>> Handle(ProcessCommandRequest request, CancellationToken cancellationToken)
     {
         // TODO: also extract some methods to make it shorter
         var totalTimestamp = Stopwatch.GetTimestamp();
@@ -44,7 +44,7 @@ public class ProcessCommand(
         if (node == null)
         {
             logger.LogWarning("Command rejected: device {DeviceId} not registered or invalid session", request.DeviceId);
-            return null;
+            return Result<ProcessCommandResponse>.Failure(Error.Unauthorized("Unknown device or invalid session"));
         }
 
         // TODO: is this really required, is audio read twice at all?
@@ -68,7 +68,7 @@ public class ProcessCommand(
             var speechToTextResult = await stt.TranscribeAsync(sttStream);
             if(!speechToTextResult.IsSuccess)
             {
-                throw new Exception(speechToTextResult.Error ?? "Unknown STT error");
+                throw new Exception(speechToTextResult.Error?.Message ?? "Unknown STT error");
             }
             
             var speechToTextTranscription = speechToTextResult.Value;
@@ -89,10 +89,10 @@ public class ProcessCommand(
         {
             commandRecord.SaveTranscriptionError(ex.Message);
             logger.LogError(ex, "STT failed: {Error}", ex.Message);
-    
+
             // TODO: return more detailed error response to client
             await dbContext.SaveChangesAsync(cancellationToken);
-            return null;
+            return Result<ProcessCommandResponse>.Failure(Error.External("Speech recognition failed"));
         }
 
         // LLM
@@ -101,7 +101,7 @@ public class ProcessCommand(
             var llmResult = await llm.ProcessCommandAsync(commandRecord.Transcript!, request.DeviceId, cancellationToken);
             if (!llmResult.IsSuccess)
             {
-                throw new Exception(llmResult.Error ?? "Unknown LLM error");
+                throw new Exception(llmResult.Error?.Message ?? "Unknown LLM error");
             }
             var result  = llmResult.Value;
             if(string.IsNullOrWhiteSpace(result.ResponseText))
@@ -122,14 +122,14 @@ public class ProcessCommand(
 
             commandRecord.SaveLlmError(ex.Message + " " + llmError);
             await dbContext.SaveChangesAsync(cancellationToken);
-            return null;
+            return Result<ProcessCommandResponse>.Failure(Error.External("Language model failed"));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "LLM failed: {Error}", ex.Message);
             commandRecord.SaveLlmError(ex.Message);
             await dbContext.SaveChangesAsync(cancellationToken);
-            return null;
+            return Result<ProcessCommandResponse>.Failure(Error.External("Language model failed"));
         }
 
         // TTS
@@ -139,7 +139,7 @@ public class ProcessCommand(
             var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText!);
             if (!ttsResult.IsSuccess)
             {
-                throw new Exception(ttsResult.Error ?? "Unknown TTS error");
+                throw new Exception(ttsResult.Error?.Message ?? "Unknown TTS error");
             }
 
             wavOutputAudio = ttsResult.Value.AudioBytes;
@@ -157,7 +157,7 @@ public class ProcessCommand(
             commandRecord.SaveTtsError(ex.Message);
 
             await dbContext.SaveChangesAsync(cancellationToken);
-            return null;
+            return Result<ProcessCommandResponse>.Failure(Error.External("Speech synthesis failed"));
         }
 
         node.MarkSeen();
@@ -169,10 +169,9 @@ public class ProcessCommand(
         logger.LogInformation(
             "Command {CommandId} completed in {TotalDurationMs} ms", request.CommandId, totalDurationMs);
 
-        return new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText! };
-    }
-
-    private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
+        return Result<ProcessCommandResponse>.Success(
+            new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText! });
+    }    private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
     {
         var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, cancellationToken);
         if (node == null)
