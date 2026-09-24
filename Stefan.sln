@@ -39,6 +39,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "server", "server", "{87008D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.IntegrationTests", "tests\server\Stefan.Server.IntegrationTests\Stefan.Server.IntegrationTests.csproj", "{543A053B-3B4A-4219-8B5B-CF98A4851F86}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stefan.Server.DI.UnitTests", "tests\server\Stefan.Server.DI.UnitTests\Stefan.Server.DI.UnitTests.csproj", "{169B96F8-03A9-46F0-85B1-942D83765BD0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -193,6 +195,18 @@ Global
 		{543A053B-3B4A-4219-8B5B-CF98A4851F86}.Release|x64.Build.0 = Release|Any CPU
 		{543A053B-3B4A-4219-8B5B-CF98A4851F86}.Release|x86.ActiveCfg = Release|Any CPU
 		{543A053B-3B4A-4219-8B5B-CF98A4851F86}.Release|x86.Build.0 = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|x64.Build.0 = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Debug|x86.Build.0 = Debug|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|x64.ActiveCfg = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|x64.Build.0 = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|x86.ActiveCfg = Release|Any CPU
+		{169B96F8-03A9-46F0-85B1-942D83765BD0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -212,5 +226,6 @@ Global
 		{94FF7853-1371-44BA-AE93-D0516CC53BF3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{87008D2B-D29E-68B5-A223-E2B1CD68373E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{543A053B-3B4A-4219-8B5B-CF98A4851F86} = {87008D2B-D29E-68B5-A223-E2B1CD68373E}
+		{169B96F8-03A9-46F0-85B1-942D83765BD0} = {87008D2B-D29E-68B5-A223-E2B1CD68373E}
 	EndGlobalSection
 EndGlobal
