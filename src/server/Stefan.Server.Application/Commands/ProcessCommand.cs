@@ -30,7 +30,6 @@ public class ProcessCommand(
 
     public async Task<Result<ProcessCommandResponse>> Handle(ProcessCommandRequest request, CancellationToken cancellationToken)
     {
-        // TODO: also extract some methods to make it shorter
         var totalTimestamp = Stopwatch.GetTimestamp();
 
         using var correlationScope = logger.BeginScope(
@@ -40,124 +39,42 @@ public class ProcessCommand(
             "Processing command {CommandId} for device {DeviceId}, session {SessionId}",
             request.CommandId, request.DeviceId, request.SessionId);
 
-        var node = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
-        if (node == null)
+        var nodeResult = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
+        if (!nodeResult.IsSuccess)
         {
-            logger.LogWarning("Command rejected: device {DeviceId} not registered or invalid session", request.DeviceId);
-            return Result<ProcessCommandResponse>.Failure(Error.Unauthorized("Unknown device or invalid session"));
+            return Result<ProcessCommandResponse>.Failure(nodeResult.Error!);
         }
+
+        var node = nodeResult.Value!;
 
         // TODO: is this really required, is audio read twice at all?
-        // Buffer the input audio stream so we can read it twice (STT + storage)
-        using var audioBuffer = new MemoryStream();
-        await request.AudioStream.CopyToAsync(audioBuffer, cancellationToken);
-        var inputWavBytes = audioBuffer.ToArray();
-        var inputAudioDurationMs = GetWavDurationMs(inputWavBytes);
-
-        // Compress input audio to Opus
-        var compressedInputAudio = await CompressAudio(inputWavBytes, cancellationToken);
+        var inputAudio = await PrepareInputAudioAsync(request.AudioStream, cancellationToken);
 
         // Create initial command record with input audio and duration, so we have a record even if STT fails
-        var commandRecord = await CreateAndSaveCommandRecord(request.CommandId, node.Id, request.SessionId, compressedInputAudio, inputAudioDurationMs, cancellationToken);
+        var commandRecord = await CreateAndSaveCommandRecord(
+            request.CommandId,
+            node.Id,
+            request.SessionId,
+            inputAudio.CompressedOpus,
+            inputAudio.DurationMs,
+            cancellationToken);
 
-        // STT
-        try
+        var sttResult = await RunSttAsync(commandRecord, inputAudio.WavBytes, cancellationToken);
+        if (!sttResult.IsSuccess)
         {
-            // TODO: maybe pass inputWavBytes directly to avoid creating another MemoryStream, but need to check if stt.TranscribeAsync can read from the same byte array without issues
-            using var sttStream = new MemoryStream(inputWavBytes);
-            var speechToTextResult = await stt.TranscribeAsync(sttStream);
-            if(!speechToTextResult.IsSuccess)
-            {
-                throw new Exception(speechToTextResult.Error?.Message ?? "Unknown STT error");
-            }
-            
-            var speechToTextTranscription = speechToTextResult.Value;
-            if(string.IsNullOrWhiteSpace(speechToTextTranscription.Transcript))
-            {
-                logger.LogWarning("STT produced empty transcript");
-                throw new Exception("STT produced empty transcript");
-            }
-
-            commandRecord.SaveTranscriptionResult(speechToTextTranscription.Transcript, speechToTextTranscription.DurationMs);
-            
-
-
-            logger.LogInformation("Transcription result: {Transcript}", speechToTextTranscription.Transcript);
-            logger.LogInformation("Speech processing time: {SttDurationMs} ms", speechToTextTranscription.DurationMs);
-        }
-        catch (Exception ex)
-        {
-            commandRecord.SaveTranscriptionError(ex.Message);
-            logger.LogError(ex, "STT failed: {Error}", ex.Message);
-
-            // TODO: return more detailed error response to client
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Result<ProcessCommandResponse>.Failure(Error.External("Speech recognition failed"));
+            return Result<ProcessCommandResponse>.Failure(sttResult.Error!);
         }
 
-        // LLM
-        try
+        var llmResult = await RunLlmAsync(commandRecord, request.DeviceId, cancellationToken);
+        if (!llmResult.IsSuccess)
         {
-            var llmResult = await llm.ProcessCommandAsync(commandRecord.Transcript!, request.DeviceId, cancellationToken);
-            if (!llmResult.IsSuccess)
-            {
-                throw new Exception(llmResult.Error?.Message ?? "Unknown LLM error");
-            }
-            var result  = llmResult.Value;
-            if(string.IsNullOrWhiteSpace(result.ResponseText))
-            {
-                logger.LogWarning("LLM produced empty response");
-                throw new Exception("LLM produced empty response");
-            }
-
-            logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.DurationMs);
-
-            commandRecord.SaveLlmResult(result.ResponseText, JsonSerializer.Serialize(result.Messages, JsonOptions), result.DurationMs);
-        }
-        catch (ClientResultException ex)
-        {
-            // This will print the exact OpenRouter validation error (e.g., "message.tool_calls is missing")
-            var llmError =  ex.GetRawResponse()?.Content?.ToString();
-            logger.LogError(ex, "LLM failed: {Error} {RawResponse}", ex.Message, llmError);
-
-            commandRecord.SaveLlmError(ex.Message + " " + llmError);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Result<ProcessCommandResponse>.Failure(Error.External("Language model failed"));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "LLM failed: {Error}", ex.Message);
-            commandRecord.SaveLlmError(ex.Message);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Result<ProcessCommandResponse>.Failure(Error.External("Language model failed"));
+            return Result<ProcessCommandResponse>.Failure(llmResult.Error!);
         }
 
-        // TTS
-        byte[] wavOutputAudio;
-        try
+        var ttsResult = await RunTtsAsync(commandRecord, cancellationToken);
+        if (!ttsResult.IsSuccess)
         {
-            var ttsResult = await tts.SynthesizeAsync(commandRecord.ResponseText!);
-            if (!ttsResult.IsSuccess)
-            {
-                throw new Exception(ttsResult.Error?.Message ?? "Unknown TTS error");
-            }
-
-            wavOutputAudio = ttsResult.Value.AudioBytes;
-            var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
-
-            logger.LogInformation(
-                "TTS synthesis time: {TtsDurationMs} ms, compressed size: {CompressedSize} bytes",
-                ttsResult.Value.DurationMs, compressedOutputAudio.Length);
-        
-            commandRecord.SaveTtsResult(compressedOutputAudio, "opus", ttsResult.Value.DurationMs);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "TTS failed: {Error}", ex.Message);
-            commandRecord.SaveTtsError(ex.Message);
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Result<ProcessCommandResponse>.Failure(Error.External("Speech synthesis failed"));
+            return Result<ProcessCommandResponse>.Failure(ttsResult.Error!);
         }
 
         node.MarkSeen();
@@ -169,24 +86,163 @@ public class ProcessCommand(
         logger.LogInformation(
             "Command {CommandId} completed in {TotalDurationMs} ms", request.CommandId, totalDurationMs);
 
-        return Result<ProcessCommandResponse>.Success(
-            new ProcessCommandResponse { AudioBytes = wavOutputAudio, ResponseText = commandRecord.ResponseText! });
-    }    private async Task<Node?> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
+        return Result<ProcessCommandResponse>.Success(new ProcessCommandResponse
+        {
+            AudioBytes = ttsResult.Value!,
+            ResponseText = commandRecord.ResponseText!,
+        });
+    }
+
+    private async Task<Result<Node>> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
     {
         var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, cancellationToken);
         if (node == null)
         {
             logger.LogWarning("Command rejected: device {DeviceId} not registered", deviceId);
-            return null;
+            return Result<Node>.Failure(Error.Unauthorized("Unknown device or invalid session"));
         }
 
         if (node.CurrentSessionId != sessionId)
         {
             logger.LogWarning("Command rejected: invalid session {SessionId} for device {DeviceId}", sessionId, deviceId);
-            return null;
+            return Result<Node>.Failure(Error.Unauthorized("Unknown device or invalid session"));
         }
 
-        return node;
+        return Result<Node>.Success(node);
+    }
+
+    private async Task<InputAudio> PrepareInputAudioAsync(Stream audioStream, CancellationToken cancellationToken)
+    {
+        // Buffer the input audio stream so we can read it twice (STT + storage)
+        using var audioBuffer = new MemoryStream();
+        await audioStream.CopyToAsync(audioBuffer, cancellationToken);
+
+        var wavBytes = audioBuffer.ToArray();
+        var durationMs = WavAudio.GetDurationMs(wavBytes);
+        var compressedOpus = await CompressAudio(wavBytes, cancellationToken);
+
+        return new InputAudio(wavBytes, compressedOpus, durationMs);
+    }
+
+    private async Task<Result<SpeechToTextTranscription>> RunSttAsync(CommandRecord record, byte[] inputWavBytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // TODO: maybe pass inputWavBytes directly to avoid creating another MemoryStream, but need to check if stt.TranscribeAsync can read from the same byte array without issues
+            using var sttStream = new MemoryStream(inputWavBytes);
+            var result = await stt.TranscribeAsync(sttStream, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return await RecordSttFailureAsync(record, result.Error?.Message ?? "Unknown STT error", cancellationToken);
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Value.Transcript))
+            {
+                logger.LogWarning("STT produced empty transcript");
+                return await RecordSttFailureAsync(record, "STT produced empty transcript", cancellationToken);
+            }
+
+            record.SaveTranscriptionResult(result.Value.Transcript, result.Value.DurationMs);
+
+            logger.LogInformation("Transcription result: {Transcript}", result.Value.Transcript);
+            logger.LogInformation("Speech processing time: {SttDurationMs} ms", result.Value.DurationMs);
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "STT failed: {Error}", ex.Message);
+            return await RecordSttFailureAsync(record, ex.Message, cancellationToken);
+        }
+    }
+
+    private async Task<Result<SpeechToTextTranscription>> RecordSttFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
+    {
+        record.SaveTranscriptionError(detail);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result<SpeechToTextTranscription>.Failure(Error.External($"Speech recognition failed: {detail}"));
+    }
+
+    private async Task<Result<LlmCommandResult>> RunLlmAsync(CommandRecord record, string deviceId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await llm.ProcessCommandAsync(record.Transcript!, deviceId, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return await RecordLlmFailureAsync(record, result.Error?.Message ?? "Unknown LLM error", cancellationToken);
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Value.ResponseText))
+            {
+                logger.LogWarning("LLM produced empty response");
+                return await RecordLlmFailureAsync(record, "LLM produced empty response", cancellationToken);
+            }
+
+            logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.Value.DurationMs);
+
+            record.SaveLlmResult(result.Value.ResponseText, JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
+
+            return result;
+        }
+        catch (ClientResultException ex)
+        {
+            // This will print the exact OpenRouter validation error (e.g., "message.tool_calls is missing")
+            var rawResponse = ex.GetRawResponse()?.Content?.ToString();
+            logger.LogError(ex, "LLM failed: {Error} {RawResponse}", ex.Message, rawResponse);
+
+            return await RecordLlmFailureAsync(record, $"{ex.Message} {rawResponse}", cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "LLM failed: {Error}", ex.Message);
+            return await RecordLlmFailureAsync(record, ex.Message, cancellationToken);
+        }
+    }
+
+    private async Task<Result<LlmCommandResult>> RecordLlmFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
+    {
+        record.SaveLlmError(detail);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result<LlmCommandResult>.Failure(Error.External($"Language model failed: {detail}"));
+    }
+
+    private async Task<Result<byte[]>> RunTtsAsync(CommandRecord record, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await tts.SynthesizeAsync(record.ResponseText!, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return await RecordTtsFailureAsync(record, result.Error?.Message ?? "Unknown TTS error", cancellationToken);
+            }
+
+            var wavOutputAudio = result.Value.AudioBytes;
+            var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
+
+            logger.LogInformation(
+                "TTS synthesis time: {TtsDurationMs} ms, compressed size: {CompressedSize} bytes",
+                result.Value.DurationMs, compressedOutputAudio.Length);
+
+            record.SaveTtsResult(compressedOutputAudio, "opus", result.Value.DurationMs);
+
+            return Result<byte[]>.Success(wavOutputAudio);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "TTS failed: {Error}", ex.Message);
+            return await RecordTtsFailureAsync(record, ex.Message, cancellationToken);
+        }
+    }
+
+    private async Task<Result<byte[]>> RecordTtsFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
+    {
+        record.SaveTtsError(detail);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result<byte[]>.Failure(Error.External($"Speech synthesis failed: {detail}"));
     }
 
     private async Task<byte[]> CompressAudio(byte[] inputWavBytes, CancellationToken cancellationToken)
@@ -201,26 +257,6 @@ public class ProcessCommand(
             logger.LogWarning(ex, "Audio compression failed, falling back to uncompressed audio");
             return inputWavBytes;
         }
-    }
-
-    private static double GetWavDurationMs(byte[] wavBytes)
-    {
-        if (wavBytes.Length < 44) return 0;
-
-        // PCM WAV: header is 44 bytes. Data size is at offset 40 (uint32 LE).
-        // Sample rate at offset 24 (uint32 LE), bits per sample at offset 34 (uint16 LE), channels at offset 22 (uint16 LE).
-        // Using BitConverter assumes the system is little-endian. WAV is always little-endian,
-        // so this works on x86/ARM but would break on big-endian systems. Use BinaryPrimitives.ReadUInt16LittleEndian for portable code.
-        var channels = BitConverter.ToUInt16(wavBytes, 22);
-        var sampleRate = BitConverter.ToUInt32(wavBytes, 24);
-        var bitsPerSample = BitConverter.ToUInt16(wavBytes, 34);
-
-        if (channels == 0 || sampleRate == 0 || bitsPerSample == 0) return 0;
-
-        var dataSize = BitConverter.ToUInt32(wavBytes, 40);
-        var byteRate = sampleRate * channels * (bitsPerSample / 8);
-
-        return byteRate > 0 ? (double)dataSize / byteRate * 1000 : 0;
     }
 
     private async Task<CommandRecord> CreateAndSaveCommandRecord(Guid commandId, Guid nodeId, string sessionId,
@@ -243,6 +279,8 @@ public class ProcessCommand(
 
         return record;
     }
+
+    private readonly record struct InputAudio(byte[] WavBytes, byte[] CompressedOpus, double DurationMs);
 }
 
 public class ProcessCommandResponse

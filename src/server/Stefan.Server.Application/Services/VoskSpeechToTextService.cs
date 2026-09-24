@@ -20,13 +20,13 @@ public class VoskSpeechToTextService : ISpeechToTextService, IDisposable
         _recognizer.SetWords(true);
     }
 
-    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream)
+    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
         var buffer = new byte[4096];
         int bytesRead;
 
-        while ((bytesRead = await audioStream.ReadAsync(buffer)) > 0)
+        while ((bytesRead = await audioStream.ReadAsync(buffer, cancellationToken)) > 0)
         {
             _recognizer.AcceptWaveform(buffer, bytesRead);
         }

@@ -9,7 +9,7 @@ public class XAiSpeechToTextService(IConfiguration configuration) : ISpeechToTex
 {
     private static readonly HttpClient HttpClient = new();
 
-    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream)
+    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
 
@@ -28,10 +28,10 @@ public class XAiSpeechToTextService(IConfiguration configuration) : ISpeechToTex
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = content;
 
-        using var response = await HttpClient.SendAsync(request);
+        using var response = await HttpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var responseJson = await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
         using var document = JsonDocument.Parse(responseJson);
 
         var transcript = document.RootElement.TryGetProperty("text", out var textElement)

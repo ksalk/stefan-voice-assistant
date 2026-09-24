@@ -58,16 +58,17 @@ public class PiperTextToSpeechService : ITextToSpeechService
     /// <summary>
     /// Synthesize the given text to a WAV byte array.
     /// </summary>
-    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text)
+    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text, CancellationToken cancellationToken = default)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var timestamp = Stopwatch.GetTimestamp();
             var audioBytes = await _piper.InferAsync(text, AudioOutputType.Wav);
             var durationMs = Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
             return Result<TextToSpeechResult>.Success(new TextToSpeechResult(audioBytes, durationMs));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<TextToSpeechResult>.Failure(ex.Message);
         }

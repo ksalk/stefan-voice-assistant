@@ -5,12 +5,12 @@ namespace Stefan.Server.Application.Services;
 
 public class WhisperSpeechToTextService(WhisperProcessor processor) : ISpeechToTextService
 {
-    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream)
+    public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
     {
         var segments = new List<string>();
         var startTimestamp = Stopwatch.GetTimestamp();
 
-        await foreach (var segment in processor.ProcessAsync(audioStream))
+        await foreach (var segment in processor.ProcessAsync(audioStream).WithCancellation(cancellationToken))
         {
             segments.Add(segment.Text);
         }

@@ -36,7 +36,7 @@ public class SendNodeAudioMessage(
         if (node is null)
             return Result<SendNodeAudioMessageResult>.Failure(Error.NotFound("Node not found."));
 
-        var ttsResult = await tts.SynthesizeAsync(request.Text);
+        var ttsResult = await tts.SynthesizeAsync(request.Text, cancellationToken);
         if (!ttsResult.IsSuccess)
             return Result<SendNodeAudioMessageResult>.Failure(Error.External($"Text-to-speech failed: {ttsResult.Error?.Message}"));
 

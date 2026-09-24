@@ -10,7 +10,7 @@ public class XAiTextToSpeechService(IConfiguration configuration) : ITextToSpeec
 {
     private static readonly HttpClient HttpClient = new();
 
-    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text)
+    public async Task<Result<TextToSpeechResult>> SynthesizeAsync(string text, CancellationToken cancellationToken = default)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
         var endpoint = configuration["xAI:Endpoint"] ?? "https://api.x.ai/v1";
@@ -32,10 +32,10 @@ public class XAiTextToSpeechService(IConfiguration configuration) : ITextToSpeec
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        using var response = await HttpClient.SendAsync(request);
+        using var response = await HttpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var audioBytes = await response.Content.ReadAsByteArrayAsync();
+        var audioBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
 
         return Result<TextToSpeechResult>.Success(new TextToSpeechResult(audioBytes, durationMs));

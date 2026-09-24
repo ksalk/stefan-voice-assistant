@@ -2,7 +2,7 @@ namespace Stefan.Server.Application.Services;
 
 public interface ITextToSpeechService
 {
-    Task<Result<TextToSpeechResult>> SynthesizeAsync(string text);
+    Task<Result<TextToSpeechResult>> SynthesizeAsync(string text, CancellationToken cancellationToken = default);
 }
 
 public record struct TextToSpeechResult(byte[] AudioBytes, double DurationMs);
