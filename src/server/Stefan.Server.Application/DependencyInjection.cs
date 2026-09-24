@@ -52,9 +52,16 @@ public static class DependencyInjection
         }
         else
         {
-            services.AddSingleton(_ =>
+            var modelPath = configuration["Whisper:ModelPath"] ?? "ggml-base.bin";
+            var modelUrl = configuration["Whisper:ModelUrl"] ?? WhisperModelDownloader.DefaultModelUrl;
+
+            services.AddSingleton<WhisperModelDownloader>();
+            services.AddSingleton(sp =>
             {
-                var factory = WhisperFactory.FromPath("ggml-base.bin");
+                var downloader = sp.GetRequiredService<WhisperModelDownloader>();
+                downloader.EnsureModel(modelPath, modelUrl);
+
+                var factory = WhisperFactory.FromPath(modelPath);
                 return factory.CreateBuilder()
                     .WithLanguage("en")
                     .Build();

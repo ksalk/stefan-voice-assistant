@@ -57,9 +57,9 @@ For local .NET runs:
 - An OpenAI-compatible LLM API key;
 - A congifuration specified `SttProvider`/`TtsProvider` which can be local engine or remote service;
 - Sherpa-ONNX keyword-spotter model files configured by `KeywordSpotter:ModelPath`
-- `ggml-base.bin` in the server working directory when the local Whisper provider is selected
+- Network access at server startup when the local Whisper provider is selected; the server downloads the Whisper model to `Whisper:ModelPath` (default `ggml-base.bin` in the server working directory) if it is missing
 
-The server Docker image includes the Whisper base model. Piper is an optional server-side provider and downloads its executable and configured model when they are not already present. The dashboard additionally requires Node.js and pnpm.
+The server downloads the Whisper model at startup when the local Whisper provider is selected. Piper is an optional server-side provider and downloads its executable and configured model when they are not already present. The dashboard additionally requires Node.js and pnpm.
 
 ## Setup and Running
 
@@ -84,7 +84,7 @@ dotnet run --project src/server/Stefan.Server.API
 
 The development launch profile listens on `http://localhost:5285`. Configure the provider, API key, database connection, `NodeSecret`, and dashboard CORS settings before starting it.
 
-The server's Docker image downloads the Whisper model during its build. For a local Whisper run, place `ggml-base.bin` in the server process working directory.
+The server downloads the Whisper model at startup when the local Whisper provider is selected, so the Docker image contains no speech models.
 
 ### Node
 

@@ -38,9 +38,17 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__StefanDb: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Whisper__ModelPath: /data/whisper/ggml-base.bin
+      Piper__ExecutablePath: /data/piper/piper
+      Piper__WorkingDirectory: /data/piper
+    volumes:
+      - stefan_models:/data
+      # PiperSharp stores voice models under <cwd>/models and that location is not configurable
+      - stefan_models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  stefan_models:
