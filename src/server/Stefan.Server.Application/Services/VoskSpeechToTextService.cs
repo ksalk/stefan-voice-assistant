@@ -10,6 +10,7 @@ public class VoskSpeechToTextService : ISpeechToTextService, IDisposable
 
     private readonly Model _model;
     private readonly VoskRecognizer _recognizer;
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     public VoskSpeechToTextService(string modelPath)
     {
@@ -22,29 +23,37 @@ public class VoskSpeechToTextService : ISpeechToTextService, IDisposable
 
     public async Task<Result<SpeechToTextTranscription>> TranscribeAsync(Stream audioStream, CancellationToken cancellationToken = default)
     {
-        var startTimestamp = Stopwatch.GetTimestamp();
-        var buffer = new byte[4096];
-        int bytesRead;
-
-        while ((bytesRead = await audioStream.ReadAsync(buffer, cancellationToken)) > 0)
+        await _gate.WaitAsync(cancellationToken);
+        try
         {
-            _recognizer.AcceptWaveform(buffer, bytesRead);
+            var startTimestamp = Stopwatch.GetTimestamp();
+            var buffer = new byte[4096];
+            int bytesRead;
+
+            while ((bytesRead = await audioStream.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                _recognizer.AcceptWaveform(buffer, bytesRead);
+            }
+
+            var resultJson = _recognizer.FinalResult();
+            var result = JsonSerializer.Deserialize<JsonElement>(resultJson);
+
+            var transcript = result.TryGetProperty("text", out var text)
+                ? text.GetString() ?? string.Empty
+                : string.Empty;
+
+            var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
+
+            return new SpeechToTextTranscription
+            {
+                Transcript = transcript,
+                DurationMs = durationMs
+            };
         }
-
-        var resultJson = _recognizer.FinalResult();
-        var result = JsonSerializer.Deserialize<JsonElement>(resultJson);
-
-        var transcript = result.TryGetProperty("text", out var text)
-            ? text.GetString() ?? string.Empty
-            : string.Empty;
-
-        var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
-        
-        return new SpeechToTextTranscription
+        finally
         {
-            Transcript = transcript,
-            DurationMs = durationMs
-        };
+            _gate.Release();
+        }
     }
 
     public void Dispose()
