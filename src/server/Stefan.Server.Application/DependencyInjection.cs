@@ -5,16 +5,12 @@ using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
 using Stefan.Server.Application.AI;
-using Stefan.Server.Application.Tools.Timer;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Scheduling;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Application.Tools;
 using Whisper.net;
-using Stefan.Server.Application.Nodes.Jobs;
-using Stefan.Server.Application.Tools.Timer.Jobs;
-using Stefan.Server.Application.Tools.ShoppingList;
 
 namespace Stefan.Server.Application;
 
@@ -22,8 +18,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddNodeFeatures();
         services.AddCommandFeatures();
+        services.AddNodeFeatures();
+        services.AddToolFeatures();
 
         services.AddSpeechToTextServices(configuration);
 
@@ -37,30 +34,6 @@ public static class DependencyInjection
 
         services.AddHttpClient<NodeHttpClient>();
 
-        return services;
-    }
-
-    private static IServiceCollection AddNodeFeatures(this IServiceCollection services)
-    {
-        services.AddScoped<RegisterNode>();
-        services.AddScoped<GetNodes>();
-        services.AddScoped<GetNodeDetails>();
-        services.AddScoped<PingNode>();
-        services.AddScoped<ScheduleNodePing>();
-        services.AddScoped<RescheduleNodePings>();
-
-        services.AddScoped<PingNodeJob>();
-
-        services.AddScoped<SendNodeAudioMessage>();
-        return services;
-    }
-
-    private static IServiceCollection AddCommandFeatures(this IServiceCollection services)
-    {
-        services.AddScoped<ProcessCommand>();
-        services.AddScoped<GetCommands>();
-        services.AddScoped<GetCommand>();
-        services.AddScoped<GetCommandAudio>();
         return services;
     }
 
@@ -124,27 +97,6 @@ public static class DependencyInjection
         });
 
         services.AddScoped<LlmCommandService>();
-
-        services.RegisterAITools();
-
-        return services;
-    }
-
-    private static IServiceCollection RegisterAITools(this IServiceCollection services)
-    {
-        services.AddScoped<ToolRegistry>();
-
-        services.AddScoped<ITool, AddTimerTool>();
-        services.AddScoped<ITool, ListTimersTool>();
-        services.AddScoped<ITool, CancelTimerTool>();
-        services.AddScoped<ScheduleTimerJob>();
-        services.AddScoped<CancelTimerJob>();
-        services.AddScoped<FireTimerJob>();
-
-        services.AddScoped<ITool, AddItemToShoppingListTool>();
-        services.AddScoped<ITool, ListShoppingListItemsTool>();
-        services.AddScoped<ITool, RemoveItemFromShoppingListTool>();
-        services.AddScoped<ITool, ClearShoppingListTool>();
 
         return services;
     }
