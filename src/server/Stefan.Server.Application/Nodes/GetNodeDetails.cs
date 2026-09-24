@@ -42,7 +42,7 @@ public class GetNodeDetailsResult
 
 public class GetNodeDetails(StefanDbContext dbContext)
 {
-    public async Task<GetNodeDetailsResult> Handle(GetNodeDetailsRequest request, CancellationToken cancellationToken)
+    public async Task<Result<GetNodeDetailsResult>> Handle(GetNodeDetailsRequest request, CancellationToken cancellationToken)
     {
         var node = await dbContext.Nodes
             .AsNoTracking()
@@ -64,7 +64,7 @@ public class GetNodeDetails(StefanDbContext dbContext)
 
         if (node == null)
         {
-            throw new Exception($"Node with ID {request.NodeId} not found");
+            return Result<GetNodeDetailsResult>.Failure(Error.NotFound($"Node with ID {request.NodeId} not found"));
         }
 
         var statusReports = await dbContext.NodeStatusReports
@@ -86,6 +86,6 @@ public class GetNodeDetails(StefanDbContext dbContext)
 
         node.StatusReports = statusReports;
 
-        return new GetNodeDetailsResult { Node = node };
+        return Result<GetNodeDetailsResult>.Success(new GetNodeDetailsResult { Node = node });
     }
 }

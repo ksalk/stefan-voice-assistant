@@ -10,7 +10,7 @@ public class GetCommandRequest
 
 public class GetCommand(StefanDbContext dbContext)
 {
-    public async Task<CommandSummaryDto?> Handle(GetCommandRequest request, CancellationToken cancellationToken)
+    public async Task<Result<CommandSummaryDto>> Handle(GetCommandRequest request, CancellationToken cancellationToken)
     {
         var command = await dbContext.CommandRecords
             .AsNoTracking()
@@ -37,6 +37,11 @@ public class GetCommand(StefanDbContext dbContext)
             })
             .FirstOrDefaultAsync(cancellationToken);
 
-        return command;
+        if (command == null)
+        {
+            return Result<CommandSummaryDto>.Failure(Error.NotFound("Command not found"));
+        }
+
+        return Result<CommandSummaryDto>.Success(command);
     }
 }

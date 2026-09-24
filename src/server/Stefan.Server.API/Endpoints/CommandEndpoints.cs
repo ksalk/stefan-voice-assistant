@@ -41,12 +41,7 @@ public static class CommandEndpoints
         {
             var result = await getCommand.Handle(new GetCommandRequest { Id = commandId }, cancellationToken);
 
-            if (result == null)
-            {
-                return Results.NotFound();
-            }
-
-            return Results.Ok(result);
+            return result.ToHttpResult(Results.Ok);
         })
         .WithName("GetCommand")
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
@@ -103,12 +98,7 @@ public static class CommandEndpoints
                 Type = type,
             }, cancellationToken);
 
-            if (result == null)
-            {
-                return Results.NotFound();
-            }
-
-            return Results.File(result.AudioBytes, result.ContentType, result.FileName);
+            return result.ToHttpResult(r => Results.File(r.AudioBytes, r.ContentType, r.FileName));
         })
         .WithName("GetCommandAudio")
         .RequireAuthorization(AuthPolicy.DashboardPolicy)

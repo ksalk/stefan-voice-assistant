@@ -22,7 +22,7 @@ public class GetCommandAudio(
     StefanDbContext dbContext,
     AudioConverterService audioConverter)
 {
-    public async Task<GetCommandAudioResult?> Handle(GetCommandAudioRequest request, CancellationToken cancellationToken)
+    public async Task<Result<GetCommandAudioResult>> Handle(GetCommandAudioRequest request, CancellationToken cancellationToken)
     {
         var command = await dbContext.CommandRecords
             .AsNoTracking()
@@ -30,7 +30,7 @@ public class GetCommandAudio(
 
         if (command == null)
         {
-            return null;
+            return Result<GetCommandAudioResult>.Failure(Error.NotFound("Command not found"));
         }
 
         var compressedAudio = request.Type == AudioType.Request
@@ -39,7 +39,7 @@ public class GetCommandAudio(
 
         if (compressedAudio == null)
         {
-            return null;
+            return Result<GetCommandAudioResult>.Failure(Error.NotFound("Audio not available for this command"));
         }
 
         var audioFormat = request.Type == AudioType.Request
@@ -62,11 +62,11 @@ public class GetCommandAudio(
             ? $"command_{request.CommandId}_request.wav"
             : $"command_{request.CommandId}_response.wav";
 
-        return new GetCommandAudioResult
+        return Result<GetCommandAudioResult>.Success(new GetCommandAudioResult
         {
             AudioBytes = wavBytes,
             ContentType = "audio/wav",
             FileName = fileName,
-        };
+        });
     }
 }

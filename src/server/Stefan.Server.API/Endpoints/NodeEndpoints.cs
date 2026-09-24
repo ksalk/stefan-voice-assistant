@@ -71,7 +71,7 @@ public static class NodeEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await getNodeDetails.Handle(new GetNodeDetailsRequest { NodeId = nodeId }, cancellationToken);
-            return Results.Ok(result);
+            return result.ToHttpResult(Results.Ok);
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
