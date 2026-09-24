@@ -1,97 +1,146 @@
 # Stefan Voice Assistant
 
-A two-component voice assistant MVP. A Python process on an edge device (Raspberry Pi or any Linux machine) listens for the "alexa" wake word, records the spoken command, POSTs the audio to a local .NET 10 server which transcribes it and generates a response via an LLM, then speaks the response aloud using piper-tts. No cloud services required beyond the LLM API.
+Stefan Voice Assistant is a voice assistant composed of a .NET 10 edge node, a .NET 10 API server, and an optional Svelte dashboard. The node listens for the "stefan" wake word, records a command, sends it to the server for speech recognition and LLM processing, and plays the synthesized response through the local audio device.
 
 ## Architecture
 
-```
+```text
 [Microphone]
-     |
-     v
-apps/node  (Python)
-  - openWakeWord detects "alexa"
-  - records command audio (WAV, 16kHz mono)
-  - POST /command  -->  apps/server  (.NET 10 / ASP.NET Core)
-                               - Whisper.NET transcribes the WAV
-                              - LLM (OpenRouter) generates a response
-                              - returns response text in HTTP body
-  - piper-tts synthesizes response text
-     |
-     v
+        |
+        v
+src/node/Stefan.Node (.NET 10 / C#)
+  - reads ALSA input
+  - normalizes audio for recognition
+  - uses Sherpa-ONNX to detect "stefan"
+  - records until silence, timeout, or "stop"
+  - sends multipart WAV data to POST /api/commands
+        |
+        v
+src/server/Stefan.Server.API (.NET 10 / ASP.NET Core)
+  - validates node registration, session, and command headers
+  - transcribes with the configured STT provider
+  - calls the configured OpenAI-compatible LLM
+  - supports timer and shopping-list tools
+  - synthesizes speech with the configured TTS provider
+  - stores command data in PostgreSQL
+  - returns response.wav and X-Response-Text
+        |
+        v
+src/node/Stefan.Node
+  - plays the returned WAV through ALSA/aplay
+        |
+        v
 [Speakers]
+
+src/dashboard/stefan-ui
+  - reads node and command data from the server API
 ```
 
 ## Tech Stack
 
-| Component | Language | Key Libraries |
-|-----------|----------|---------------|
-| `apps/node` | Python 3.9+ | openWakeWord, sounddevice, numpy, requests, piper-tts |
-| `apps/server` | .NET 10 (C#) | ASP.NET Core minimal API, Whisper.NET 1.9.0, OpenAI SDK |
+| Component | Runtime | Key Technologies |
+|-----------|----------|-------------------|
+| `src/node/Stefan.Node` | .NET 10 / C# | ASP.NET Core, Alsa.Net, Sherpa-ONNX, Serilog |
+| `src/server` | .NET 10 / C# | ASP.NET Core, OpenAI SDK, Whisper.NET 1.9.1, Vosk, PiperSharp, EF Core/Npgsql, Quartz |
+| `src/dashboard/stefan-ui` | TypeScript / SvelteKit | Svelte dashboard for nodes and commands |
 
 ## Prerequisites
 
-- Python 3.9+, `pip`
-- `portaudio19-dev` system library (`sudo apt install portaudio19-dev`)
+For local .NET runs:
+
 - .NET 10 SDK
-- Microphone and speaker/audio output device
-- Whisper.NET model file placed at `apps/server/Stefan.Server.API/ggml-base.bin`
-  - Download the base model: `dotnet run --project apps/server/Stefan.Server.API -- download-model` or grab it from https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
-- piper-tts voice model placed at `apps/node/models/` (see below)
-- OpenRouter API key set in `apps/server/Stefan.Server.API/appsettings.json`
+- Linux audio support with microphone and speaker access
+- `aplay` and `amixer` on the node host
+- `ffmpeg` on the server host
+- PostgreSQL with the application and Quartz database schema available
+- A node secret shared by the node and server
+- An OpenAI-compatible LLM API key;
+- A congifuration specified `SttProvider`/`TtsProvider` which can be local engine or remote service;
+- Sherpa-ONNX keyword-spotter model files configured by `KeywordSpotter:ModelPath`
+- `ggml-base.bin` in the server working directory when the local Whisper provider is selected
 
-## Setup & Running
+The server Docker image includes the Whisper base model. Piper is an optional server-side provider and downloads its executable and configured model when they are not already present. The dashboard additionally requires Node.js and pnpm.
 
-**Server (`apps/server`):**
+## Setup and Running
 
-```bash
-cd apps/server/Stefan.Server.API
-dotnet run
-# Listens on http://localhost:5285
-```
+Run the commands below from the repository root.
 
-**Python node (`apps/node`):**
+### Database
 
-```bash
-cd apps/node
-pip install -r requirements.txt
-```
-
-Download the piper-tts voice model:
+Provide the `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` values expected by the Compose file, then start PostgreSQL:
 
 ```bash
-mkdir -p models
-wget -O models/en_US-lessac-medium.onnx \
-  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-wget -O models/en_US-lessac-medium.onnx.json \
-  "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+docker compose --profile db up -d
 ```
 
-Then run:
+The application expects the EF Core and Quartz schema to be provisioned by the deployment process; it does not create that schema during application startup.
+
+### Server
 
 ```bash
-python src/main.py
+dotnet restore Stefan.sln
+dotnet run --project src/server/Stefan.Server.API
 ```
 
-## Python CLI Options
+The development launch profile listens on `http://localhost:5285`. Configure the provider, API key, database connection, `NodeSecret`, and dashboard CORS settings before starting it.
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--device INT` | system default | Input audio device index |
-| `--threshold FLOAT` | `0.6` | Wake word detection confidence threshold |
-| `--silence-threshold FLOAT` | `200` | RMS energy level below which audio counts as silence |
-| `--silence-duration FLOAT` | `1.0` | Seconds of consecutive silence to stop recording |
-| `--max-record-duration FLOAT` | `10.0` | Maximum recording length (seconds) |
-| `--output-dir PATH` | `./recordings` | Directory to save command WAV files |
-| `--list-devices` | — | List available audio input devices and exit |
-| `--test-command PATH` | — | Sends audio file at PATH to server and does not continue to listen for wake word - for testing |
+The server's Docker image downloads the Whisper model during its build. For a local Whisper run, place `ggml-base.bin` in the server process working directory.
 
-## Performance
+### Node
 
-v0.2.0 - Setting timer takes 3-3.5s
+Start the node after the server is available so it can register:
+
+```bash
+dotnet run --project src/node/Stefan.Node
+```
+
+The default remote server URL is `http://127.0.0.1:5285`; override it with `RemoteServer:Url` for a remote server. The node sends its shared secret in `RemoteServer:AuthSecret`.
+
+The `justfile` provides the equivalent `just runserver` and `just runnode` commands.
+
+### Docker deployment
+
+The root Compose file can start PostgreSQL, pgAdmin, and the API:
+
+```bash
+docker compose --profile full up --build
+```
+
+Prebuilt server and edge-node deployments are defined in `docker-compose.server.yml` and `docker-compose.edge.yml`. They require their respective environment variables, API credentials, audio device access, and database network configuration.
+
+## Node Options and Configuration
+
+The node loads configuration from `appsettings.json`, optional `appsettings.Development.json`, environment variables, and command-line arguments. The following command-line options are available:
+
+| Option | Description |
+|--------|-------------|
+| `--send-file PATH` | Sends a WAV file to the server, plays the response, and exits. |
+| `--play-file PATH` | Plays a local WAV file and exits. |
+
+The node registers with the server before either command runs. Examples:
+
+```bash
+dotnet run --project src/node/Stefan.Node -- --send-file /path/to/command.wav
+dotnet run --project src/node/Stefan.Node -- --play-file /path/to/response.wav
+```
+
+Important settings include:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `Audio:Input:DeviceName` | `plughw:0,0` | ALSA input device |
+| `Audio:Input:SampleRate` | `48000` | Input sample rate |
+| `Audio:Input:ProcessingSampleRate` | `16000` | Recognition sample rate |
+| `Audio:SilenceThreshold` | `0.02` | Normalized RMS silence threshold |
+| `Audio:SilenceTimeoutMs` | `1000` | Silence duration before sending a command |
+| `Audio:MaxRecordingMs` | `10000` | Maximum command duration |
+| `KeywordSpotter:ModelPath` | `/app/models` | Directory containing the Sherpa-ONNX model files |
+
+The Docker image uses `/app/models`; configure a different model path for a local run.
 
 ## Status
 
-MVP. The full pipeline is functional end-to-end: wake word detection, command recording, transcription, LLM response, and TTS playback.
+The core voice pipeline is implemented. Node integration tests exercise wake-word detection, recording, HTTP dispatch, response playback, and failure playback against a mock server; server integration tests cover health, registration, and command correlation. CI does not run a real microphone, all external AI providers, and speaker playback together.
 
 ## License
 
