@@ -4,11 +4,27 @@ using Stefan.Server.Application.Nodes;
 
 namespace Stefan.Server.API.Endpoints;
 
+public sealed class RegisterNodeBody
+{
+    public required string NodeName { get; set; }
+    public required string SessionId { get; set; }
+    public required int Port { get; set; }
+}
+
+public sealed class SpeakTextBody
+{
+    public required string Text { get; set; }
+}
+
 public static class NodeEndpoints
 {
     public static void MapNodeEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/nodes/register", async (HttpContext context, [FromServices] RegisterNode registerNode, [FromBody] RegisterNodeRequest request) =>
+        app.MapPost("/api/nodes/register", async (
+            HttpContext context,
+            [FromBody] RegisterNodeBody body,
+            [FromServices] RegisterNode registerNode,
+            CancellationToken cancellationToken) =>
         {
             var nodeIpAddress = GetNodeIpAddress(context);
             if(nodeIpAddress == null)
@@ -16,15 +32,24 @@ public static class NodeEndpoints
                 return Results.BadRequest("Unable to determine node IP address");
             }
 
-            request.IpAddress = nodeIpAddress;
-            await registerNode.Handle(request, CancellationToken.None);
+            await registerNode.Handle(new RegisterNodeRequest
+            {
+                NodeName = body.NodeName,
+                SessionId = body.SessionId,
+                Port = body.Port,
+                IpAddress = nodeIpAddress,
+            }, cancellationToken);
+
             return Results.Ok();
         })
         .RequireAuthorization(AuthPolicy.NodePolicy);
 
-        app.MapPost("/api/nodes/{nodeId:guid}/ping", async (Guid nodeId, [FromServices] PingNode pingNode) =>
+        app.MapPost("/api/nodes/{nodeId:guid}/ping", async (
+            Guid nodeId,
+            [FromServices] PingNode pingNode,
+            CancellationToken cancellationToken) =>
         {
-            var result = await pingNode.Handle(new PingNodeRequest { NodeId = nodeId }, CancellationToken.None);
+            var result = await pingNode.Handle(new PingNodeRequest { NodeId = nodeId }, cancellationToken);
 
             return result.ToHttpResult(statusReport => statusReport == null
                 ? Results.Ok()
@@ -40,17 +65,22 @@ public static class NodeEndpoints
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
 
-        app.MapGet("/api/nodes/{nodeId:guid}", async (Guid nodeId, [FromServices] GetNodeDetails getNodeDetails) =>
+        app.MapGet("/api/nodes/{nodeId:guid}", async (
+            Guid nodeId,
+            [FromServices] GetNodeDetails getNodeDetails,
+            CancellationToken cancellationToken) =>
         {
-            var result = await getNodeDetails.Handle(new GetNodeDetailsRequest { NodeId = nodeId }, CancellationToken.None);
+            var result = await getNodeDetails.Handle(new GetNodeDetailsRequest { NodeId = nodeId }, cancellationToken);
             return Results.Ok(result);
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
 
-        app.MapGet("/api/nodes", async ([FromServices] GetNodes getNodes) =>
+        app.MapGet("/api/nodes", async (
+            [FromServices] GetNodes getNodes,
+            CancellationToken cancellationToken) =>
         {
-            var result = await getNodes.Handle(new GetNodesRequest(), CancellationToken.None);
+            var result = await getNodes.Handle(new GetNodesRequest(), cancellationToken);
             return Results.Ok(result);
         })
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
@@ -58,11 +88,15 @@ public static class NodeEndpoints
 
         app.MapPost("/api/nodes/{nodeId:guid}/speak-text", async (
             Guid nodeId,
-            [FromBody] SendNodeAudioMessageRequest request,
-            [FromServices] SendNodeAudioMessage sendNodeAudioMessage) =>
+            [FromBody] SpeakTextBody body,
+            [FromServices] SendNodeAudioMessage sendNodeAudioMessage,
+            CancellationToken cancellationToken) =>
         {
-            request.NodeId = nodeId;
-            var result = await sendNodeAudioMessage.Handle(request, CancellationToken.None);
+            var result = await sendNodeAudioMessage.Handle(new SendNodeAudioMessageRequest
+            {
+                NodeId = nodeId,
+                Text = body.Text,
+            }, cancellationToken);
 
             return result.ToHttpResult(v => Results.Ok(new { message = "Audio sent", ttsDurationMs = v.TtsDurationMs }));
         })

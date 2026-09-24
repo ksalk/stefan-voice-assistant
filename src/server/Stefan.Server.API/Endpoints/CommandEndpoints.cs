@@ -17,7 +17,8 @@ public static class CommandEndpoints
             [FromQuery] int pageSize,
             [FromQuery] Guid? nodeId,
             [FromQuery] CommandStatus[] status,
-            [FromServices] GetCommands getCommands) =>
+            [FromServices] GetCommands getCommands,
+            CancellationToken cancellationToken) =>
         {
             var result = await getCommands.Handle(new GetCommandsRequest
             {
@@ -25,7 +26,7 @@ public static class CommandEndpoints
                 PageSize = pageSize,
                 NodeId = nodeId,
                 Statuses = status.ToList(),
-            }, CancellationToken.None);
+            }, cancellationToken);
 
             return Results.Ok(result);
         })
@@ -33,9 +34,12 @@ public static class CommandEndpoints
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
 
-        app.MapGet("api/commands/{commandId:guid}", async (Guid commandId, [FromServices] GetCommand getCommand) =>
+        app.MapGet("api/commands/{commandId:guid}", async (
+            Guid commandId,
+            [FromServices] GetCommand getCommand,
+            CancellationToken cancellationToken) =>
         {
-            var result = await getCommand.Handle(new GetCommandRequest { Id = commandId }, CancellationToken.None);
+            var result = await getCommand.Handle(new GetCommandRequest { Id = commandId }, cancellationToken);
 
             if (result == null)
             {
@@ -48,48 +52,37 @@ public static class CommandEndpoints
         .RequireAuthorization(AuthPolicy.DashboardPolicy)
         .RequireCors(CorsPolicy.DashboardPolicy);
 
-        app.MapPost("api/commands", async (HttpContext context, IFormFile file, [FromServices] ProcessCommand processCommand) =>
+        app.MapPost("api/commands", async (
+            HttpContext context,
+            IFormFile file,
+            [FromServices] ProcessCommand processCommand,
+            CancellationToken cancellationToken) =>
         {
-            var deviceId = context.Request.Headers["X-Node-Device-ID"].FirstOrDefault();
-            if (string.IsNullOrEmpty(deviceId))
+            var headersResult = CommandHeaders.FromHttpRequest(context.Request, logger);
+            if (!headersResult.IsSuccess)
             {
-                logger.LogWarning("Command request rejected: missing X-Node-Device-ID header");
-                return Results.BadRequest("Missing X-Node-Device-ID header");
+                return headersResult.Error!.ToHttpResult();
             }
 
-            var sessionId = context.Request.Headers["X-Node-Session-ID"].FirstOrDefault();
-            if (string.IsNullOrEmpty(sessionId))
-            {
-                logger.LogWarning("Command request rejected: missing X-Node-Session-ID header (device {DeviceId})", deviceId);
-                return Results.BadRequest("Missing X-Node-Session-ID header");
-            }
-
-            var rawCommandId = context.Request.Headers[Correlation.CommandIdHeader].FirstOrDefault();
-            if (!Guid.TryParse(rawCommandId, out var commandId) || commandId == Guid.Empty)
-            {
-                logger.LogWarning(
-                    "Command request rejected: missing or invalid {Header} header '{Value}' (device {DeviceId})",
-                    Correlation.CommandIdHeader, rawCommandId, deviceId);
-                return Results.BadRequest($"Missing or invalid {Correlation.CommandIdHeader} header");
-            }
+            var headers = headersResult.Value!;
 
             logger.LogInformation(
                 "Received command {CommandId} from device {DeviceId}: {FileName}, {FileSize} bytes",
-                commandId, deviceId, file.FileName, file.Length);
+                headers.CommandId, headers.DeviceId, file.FileName, file.Length);
 
             await using var fileStream = file.OpenReadStream();
 
             var result = await processCommand.Handle(new ProcessCommandRequest
             {
-                CommandId = commandId,
-                DeviceId = deviceId,
-                SessionId = sessionId,
+                CommandId = headers.CommandId,
+                DeviceId = headers.DeviceId,
+                SessionId = headers.SessionId,
                 AudioStream = fileStream,
-            }, CancellationToken.None);
+            }, cancellationToken);
 
             return result.ToHttpResult(response =>
             {
-                context.Response.Headers[Correlation.CommandIdHeader] = commandId.ToString();
+                context.Response.Headers[Correlation.CommandIdHeader] = headers.CommandId.ToString();
                 context.Response.Headers["X-Response-Text"] = Uri.EscapeDataString(response.ResponseText);
                 return Results.File(response.AudioBytes, "audio/wav", "response.wav");
             });
@@ -98,13 +91,17 @@ public static class CommandEndpoints
         .DisableAntiforgery()
         .WithName("ProcessCommand");
 
-        app.MapGet("api/commands/{commandId:guid}/audio", async (Guid commandId, [FromQuery] AudioType type, [FromServices] GetCommandAudio getCommandAudio) =>
+        app.MapGet("api/commands/{commandId:guid}/audio", async (
+            Guid commandId,
+            [FromQuery] AudioType type,
+            [FromServices] GetCommandAudio getCommandAudio,
+            CancellationToken cancellationToken) =>
         {
             var result = await getCommandAudio.Handle(new GetCommandAudioRequest
             {
                 CommandId = commandId,
                 Type = type,
-            }, CancellationToken.None);
+            }, cancellationToken);
 
             if (result == null)
             {
