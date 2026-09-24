@@ -44,7 +44,15 @@ public static class DependencyInjection
         if (provider.Equals("Vosk", StringComparison.OrdinalIgnoreCase))
         {
             var voskModelPath = configuration["Vosk:ModelPath"] ?? "../../stt-models/vosk-model-en-us-0.22";
-            services.AddSingleton<ISpeechToTextService>(new VoskSpeechToTextService(voskModelPath));
+            var voskModelUrl = configuration["Vosk:ModelUrl"] ?? VoskModelDownloader.DefaultModelUrl;
+
+            services.AddSingleton<VoskModelDownloader>();
+            services.AddSingleton<ISpeechToTextService>(sp =>
+            {
+                var voskDownloader = sp.GetRequiredService<VoskModelDownloader>();
+                voskDownloader.EnsureModel(voskModelPath, voskModelUrl);
+                return new VoskSpeechToTextService(voskModelPath);
+            });
         }
         else if (provider.Equals("XAi", StringComparison.OrdinalIgnoreCase))
         {

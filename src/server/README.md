@@ -57,13 +57,13 @@ The checked-in server configuration selects xAI for both STT and TTS. Provider s
 |---------|-----------|---------------|
 | `SttProvider` | `XAi` | `xAI:ApiKey`; calls the xAI speech-to-text endpoint |
 | `SttProvider` | `Whisper` | `Whisper:ModelPath` (default `ggml-base.bin` in the server process working directory); the model is downloaded at startup when missing |
-| `SttProvider` | `Vosk` | `Vosk:ModelPath`; the default is `../../stt-models/vosk-model-en-us-0.22` |
+| `SttProvider` | `Vosk` | `Vosk:ModelPath`; the default is `../../stt-models/vosk-model-en-us-0.22`, downloaded and extracted at startup when the directory is missing (`Vosk:ModelUrl` overrides the zip source) |
 | `TtsProvider` | `XAi` | `xAI:ApiKey`; calls the xAI text-to-speech endpoint |
 | `TtsProvider` | any other value | Piper, configured by `Piper:ExecutablePath`, `Piper:WorkingDirectory`, and `Piper:ModelKey` |
 
 The LLM uses the OpenAI SDK and the `OpenAI:ApiKey`, `OpenAI:Endpoint`, and `OpenAI:Model` settings. The checked-in endpoint is OpenRouter. LLM tools include timers and shopping-list operations.
 
-The server Docker image contains no speech models. The Whisper and Piper services download their files at startup when they are missing. The Whisper model source is configured by `Whisper:ModelPath` (default `ggml-base.bin` in the server process working directory) and `Whisper:ModelUrl`. The Piper service downloads its executable and configured voice model when they are missing.
+The server Docker image contains no speech models. The Whisper, Vosk, and Piper services download their files at startup when they are missing. The Whisper model source is configured by `Whisper:ModelPath` (default `ggml-base.bin` in the server process working directory) and `Whisper:ModelUrl`. The Vosk model source is configured by `Vosk:ModelPath` and `Vosk:ModelUrl` (the default model zip is about 1.8 GB). The Piper service downloads its executable and configured voice model when they are missing.
 
 ## Running locally
 

@@ -58,8 +58,9 @@ For local .NET runs:
 - A congifuration specified `SttProvider`/`TtsProvider` which can be local engine or remote service;
 - Sherpa-ONNX keyword-spotter model files configured by `KeywordSpotter:ModelPath`
 - Network access at server startup when the local Whisper provider is selected; the server downloads the Whisper model to `Whisper:ModelPath` (default `ggml-base.bin` in the server working directory) if it is missing
+- Network access at server startup when the Vosk provider is selected; the server downloads the Vosk model to `Vosk:ModelPath` (default `../../stt-models/vosk-model-en-us-0.22`) if it is missing
 
-The server downloads the Whisper model at startup when the local Whisper provider is selected. Piper is an optional server-side provider and downloads its executable and configured model when they are not already present. The dashboard additionally requires Node.js and pnpm.
+The server downloads the Whisper and Vosk models at startup when their providers are selected. Piper is an optional server-side provider and downloads its executable and configured model when they are not already present. The dashboard additionally requires Node.js and pnpm.
 
 ## Setup and Running
 
@@ -84,7 +85,7 @@ dotnet run --project src/server/Stefan.Server.API
 
 The development launch profile listens on `http://localhost:5285`. Configure the provider, API key, database connection, `NodeSecret`, and dashboard CORS settings before starting it.
 
-The server downloads the Whisper model at startup when the local Whisper provider is selected, so the Docker image contains no speech models.
+The server downloads the Whisper and Vosk models at startup when their providers are selected, so the Docker image contains no speech models.
 
 ### Node
 

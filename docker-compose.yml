@@ -41,6 +41,7 @@ services:
       Whisper__ModelPath: /data/whisper/ggml-base.bin
       Piper__ExecutablePath: /data/piper/piper
       Piper__WorkingDirectory: /data/piper
+      Vosk__ModelPath: /data/vosk/vosk-model-en-us-0.22
     volumes:
       - stefan_models:/data
       # PiperSharp stores voice models under <cwd>/models and that location is not configurable
