@@ -13,4 +13,6 @@ public class KeywordSpotterOptions
     public int NumThreads { get; set; } = 2;
     public string Provider { get; set; } = "cpu";
     public int FeatureDim { get; set; } = 80;
+    public float KeywordsScore { get; set; } = 1.0f; // default SherpaOnnx value
+    public float KeywordsThreshold { get; set; } = 0.25f; // default SherpaOnnx value
 }

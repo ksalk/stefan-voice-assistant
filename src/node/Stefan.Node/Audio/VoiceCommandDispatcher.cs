@@ -277,6 +277,8 @@ public class VoiceCommandDispatcher(
                 Provider = opts.Provider,
             },
             KeywordsFile = keywordsFile,
+            KeywordsScore = opts.KeywordsScore,
+            KeywordsThreshold = opts.KeywordsThreshold,
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
