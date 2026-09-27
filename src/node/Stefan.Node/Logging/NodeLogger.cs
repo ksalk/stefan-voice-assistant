@@ -1,5 +1,6 @@
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.OpenTelemetry;
 
 namespace Stefan.Node.Logging;
 
@@ -35,7 +36,37 @@ public static class NodeLogger
                 shared: true);
         }
 
+        var otlpEndpoint = configuration["Log:Otlp:Endpoint"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            loggerConfiguration = loggerConfiguration.WriteTo.OpenTelemetry(options =>
+            {
+                options.Endpoint = otlpEndpoint;
+                options.Protocol = OtlpProtocol.HttpProtobuf;
+                options.ResourceAttributes = new Dictionary<string, object>
+                {
+                    ["service.name"] = configuration["Log:Otlp:ServiceName"] is { Length: > 0 } serviceName
+                        ? serviceName
+                        : configuration["Node:Name"] ?? throw new InvalidOperationException("Node should have an unique name."), //TODO: handle it gracefully
+                    ["service.namespace"] = "stefan",
+                    ["service.version"] = typeof(NodeLogger).Assembly.GetName().Version?.ToString() ?? "unknown"
+                };
+                AddHeaders(configuration, options);
+            });
+        }
+
         return loggerConfiguration.CreateLogger();
+    }
+
+    private static void AddHeaders(IConfiguration configuration, OpenTelemetrySinkOptions options)
+    {
+        foreach (var header in configuration.GetSection("Log:Otlp:Headers").GetChildren())
+        {
+            if (!string.IsNullOrWhiteSpace(header.Value))
+            {
+                options.Headers.Add(header.Key, header.Value);
+            }
+        }
     }
 
     private static LoggerConfiguration ApplyMinimumLevel(LoggerConfiguration loggerConfiguration, IConfiguration configuration)
