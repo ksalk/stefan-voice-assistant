@@ -49,6 +49,27 @@ Dashboard endpoints under `/api/nodes` and `/api/commands` require the dashboard
 
 The application expects the EF Core and Quartz database schema to be provisioned by the deployment process. It does not create that schema during startup.
 
+## Logging to an OpenTelemetry collector (OTLP)
+
+The server ships its Serilog logs to an OpenTelemetry collector when `Log:Otlp:Endpoint` is
+configured. The transport is OTLP/HTTP with protobuf encoding; the sink appends the `/v1/logs`
+path to the configured base URL. Whenever the endpoint is empty or missing, only the console
+sink is used.
+
+```json
+"Log": {
+  "Otlp": {
+    "Endpoint": "https://your-collector.example.com",
+    "ServiceName": "",
+    "Headers": {}
+  }
+}
+```
+
+- `ServiceName` (optional) overrides `service.name`; the default is `stefan-server`.
+- `Headers` (optional) adds arbitrary OTLP request headers, e.g. basic auth credentials.
+- In compose, set `OTLP_ENDPOINT` in the environment to enable the sink.
+
 ## Providers
 
 The checked-in server configuration selects xAI for both STT and TTS. Provider selection is controlled by `SttProvider` and `TtsProvider`:
