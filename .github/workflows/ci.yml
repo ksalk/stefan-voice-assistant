@@ -16,11 +16,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-          dotnet-quality: 'preview'
+      - name: Setup tools
+        uses: jdx/mise-action@v2
 
       - name: Restore dependencies
         run: dotnet restore Stefan.sln
@@ -40,11 +37,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-          dotnet-quality: 'preview'
+      - name: Setup tools
+        uses: jdx/mise-action@v2
 
       - name: Restore dependencies
         run: dotnet restore Stefan.sln
@@ -58,35 +52,23 @@ jobs:
   dashboard:
     name: Dashboard (SvelteKit)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/dashboard/stefan-ui
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: src/dashboard/stefan-ui/pnpm-lock.yaml
+      - name: Setup tools
+        uses: jdx/mise-action@v2
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: mise exec -- pnpm --prefix src/dashboard/stefan-ui install --frozen-lockfile
 
       - name: Check
-        run: pnpm check
+        run: mise exec -- pnpm --prefix src/dashboard/stefan-ui check
 
       - name: Lint
-        run: pnpm lint
+        run: mise exec -- pnpm --prefix src/dashboard/stefan-ui lint
 
       - name: Build
-        run: pnpm build
+        run: mise exec -- pnpm --prefix src/dashboard/stefan-ui build

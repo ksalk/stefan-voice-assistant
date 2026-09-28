@@ -46,6 +46,14 @@ src/dashboard/stefan-ui
 
 ## Prerequisites
 
+This repo uses [mise](https://mise.jdx.dev) to pin tool versions and provide tasks. Install mise, then from the repo root:
+
+```bash
+mise install
+```
+
+That provisions the .NET SDK, Node.js, and pnpm versions declared in `mise.toml` (shell activation via `mise activate` in your shell config is optional but recommended). Tasks accept arguments, for example `mise run migrate-add-stefan add-command-table`.
+
 For local .NET runs:
 
 - .NET 10 SDK
@@ -97,7 +105,7 @@ dotnet run --project src/node/Stefan.Node
 
 The default remote server URL is `http://127.0.0.1:5285`; override it with `RemoteServer:Url` for a remote server. The node sends its shared secret in `RemoteServer:AuthSecret`.
 
-The `justfile` provides the equivalent `just runserver` and `just runnode` commands.
+The `mise.toml` tasks provide the equivalent `mise run run-server` and `mise run run-node` commands.
 
 ### Docker deployment
 

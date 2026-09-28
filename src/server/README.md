@@ -105,7 +105,7 @@ dotnet run --project src/server/Stefan.Server.API --launch-profile https
 
 The HTTPS profile listens on `https://localhost:7036` and `http://localhost:5285`.
 
-The `justfile` also provides `just runserver`.
+The `mise.toml` task also provides `mise run run-server`.
 
 ## Audio
 

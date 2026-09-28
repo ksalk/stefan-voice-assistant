@@ -1,0 +1,121 @@
+# https://mise.jdx.dev
+
+min_version = "2026.9.15"
+
+[tools]
+dotnet = "10.0.101" # matches src/node/global.json (rollForward: latestMajor)
+node = "22" # matches .github/workflows/ci.yml
+pnpm = "10"
+
+# Note: docker compose reads .env itself; keep .env out of the mise env so
+# stray vars (e.g. VERSION) do not leak into MSBuild/NuGet.
+
+# Database
+[tasks.db-up]
+description = "Start the database containers"
+run = "docker compose --profile db up -d"
+
+[tasks.migrate-add-stefan]
+description = "Add an EF Core migration to StefanDbContext"
+usage = 'arg "<name>" help="Migration name"'
+run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context StefanDbContext --output-dir Migrations/StefanDb"
+
+[tasks.migrate-add-tools]
+description = "Add an EF Core migration to ToolsDbContext"
+usage = 'arg "<name>" help="Migration name"'
+run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext --output-dir Migrations/ToolsDb"
+
+[tasks.migrate-update]
+description = "Apply pending EF Core migrations"
+run = [
+    "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext",
+    "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext",
+]
+
+# Server
+[tasks.build-server]
+description = "Build the server API"
+run = "dotnet build src/server/Stefan.Server.API"
+
+[tasks.run-server]
+description = "Run the server API locally"
+run = "dotnet run --project src/server/Stefan.Server.API"
+
+[tasks.build-server-image]
+description = "Build the server Docker image"
+run = "docker buildx build --platform linux/amd64 -t stefan-server -f src/server/Dockerfile . --load"
+
+[tasks.publish-server]
+description = "Build and push the server image"
+usage = 'arg "<version>" help="Image version tag"'
+run = "docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-server:${usage_version?} -t git.harnas.top/ksalk/stefan-server:latest -f src/server/Dockerfile . --push"
+
+[tasks.build-server-test-image]
+description = "Build the server test image"
+run = "docker buildx build --platform linux/amd64 -t stefan-server:test -f src/server/Dockerfile . --load"
+
+[tasks.build-server-db-test-image]
+description = "Build the server database test image"
+run = "docker buildx build --platform linux/amd64 -t stefan-db:test -f src/server/Stefan.Db.Dockerfile . --load"
+
+[tasks.build-server-test-images]
+description = "Build all server test images"
+depends = ["build-server-test-image", "build-server-db-test-image"]
+
+# Node
+[tasks.build-node-image]
+description = "Build the node Docker image"
+run = "docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Dockerfile . --load"
+
+[tasks.publish-node]
+description = "Build and push the node image"
+usage = 'arg "<version>" help="Image version tag"'
+run = "docker buildx build --platform linux/arm64 --pull -t git.harnas.top/ksalk/stefan-node:${usage_version?} -t git.harnas.top/ksalk/stefan-node:latest -f src/node/Dockerfile . --push"
+
+[tasks.build-node]
+description = "Build the node"
+run = "dotnet build src/node/Stefan.Node"
+
+[tasks.run-node]
+description = "Run the node locally"
+run = "dotnet run --project src/node/Stefan.Node"
+
+[tasks.run-node-test]
+description = "Run the node with a test audio file"
+run = "dotnet run --project src/node/Stefan.Node --send-file tests/node/Stefan.Node.IntegrationTests/TestAudioFiles/how-much-longer.wav"
+
+[tasks.run-node-play-test]
+description = "Run the node playing a local audio file"
+usage = 'arg "<filepath>" help="Path to the audio file"'
+run = "dotnet run --project src/node/Stefan.Node --play-file ${usage_filepath?}"
+
+[tasks.build-node-test-image]
+description = "Build the node test image"
+run = "docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src/node/Dockerfile . --load"
+
+# Dashboard
+[tasks.run-ui]
+description = "Run the dashboard dev server"
+run = "pnpm --prefix src/dashboard/stefan-ui run dev"
+
+[tasks.build-dashboard-image]
+description = "Build the dashboard Docker image"
+run = "docker buildx build --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load"
+
+[tasks.publish-dashboard]
+description = "Build and push the dashboard image"
+usage = 'arg "<version>" help="Image version tag"'
+run = "docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-dashboard:${usage_version?} -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push"
+
+# Tests
+[tasks.test-dotnet]
+description = "Run .NET tests"
+run = "dotnet test Stefan.sln"
+
+[tasks.test-ui]
+description = "Run dashboard tests"
+run = "pnpm --prefix src/dashboard/stefan-ui test"
+
+[tasks.test]
+description = "Run all tests"
+depends = ["test-dotnet", "test-ui"]
