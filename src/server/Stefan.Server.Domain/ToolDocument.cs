@@ -1,4 +1,4 @@
-namespace Stefan.Server.Domain.ToolEntities;
+namespace Stefan.Server.Domain;
 
 /// <summary>
 /// A tool-scoped document stored in the shared jsonb document table.

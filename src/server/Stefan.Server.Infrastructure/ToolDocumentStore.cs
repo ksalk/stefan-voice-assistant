@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Stefan.Server.Domain;
 using Stefan.Server.Domain.ToolEntities;
 
 namespace Stefan.Server.Infrastructure;

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stefan.Server.Domain.ToolEntities;
+using Stefan.Server.Domain;
 
 namespace Stefan.Server.Infrastructure.EntityConfigurations;
 

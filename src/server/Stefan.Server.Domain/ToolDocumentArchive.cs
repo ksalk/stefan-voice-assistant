@@ -1,4 +1,4 @@
-namespace Stefan.Server.Domain.ToolEntities;
+namespace Stefan.Server.Domain;
 
 /// <summary>
 /// Archive copy of a <see cref="ToolDocument"/> created when the live

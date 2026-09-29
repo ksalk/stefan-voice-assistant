@@ -18,6 +18,12 @@ public class GetCommandAudioResult
     public string FileName { get; set; } = null!;
 }
 
+public enum AudioType
+{
+    Request,
+    Response
+}
+
 public class GetCommandAudio(
     StefanDbContext dbContext,
     AudioConverterService audioConverter)
