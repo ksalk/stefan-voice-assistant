@@ -1,5 +1,0 @@
-*.wav
-*.mp3
-*.flac
-*.ogg
-!test_cases.json
