@@ -41,6 +41,18 @@ run = "dotnet build src/server/Stefan.Server.API"
 description = "Run the server API locally"
 run = "dotnet run --project src/server/Stefan.Server.API"
 
+[tasks.tts-generate]
+description = "Synthesize a speech file from text (Stefan.Server.TtsGenerator)"
+usage = '''
+arg "<text>" help="Text to synthesize (quote if it contains spaces)"
+flag "-o --output <file>" help="Output audio file path" required=#true
+'''
+dir = "src/server/Stefan.Server.TtsGenerator"
+run = '''
+#!/usr/bin/env bash
+dotnet run --project . -- "${usage_text:?}" -o "${usage_output:?}"
+'''
+
 [tasks.build-server-image]
 description = "Build the server Docker image"
 run = "docker buildx build --platform linux/amd64 -t stefan-server -f src/server/Dockerfile . --load"
