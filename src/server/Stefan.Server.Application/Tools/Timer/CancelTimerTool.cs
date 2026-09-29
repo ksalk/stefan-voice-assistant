@@ -1,10 +1,11 @@
 using System.Text.Json;
 using OpenAI.Chat;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.Timer;
 
-public class CancelTimerTool(ToolsDbContext toolsDbContext, CancelTimerJob cancelTimerJob) : ITool
+public class CancelTimerTool(IToolDocumentStore documentStore, CancelTimerJob cancelTimerJob) : ITool
 {
     public string Name => "cancel_timer";
 
@@ -35,12 +36,11 @@ public class CancelTimerTool(ToolsDbContext toolsDbContext, CancelTimerJob cance
 
         Guid timerIdValue = timerId.GetGuid();
 
-        var timer = await toolsDbContext.TimerEntries.FindAsync(timerIdValue, cancellationToken);
+        var timer = await documentStore.GetAsync<TimerEntry>(timerIdValue, cancellationToken);
         if (timer == null)
             return $"No timer found with ID {timerIdValue}.";
 
-        toolsDbContext.TimerEntries.Remove(timer);
-        await toolsDbContext.SaveChangesAsync(cancellationToken);
+        await documentStore.DeleteAsync<TimerEntry>(timerIdValue, cancellationToken);
 
         await cancelTimerJob.Handle(timerIdValue, cancellationToken);
 

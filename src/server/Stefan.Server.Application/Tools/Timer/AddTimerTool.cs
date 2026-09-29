@@ -5,7 +5,7 @@ using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.Timer;
 
-public class AddTimerTool(ToolsDbContext toolsDbContext, ScheduleTimerJob scheduleTimerJob) : ITool
+public class AddTimerTool(IToolDocumentStore documentStore, ScheduleTimerJob scheduleTimerJob) : ITool
 {
     public string Name => "add_timer";
 
@@ -44,13 +44,13 @@ public class AddTimerTool(ToolsDbContext toolsDbContext, ScheduleTimerJob schedu
 
         var entry = new TimerEntry
         {
+            Id = Guid.NewGuid(),
             DurationInSeconds = secondsValue,
             Label = labelValue,
             CreatedAt = DateTime.UtcNow,
         };
 
-        toolsDbContext.TimerEntries.Add(entry);
-        await toolsDbContext.SaveChangesAsync(cancellationToken);
+        await documentStore.AddAsync(entry.Id, entry, cancellationToken);
 
         await scheduleTimerJob.Handle(entry, context.SourceDeviceId, cancellationToken);
 

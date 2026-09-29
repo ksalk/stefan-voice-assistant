@@ -1,10 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.Timer;
 
-public class ListTimersTool(ToolsDbContext dbContext) : ITool
+public class ListTimersTool(IToolDocumentStore documentStore) : ITool
 {
     public string Name => "list_timers";
 
@@ -15,7 +15,7 @@ public class ListTimersTool(ToolsDbContext dbContext) : ITool
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context,  CancellationToken cancellationToken = default)
     {
-        var timers = await dbContext.TimerEntries.ToListAsync(cancellationToken);
+        var timers = await documentStore.ListAsync<TimerEntry>(cancellationToken: cancellationToken);
         if (timers.Count(t => !t.IsExpired) == 0)
             return "No active timers.";
 

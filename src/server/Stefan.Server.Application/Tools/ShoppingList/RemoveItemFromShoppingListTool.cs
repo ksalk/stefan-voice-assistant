@@ -1,11 +1,11 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.ShoppingList;
 
-public class RemoveItemFromShoppingListTool(ToolsDbContext toolsDbContext) : ITool
+public class RemoveItemFromShoppingListTool(IToolDocumentStore documentStore) : ITool
 {
     public string Name => "remove_shopping_list_item";
 
@@ -36,12 +36,12 @@ public class RemoveItemFromShoppingListTool(ToolsDbContext toolsDbContext) : ITo
 
         string itemValue = item.GetString() ?? throw new ArgumentNullException(nameof(item), "The item argument is required.");
 
-        var entry = await toolsDbContext.ShoppingListItems.FirstOrDefaultAsync(i => i.Name == itemValue, cancellationToken);
+        var matchingItems = await documentStore.ListAsync<ShoppingListItem>(i => i.Name == itemValue, cancellationToken);
+        var entry = matchingItems.FirstOrDefault();
         if (entry == null)
             throw new ArgumentException($"The item '{itemValue}' does not exist in the shopping list.", nameof(item));
 
-        toolsDbContext.ShoppingListItems.Remove(entry);
-        await toolsDbContext.SaveChangesAsync(cancellationToken);
+        await documentStore.DeleteAsync<ShoppingListItem>(entry.Id, cancellationToken);
 
         return $"Removed '{itemValue}' from the shopping list.";
     }

@@ -1,9 +1,10 @@
 using OpenAI.Chat;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.ShoppingList;
 
-public class ClearShoppingListTool(ToolsDbContext toolsDbContext) : ITool
+public class ClearShoppingListTool(IToolDocumentStore documentStore) : ITool
 {
     public string Name => "clear_shopping_list";
 
@@ -21,9 +22,9 @@ public class ClearShoppingListTool(ToolsDbContext toolsDbContext) : ITool
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default)
     {
-        var allItems = toolsDbContext.ShoppingListItems;
-        toolsDbContext.ShoppingListItems.RemoveRange(allItems);
-        await toolsDbContext.SaveChangesAsync(cancellationToken);
+        var allItems = await documentStore.ListAsync<ShoppingListItem>(cancellationToken: cancellationToken);
+        foreach (var item in allItems)
+            await documentStore.DeleteAsync<ShoppingListItem>(item.Id, cancellationToken);
 
         return "Cleared all items from the shopping list.";
     }

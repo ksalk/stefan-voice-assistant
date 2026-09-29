@@ -20,17 +20,9 @@ description = "Add an EF Core migration to StefanDbContext"
 usage = 'arg "<name>" help="Migration name"'
 run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context StefanDbContext --output-dir Migrations/StefanDb"
 
-[tasks.migrate-add-tools]
-description = "Add an EF Core migration to ToolsDbContext"
-usage = 'arg "<name>" help="Migration name"'
-run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext --output-dir Migrations/ToolsDb"
-
 [tasks.migrate-update]
 description = "Apply pending EF Core migrations"
-run = [
-    "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext",
-    "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context ToolsDbContext",
-]
+run = "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext"
 
 # Server
 [tasks.build-server]

@@ -5,7 +5,7 @@ using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.ShoppingList;
 
-public class AddItemToShoppingListTool(ToolsDbContext toolsDbContext) : ITool
+public class AddItemToShoppingListTool(IToolDocumentStore documentStore) : ITool
 {
     public string Name => "add_shopping_list_item";
 
@@ -38,11 +38,11 @@ public class AddItemToShoppingListTool(ToolsDbContext toolsDbContext) : ITool
 
         var entry = new ShoppingListItem
         {
+            Id = Guid.NewGuid(),
             Name = itemValue
         };
 
-        toolsDbContext.ShoppingListItems.Add(entry);
-        await toolsDbContext.SaveChangesAsync(cancellationToken);
+        await documentStore.AddAsync(entry.Id, entry, cancellationToken);
 
         return $"Added '{itemValue}' to the shopping list.";
     }

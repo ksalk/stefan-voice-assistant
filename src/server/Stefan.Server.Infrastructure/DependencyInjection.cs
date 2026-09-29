@@ -15,10 +15,8 @@ public static class DependencyInjection
         // Register infrastructure services here (e.g., database contexts, repositories, etc.)
         services.AddDbContext<StefanDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString(ConnectionStringName)));
-        
-        services.AddDbContext<ToolsDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString(ConnectionStringName), npgsqlOptions =>
-                npgsqlOptions.MigrationsHistoryTable("__ToolsMigrationsHistory")));
+
+        services.AddScoped<IToolDocumentStore, ToolDocumentStore>();
 
         // Configure Quartz with PostgreSQL persistence
         services.AddQuartz(q =>

@@ -3,14 +3,15 @@ using Microsoft.Extensions.Logging;
 using Quartz;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.Timer.Jobs;
 
 [DisallowConcurrentExecution]
 public class FireTimerJob(
-    ToolsDbContext dbContext,
-    StefanDbContext stefanDbContext,
+    StefanDbContext dbContext,
+    IToolDocumentStore documentStore,
     //ITextToSpeechService ttsService,
     NodeHttpClient nodeHttpClient,
     ILogger<FireTimerJob> logger) : IJob
@@ -42,7 +43,7 @@ public class FireTimerJob(
             //     return;
             // }
             
-            var node = await stefanDbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, context.CancellationToken);
+            var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == deviceId, context.CancellationToken);
             if (node != null)
             {
                 await nodeHttpClient.SendTimerAlert(node, context.CancellationToken);
@@ -53,12 +54,7 @@ public class FireTimerJob(
             logger.LogError(ex, "Failed to send audio notification for timer {TimerId}", timerId);
         }
 
-        // Remove the timer entry from the database
-        var entry = await dbContext.TimerEntries.FindAsync(timerId, context.CancellationToken);
-        if (entry != null)
-        {
-            dbContext.TimerEntries.Remove(entry);
-            await dbContext.SaveChangesAsync(context.CancellationToken);
-        }
+        // Remove the timer document from the store (archiving it)
+        await documentStore.DeleteAsync<TimerEntry>(timerId, context.CancellationToken);
     }
 }

@@ -1,10 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
+using Stefan.Server.Domain.ToolEntities;
 using Stefan.Server.Infrastructure;
 
 namespace Stefan.Server.Application.Tools.ShoppingList;
 
-public class ListShoppingListItemsTool(ToolsDbContext toolsDbContext) : ITool
+public class ListShoppingListItemsTool(IToolDocumentStore documentStore) : ITool
 {
     public string Name => "list_shopping_list_items";
 
@@ -22,7 +22,7 @@ public class ListShoppingListItemsTool(ToolsDbContext toolsDbContext) : ITool
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default)
     {
-        var allItems = await toolsDbContext.ShoppingListItems.ToListAsync(cancellationToken);
+        var allItems = await documentStore.ListAsync<ShoppingListItem>(cancellationToken: cancellationToken);
 
         if (allItems.Count == 0)
         {
