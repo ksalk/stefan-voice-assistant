@@ -2,6 +2,10 @@
 
 min_version = "2026.9.15"
 
+# Mark secrets redacted (masked in task output); keep it before any table header
+# so it stays a top-level mise option.
+redactions = ["ConnectionStrings__StefanDb", "POSTGRES_PASSWORD"]
+
 [tools]
 dotnet = "10.0.101" # matches src/node/global.json (rollForward: latestMajor)
 node = "22" # matches .github/workflows/ci.yml
@@ -15,14 +19,18 @@ pnpm = "10"
 description = "Start the database containers"
 run = "docker compose --profile db up -d"
 
-[tasks.migrate-add-stefan]
+[tasks.migrations-add]
 description = "Add an EF Core migration to StefanDbContext"
 usage = 'arg "<name>" help="Migration name"'
-run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context StefanDbContext --output-dir Migrations/StefanDb"
+run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Server.Infrastructure --context StefanDbContext"
 
-[tasks.migrate-update]
-description = "Apply pending EF Core migrations"
-run = "dotnet ef database update --project src/server/Stefan.Server.Infrastructure --context StefanDbContext"
+[tasks.migrations-apply]
+description = "Apply pending EF Core migrations (mise run -E dev|prod migrations-apply)"
+run = [
+  'test -n "$ConnectionStrings__StefanDb" || { echo "ConnectionStrings__StefanDb is not set - run with -E dev / -E prod (values live in gitignored mise.dev.local.toml / mise.prod.local.toml)" >&2; false; }',
+  'echo "Applying migrations to $MISE_ENV environment (connection string redacted)"',
+  'dotnet ef database update --connection "$ConnectionStrings__StefanDb" --project src/server/Stefan.Server.Infrastructure --context StefanDbContext'
+]
 
 # Server
 [tasks.build-server]
