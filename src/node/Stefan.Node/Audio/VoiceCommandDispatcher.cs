@@ -144,8 +144,8 @@ public class VoiceCommandDispatcher(
                     _recordingStartTime = DateTime.UtcNow;
                     _currentCommandId = Guid.NewGuid();
 
-                    onKeywordDetected(keywordResult.Keyword);
                     audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
+                    onKeywordDetected(keywordResult.Keyword);
                     keywordSpotter.Reset(keywordStream);
                 }
             }
