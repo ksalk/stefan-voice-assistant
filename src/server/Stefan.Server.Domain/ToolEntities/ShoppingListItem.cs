@@ -1,8 +1,9 @@
 namespace Stefan.Server.Domain.ToolEntities;
 
-[ToolDocumentType("shopping-item")]
-public class ShoppingListItem
+public class ShoppingListItem : IToolDocument
 {
+    public static string DocumentType => "shopping-item";
+
     public Guid Id { get; set; }
     public string Name { get; set; } = null!;
 }

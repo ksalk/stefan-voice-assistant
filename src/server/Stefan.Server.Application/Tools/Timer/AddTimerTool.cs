@@ -50,7 +50,7 @@ public class AddTimerTool(IToolDocumentStore documentStore, ScheduleTimerJob sch
             CreatedAt = DateTime.UtcNow,
         };
 
-        await documentStore.AddAsync(entry.Id, entry, cancellationToken);
+        await documentStore.AddAsync(entry, cancellationToken);
 
         await scheduleTimerJob.Handle(entry, context.SourceDeviceId, cancellationToken);
 

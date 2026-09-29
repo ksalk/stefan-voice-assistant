@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Stefan.Server.Domain.ToolEntities;
@@ -12,33 +11,35 @@ namespace Stefan.Server.Infrastructure;
 /// </summary>
 public interface IToolDocumentStore
 {
-    Task<T?> GetAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class;
+    Task<T?> GetAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class, IToolDocument;
 
     /// <param name="filter">Optional predicate applied in memory after deserialization.</param>
-    Task<IReadOnlyList<T>> ListAsync<T>(Func<T, bool>? filter = null, CancellationToken cancellationToken = default) where T : class;
+    Task<IReadOnlyList<T>> ListAsync<T>(Func<T, bool>? filter = null, CancellationToken cancellationToken = default) where T : class, IToolDocument;
 
-    Task AddAsync<T>(Guid id, T document, CancellationToken cancellationToken = default) where T : class;
+    Task AddAsync<T>(T document, CancellationToken cancellationToken = default) where T : class, IToolDocument;
 
     /// <summary>Archives the document and removes it from the live table atomically.</summary>
-    Task DeleteAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class;
+    Task DeleteAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class, IToolDocument;
 }
 
 public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
 {
-    public async Task<T?> GetAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class
+    public async Task<T?> GetAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class, IToolDocument
     {
+        string documentType = T.DocumentType;
         var document = await dbContext.ToolDocuments
             .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.Id == id && d.Type == GetDocumentType<T>(), cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == id && d.Type == documentType, cancellationToken);
 
         return document == null ? null : Deserialize<T>(document);
     }
 
-    public async Task<IReadOnlyList<T>> ListAsync<T>(Func<T, bool>? filter = null, CancellationToken cancellationToken = default) where T : class
+    public async Task<IReadOnlyList<T>> ListAsync<T>(Func<T, bool>? filter = null, CancellationToken cancellationToken = default) where T : class, IToolDocument
     {
+        string documentType = T.DocumentType;
         var documents = await dbContext.ToolDocuments
             .AsNoTracking()
-            .Where(d => d.Type == GetDocumentType<T>())
+            .Where(d => d.Type == documentType)
             .OrderBy(d => d.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -49,12 +50,12 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
         return result.ToList();
     }
 
-    public async Task AddAsync<T>(Guid id, T document, CancellationToken cancellationToken = default) where T : class
+    public async Task AddAsync<T>(T document, CancellationToken cancellationToken = default) where T : class, IToolDocument
     {
         dbContext.ToolDocuments.Add(new ToolDocument
         {
-            Id = id,
-            Type = GetDocumentType<T>(),
+            Id = document.Id,
+            Type = T.DocumentType,
             Payload = JsonSerializer.Serialize(document),
             CreatedAt = DateTime.UtcNow,
         });
@@ -62,10 +63,11 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class
+    public async Task DeleteAsync<T>(Guid id, CancellationToken cancellationToken = default) where T : class, IToolDocument
     {
+        string documentType = T.DocumentType;
         var document = await dbContext.ToolDocuments
-            .FirstOrDefaultAsync(d => d.Id == id && d.Type == GetDocumentType<T>(), cancellationToken);
+            .FirstOrDefaultAsync(d => d.Id == id && d.Type == documentType, cancellationToken);
         if (document == null)
             return;
 
@@ -82,12 +84,7 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private static string GetDocumentType<T>() where T : class =>
-        typeof(T).GetCustomAttribute<ToolDocumentTypeAttribute>(inherit: false)?.Type
-        ?? throw new InvalidOperationException(
-            $"{typeof(T).Name} does not declare a {nameof(ToolDocumentTypeAttribute)}.");
-
-    private static T Deserialize<T>(ToolDocument document) where T : class =>
+    private static T Deserialize<T>(ToolDocument document) where T : class, IToolDocument =>
         JsonSerializer.Deserialize<T>(document.Payload)
         ?? throw new InvalidOperationException(
             $"Failed to deserialize {typeof(T).Name} document {document.Id}.");

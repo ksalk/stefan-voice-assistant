@@ -42,7 +42,7 @@ public class AddItemToShoppingListTool(IToolDocumentStore documentStore) : ITool
             Name = itemValue
         };
 
-        await documentStore.AddAsync(entry.Id, entry, cancellationToken);
+        await documentStore.AddAsync(entry, cancellationToken);
 
         return $"Added '{itemValue}' to the shopping list.";
     }

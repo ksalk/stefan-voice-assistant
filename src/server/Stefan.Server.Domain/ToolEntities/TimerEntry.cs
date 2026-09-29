@@ -2,9 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Stefan.Server.Domain.ToolEntities;
 
-[ToolDocumentType("timer")]
-public class TimerEntry
+public class TimerEntry : IToolDocument
 {
+    public static string DocumentType => "timer";
+
     public Guid Id { get; set; }
     public int DurationInSeconds { get; set; }
     public string? Label { get; set; }
