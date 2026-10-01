@@ -14,6 +14,19 @@ pnpm = "10"
 # Note: docker compose reads .env itself; keep .env out of the mise env so
 # stray vars (e.g. VERSION) do not leak into MSBuild/NuGet.
 
+# Image versioning
+# Image tags default to the version Nerdbank.GitVersioning computes from
+# version.json + git history (see .config/dotnet-tools.json for the nbgv tool);
+# pass an explicit tag to override. Deploy compose files consume it via VERSION.
+[tasks.get-version]
+description = "Print the image version computed by Nerdbank.GitVersioning"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dotnet tool restore >/dev/null
+dotnet nbgv get-version -v SimpleVersion
+'''
+
 # Database
 [tasks.db-up]
 description = "Start the database containers"
@@ -59,8 +72,14 @@ run = "docker buildx build --platform linux/amd64 -t stefan-server -f src/server
 
 [tasks.publish-server]
 description = "Build and push the server image"
-usage = 'arg "<version>" help="Image version tag"'
-run = "docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-server:${usage_version?} -t git.harnas.top/ksalk/stefan-server:latest -f src/server/Dockerfile . --push"
+usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" default=""'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+version="${usage_version:-$(mise run get-version)}"
+echo "Publishing stefan-server:$version"
+docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-server:"$version" -t git.harnas.top/ksalk/stefan-server:latest -f src/server/Dockerfile . --push
+'''
 
 [tasks.build-server-test-image]
 description = "Build the server test image"
@@ -81,8 +100,14 @@ run = "docker buildx build --platform linux/arm64 -t stefan-node -f src/node/Doc
 
 [tasks.publish-node]
 description = "Build and push the node image"
-usage = 'arg "<version>" help="Image version tag"'
-run = "docker buildx build --platform linux/arm64 --pull -t git.harnas.top/ksalk/stefan-node:${usage_version?} -t git.harnas.top/ksalk/stefan-node:latest -f src/node/Dockerfile . --push"
+usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" default=""'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+version="${usage_version:-$(mise run get-version)}"
+echo "Publishing stefan-node:$version"
+docker buildx build --platform linux/arm64 --pull -t git.harnas.top/ksalk/stefan-node:"$version" -t git.harnas.top/ksalk/stefan-node:latest -f src/node/Dockerfile . --push
+'''
 
 [tasks.build-node]
 description = "Build the node"
@@ -116,8 +141,14 @@ run = "docker buildx build --platform linux/amd64 -t stefan-dashboard -f src/das
 
 [tasks.publish-dashboard]
 description = "Build and push the dashboard image"
-usage = 'arg "<version>" help="Image version tag"'
-run = "docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-dashboard:${usage_version?} -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push"
+usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" default=""'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+version="${usage_version:-$(mise run get-version)}"
+echo "Publishing stefan-dashboard:$version"
+docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+'''
 
 # Tests
 [tasks.test-dotnet]
