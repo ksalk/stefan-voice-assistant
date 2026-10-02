@@ -20,7 +20,6 @@ export interface NodeSummary {
 	status: NodeStatus;
 	registeredAt: string;
 	lastSeenAt: string | null;
-	lastPingAt: string | null;
 	restartCount: number;
 }
 

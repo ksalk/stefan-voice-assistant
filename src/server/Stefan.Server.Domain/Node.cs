@@ -14,7 +14,6 @@ public class Node
 
     public DateTime RegisteredAt { get; private set; }
     public DateTime? LastSeenAt { get; private set; }
-    public DateTime? LastPingAt { get; private set; }
     public int RestartCount { get; private set; }
 
     public static Node Create(string name, string sessionId, string ipAddress, int port)
@@ -51,12 +50,6 @@ public class Node
     public void MarkSeen()
     {
         LastSeenAt = DateTime.UtcNow;
-        Status = NodeStatus.Online;
-    }
-
-    public void MarkPinged()
-    {
-        LastPingAt = DateTime.UtcNow;
         Status = NodeStatus.Online;
     }
 

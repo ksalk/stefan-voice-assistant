@@ -18,7 +18,6 @@ public class NodeDetailsDto
     public string Status { get; set; } = null!;
     public DateTime RegisteredAt { get; set; }
     public DateTime? LastSeenAt { get; set; }
-    public DateTime? LastPingAt { get; set; }
     public int RestartCount { get; set; }
     public List<NodeStatusReportDto> StatusReports { get; set; } = [];
 }
@@ -57,7 +56,6 @@ public class GetNodeDetails(StefanDbContext dbContext)
                 Status = n.Status.ToString(),
                 RegisteredAt = n.RegisteredAt,
                 LastSeenAt = n.LastSeenAt,
-                LastPingAt = n.LastPingAt,
                 RestartCount = n.RestartCount
             })
             .FirstOrDefaultAsync(cancellationToken);

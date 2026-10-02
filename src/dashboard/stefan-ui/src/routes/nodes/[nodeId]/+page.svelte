@@ -154,10 +154,10 @@
 			</div>
 		</Card.Root>
 		<Card.Root class="gap-2 p-4">
-			<div class="text-xs font-medium text-muted-foreground">Last Ping</div>
+			<div class="text-xs font-medium text-muted-foreground">Last Seen</div>
 			<div class="text-base font-medium">
-				{#if node.lastPingAt}
-					<TimeAgo date={node.lastPingAt} />
+				{#if node.lastSeenAt}
+					<TimeAgo date={node.lastSeenAt} />
 				{:else}
 					<span class="text-muted-foreground">—</span>
 				{/if}

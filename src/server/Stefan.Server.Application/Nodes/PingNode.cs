@@ -63,7 +63,7 @@ public class PingNode(StefanDbContext dbContext, ILogger<PingNode> logger)
                 return Result<NodeStatusReport?>.Failure(Error.External($"Node returned status code {response.StatusCode}"));
             }
 
-            node.MarkPinged();
+            node.MarkSeen();
 
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             var statusData = JsonSerializer.Deserialize<NodeStatusResponse>(responseContent, new JsonSerializerOptions

@@ -28,7 +28,6 @@ public class NodeRegistrationTests : IntegrationTestBase
         Assert.NotEmpty(node.LastKnownIpAddress);
         Assert.NotEqual(default, node.RegisteredAt);
         Assert.NotNull(node.LastSeenAt);
-        Assert.Null(node.LastPingAt);
 
         var scheduledCount = await app.JobStore.CountJobs("NodePings", $"PingNode-{node.Id}");
         Assert.Equal(1, scheduledCount);

@@ -16,7 +16,6 @@ public class NodeTests
         Assert.Equal(0, node.RestartCount);
         Assert.NotEqual(default, node.RegisteredAt);
         Assert.NotEqual(default, node.LastSeenAt);
-        Assert.Null(node.LastPingAt);
     }
 
     [Fact]
@@ -69,19 +68,6 @@ public class NodeTests
     }
 
     [Fact]
-    public void MarkPinged_UpdatesLastPingAtAndRestoresOnlineStatus()
-    {
-        var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080);
-        Assert.Null(node.LastPingAt);
-        node.MarkOffline();
-
-        node.MarkPinged();
-
-        Assert.NotNull(node.LastPingAt);
-        Assert.Equal(NodeStatus.Online, node.Status);
-    }
-
-    [Fact]
     public void MarkOffline_SetsStatusToOffline()
     {
         var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080);
@@ -113,9 +99,6 @@ public class NodeTests
         node.Connect("s2", "10.0.0.2", 9090);
         Assert.Equal(1, node.RestartCount);
         Assert.Equal(NodeStatus.Online, node.Status);
-
-        node.MarkPinged();
-        Assert.NotNull(node.LastPingAt);
 
         node.MarkOffline();
         Assert.Equal(NodeStatus.Offline, node.Status);

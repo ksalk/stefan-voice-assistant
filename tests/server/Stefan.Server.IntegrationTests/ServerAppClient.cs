@@ -115,7 +115,6 @@ public sealed record NodeSummaryDto(
     string Status,
     DateTime RegisteredAt,
     DateTime? LastSeenAt,
-    DateTime? LastPingAt,
     int RestartCount);
 
 public sealed record GetNodesResult(IReadOnlyList<NodeSummaryDto> Nodes);
@@ -139,7 +138,6 @@ public sealed record NodeDetailsDto(
     string Status,
     DateTime RegisteredAt,
     DateTime? LastSeenAt,
-    DateTime? LastPingAt,
     int RestartCount,
     IReadOnlyList<NodeStatusReportDto> StatusReports);
 

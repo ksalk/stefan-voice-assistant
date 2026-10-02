@@ -108,7 +108,6 @@
 				<Table.Head class="w-[90px]">Status</Table.Head>
 				<Table.Head>Address</Table.Head>
 				<Table.Head class="w-[110px]">Last Seen</Table.Head>
-				<Table.Head class="w-[110px]">Last Ping</Table.Head>
 				<Table.Head class="w-[80px]">Restarts</Table.Head>
 				<Table.Head class="w-[70px]">Actions</Table.Head>
 			</Table.Row>
@@ -119,7 +118,6 @@
 					<Table.Cell><Skeleton class="h-4 w-32" /></Table.Cell>
 					<Table.Cell><Skeleton class="h-5 w-16 rounded-full" /></Table.Cell>
 					<Table.Cell><Skeleton class="h-4 w-28" /></Table.Cell>
-					<Table.Cell><Skeleton class="h-4 w-16" /></Table.Cell>
 					<Table.Cell><Skeleton class="h-4 w-16" /></Table.Cell>
 					<Table.Cell><Skeleton class="h-4 w-8" /></Table.Cell>
 					<Table.Cell><Skeleton class="h-8 w-8 rounded-md" /></Table.Cell>
@@ -140,7 +138,6 @@
 				<Table.Head class="w-[90px]">Status</Table.Head>
 				<Table.Head>Address</Table.Head>
 				<Table.Head class="w-[110px]">Last Seen</Table.Head>
-				<Table.Head class="w-[110px]">Last Ping</Table.Head>
 				<Table.Head class="w-[80px]">Restarts</Table.Head>
 				<Table.Head class="w-[70px]">Actions</Table.Head>
 			</Table.Row>
@@ -148,7 +145,7 @@
 		<Table.Body>
 			{#if filteredNodes.length === 0}
 				<Table.Row>
-					<Table.Cell colspan={7} class="h-24 text-center text-muted-foreground">
+						<Table.Cell colspan={6} class="h-24 text-center text-muted-foreground">
 						{emptyMessage()}
 					</Table.Cell>
 				</Table.Row>
@@ -169,13 +166,6 @@
 						<Table.Cell>
 							{#if node.lastSeenAt}
 								<TimeAgo date={node.lastSeenAt} />
-							{:else}
-								—
-							{/if}
-						</Table.Cell>
-						<Table.Cell>
-							{#if node.lastPingAt}
-								<TimeAgo date={node.lastPingAt} />
 							{:else}
 								—
 							{/if}

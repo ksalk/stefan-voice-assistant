@@ -16,7 +16,6 @@ public class NodeSummaryDto
     public string Status { get; set; } = null!;
     public DateTime RegisteredAt { get; set; }
     public DateTime? LastSeenAt { get; set; }
-    public DateTime? LastPingAt { get; set; }
     public int RestartCount { get; set; }
 }
 
@@ -42,7 +41,6 @@ public class GetNodes(StefanDbContext dbContext)
                 Status = n.Status.ToString(),
                 RegisteredAt = n.RegisteredAt,
                 LastSeenAt = n.LastSeenAt,
-                LastPingAt = n.LastPingAt,
                 RestartCount = n.RestartCount,
             })
             .ToListAsync(cancellationToken);
