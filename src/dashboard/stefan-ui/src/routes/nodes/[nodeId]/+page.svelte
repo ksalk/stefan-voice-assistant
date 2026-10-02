@@ -14,7 +14,7 @@
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { formatDateTime } from '$lib/utils/date';
 	import { api } from '$lib/api';
-	import type { Node } from '$lib/types';
+	import type { Node, NodeStatusReport } from '$lib/types';
 	import type { PageProps } from './$types';
 	import { toast } from 'svelte-sonner';
 
@@ -94,6 +94,12 @@
 		if (page >= 1 && page <= totalPages) {
 			currentPage = page;
 		}
+	}
+
+	function formatVersion(report: NodeStatusReport): string | null {
+		const sha = report.gitCommit ? report.gitCommit.slice(0, 7) : null;
+		if (!report.version && !sha) return null;
+		return [report.version, sha ? `(${sha})` : null].filter(Boolean).join(' ');
 	}
 
 	$effect(() => {
@@ -265,27 +271,62 @@
 				<Table.Row>
 					<Table.Head class="w-[150px]">Timestamp</Table.Head>
 					<Table.Head>Status</Table.Head>
-					<Table.Head>CPU Used %</Table.Head>
-					<Table.Head>Memory Used %</Table.Head>
-					<Table.Head>Disk Used %</Table.Head>
-					<Table.Head>Audio Volume</Table.Head>
+					<Table.Head class="text-right">CPU %</Table.Head>
+					<Table.Head class="text-right">Memory %</Table.Head>
+					<Table.Head class="text-right">Disk %</Table.Head>
+					<Table.Head class="text-right">Audio %</Table.Head>
 					<Table.Head>Version</Table.Head>
-					<Table.Head>Git Commit</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
 				{#each pagedReports as report (report.timestamp)}
+					{@const build = formatVersion(report)}
 					<Table.Row>
 						<Table.Cell class="font-medium whitespace-nowrap">
 							{formatDateTime(report.timestamp)}
 						</Table.Cell>
-						<Table.Cell>{report.status}</Table.Cell>
-						<Table.Cell>{report.cpuUsage ?? '—'}</Table.Cell>
-						<Table.Cell>{report.memoryUsage ?? '—'}</Table.Cell>
-						<Table.Cell>{report.diskUsage ?? '—'}</Table.Cell>
-						<Table.Cell>{report.audioVolume ?? '—'}</Table.Cell>
-						<Table.Cell>{report.version ?? '—'}</Table.Cell>
-						<Table.Cell>{report.gitCommit ?? '—'}</Table.Cell>
+						<Table.Cell>
+							{#if report.status === 'Online'}
+								<Badge variant="outline" class="border-green-500 text-green-600">Online</Badge>
+							{:else}
+								<Badge variant="outline" class="border-red-500 text-red-600">Offline</Badge>
+							{/if}
+						</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">
+							{#if report.cpuUsage != null}
+								{report.cpuUsage}
+							{:else}
+								<span class="text-muted-foreground">—</span>
+							{/if}
+						</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">
+							{#if report.memoryUsage != null}
+								{report.memoryUsage}
+							{:else}
+								<span class="text-muted-foreground">—</span>
+							{/if}
+						</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">
+							{#if report.diskUsage != null}
+								{report.diskUsage}
+							{:else}
+								<span class="text-muted-foreground">—</span>
+							{/if}
+						</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">
+							{#if report.audioVolume != null}
+								{report.audioVolume}
+							{:else}
+								<span class="text-muted-foreground">—</span>
+							{/if}
+						</Table.Cell>
+						<Table.Cell class="font-mono text-xs" title={report.gitCommit ?? ''}>
+							{#if build}
+								{build}
+							{:else}
+								<span class="text-muted-foreground">—</span>
+							{/if}
+						</Table.Cell>
 					</Table.Row>
 				{/each}
 			</Table.Body>
