@@ -145,7 +145,7 @@
 		<Table.Body>
 			{#if filteredNodes.length === 0}
 				<Table.Row>
-						<Table.Cell colspan={6} class="h-24 text-center text-muted-foreground">
+					<Table.Cell colspan={6} class="h-24 text-center text-muted-foreground">
 						{emptyMessage()}
 					</Table.Cell>
 				</Table.Row>
