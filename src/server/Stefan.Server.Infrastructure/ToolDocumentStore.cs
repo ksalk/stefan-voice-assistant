@@ -33,21 +33,12 @@ public interface IToolDocumentStore
     /// </summary>
     Task DeleteAsync<T>(Guid id, Guid? commandId = null, CancellationToken cancellationToken = default) where T : class, IToolDocument;
 
-    /// <summary>Lightweight references to all documents (live + archived) touched by the given command.</summary>
-    Task<IReadOnlyList<ToolDocumentCommandRef>> ListByCommandAsync(Guid commandId, CancellationToken cancellationToken = default);
-
-    /// <summary>Documents of the given type (live + archived) touched by the given command, deserialized.</summary>
-    Task<IReadOnlyList<T>> ListByCommandAsync<T>(Guid commandId, CancellationToken cancellationToken = default) where T : class, IToolDocument;
-
     /// <summary>Raw documents of all types (live + archived) touched by the given command.</summary>
     Task<IReadOnlyList<ToolDocument>> ListDocumentsByCommandAsync(Guid commandId, CancellationToken cancellationToken = default);
 
     /// <summary>Archived documents touched by the given command.</summary>
     Task<IReadOnlyList<ToolDocumentArchive>> ListArchiveByCommandAsync(Guid commandId, CancellationToken cancellationToken = default);
 }
-
-/// <summary>Lightweight reference to a tool document touched by a command, across all document types.</summary>
-public record ToolDocumentCommandRef(Guid Id, string Type, DateTime CreatedAt);
 
 public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
 {
@@ -129,38 +120,6 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ToolDocumentCommandRef>> ListByCommandAsync(Guid commandId, CancellationToken cancellationToken = default)
-    {
-        var liveRefs = await QueryByCommand(dbContext.ToolDocuments, commandId)
-            .Select(d => new { d.Id, d.Type, d.CreatedAt })
-            .ToListAsync(cancellationToken);
-        var archivedRefs = await QueryByCommand(dbContext.ToolDocumentArchive, commandId)
-            .Select(d => new { d.Id, d.Type, d.CreatedAt })
-            .ToListAsync(cancellationToken);
-
-        return liveRefs.Select(d => new ToolDocumentCommandRef(d.Id, d.Type, d.CreatedAt))
-            .Concat(archivedRefs.Select(d => new ToolDocumentCommandRef(d.Id, d.Type, d.CreatedAt)))
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<T>> ListByCommandAsync<T>(Guid commandId, CancellationToken cancellationToken = default) where T : class, IToolDocument
-    {
-        string documentType = T.DocumentType;
-
-        var live = await QueryByCommand(dbContext.ToolDocuments, commandId)
-            .Where(d => d.Type == documentType)
-            .ToListAsync(cancellationToken);
-        var archived = await QueryByCommand(dbContext.ToolDocumentArchive, commandId)
-            .Select(d => new ToolDocument { Id = d.Id, Type = d.Type, Payload = d.Payload, CommandActions = d.CommandActions, CreatedAt = d.CreatedAt })
-            .ToListAsync(cancellationToken);
-
-        var archivedRefs = archived
-            .Where(d => d.Type == documentType)
-            .Select(Deserialize<T>);
-
-        return live.Select(Deserialize<T>).Concat(archivedRefs).ToList();
-    }
-
     public async Task<IReadOnlyList<ToolDocument>> ListDocumentsByCommandAsync(Guid commandId, CancellationToken cancellationToken = default)
     {
         var live = await QueryByCommand(dbContext.ToolDocuments, commandId)
@@ -186,13 +145,6 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
         documents.Where(d => EF.Functions.JsonContains(
             d.CommandActions,
             JsonSerializer.Serialize(new[] { new { CommandId = commandId } })));
-
-    private IQueryable<ToolDocumentCommandRef> QueryByCommandAsRef(IQueryable<ToolDocument> documents, Guid commandId) =>
-        QueryByCommand(documents, commandId)
-            .Select(d => new { d.Id, d.Type, d.CreatedAt })
-            .AsEnumerable()
-            .Select(d => new ToolDocumentCommandRef(d.Id, d.Type, d.CreatedAt))
-            .AsQueryable();
 
     private static string Append(string? commandActions, Guid? commandId, string action)
     {
