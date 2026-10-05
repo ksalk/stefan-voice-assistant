@@ -89,7 +89,12 @@
 				>
 					<Wrench class="size-4 shrink-0 text-muted-foreground" />
 					<Badge variant={actionBadgeVariants[tool.action] ?? 'outline'}>{tool.action}</Badge>
-					<span class="font-medium">{typeLabel(tool.type)}</span>
+					<span class="font-medium {tool.isArchived ? 'text-muted-foreground' : ''}"
+						>{typeLabel(tool.type)}</span
+					>
+					{#if tool.isArchived}
+						<Badge variant="secondary">Archived</Badge>
+					{/if}
 					{#if describeTool(tool)}
 						<span class="text-muted-foreground">{describeTool(tool)}</span>
 					{/if}

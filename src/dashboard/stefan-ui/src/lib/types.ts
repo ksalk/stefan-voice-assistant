@@ -96,6 +96,8 @@ export interface CommandTool {
 	type: string;
 	action: ToolAction;
 	actionAtUtc: string;
+	/** True when the document lives in the archive table (it was deleted). */
+	isArchived: boolean;
 	createdAt: string;
 	payload: unknown;
 }

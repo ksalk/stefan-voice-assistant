@@ -18,6 +18,10 @@ public class CommandToolDto
     /// <summary>Action this command performed on the document: created, updated or deleted.</summary>
     public string Action { get; set; } = null!;
     public DateTime ActionAtUtc { get; set; }
+
+    /// <summary>True when the document lives in the archive table (it was deleted).</summary>
+    public bool IsArchived { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public JsonElement Payload { get; set; }
 }
@@ -41,6 +45,9 @@ public class GetCommandTools(StefanDbContext dbContext, IToolDocumentStore docum
         }
 
         var documents = await documentStore.ListDocumentsByCommandAsync(request.CommandId, cancellationToken);
+        var archivedIds = (await documentStore.ListArchiveByCommandAsync(request.CommandId, cancellationToken))
+            .Select(a => a.Id)
+            .ToHashSet();
 
         var tools = documents
             .SelectMany(d => ParseCommandActions(d.CommandActions)
@@ -51,6 +58,7 @@ public class GetCommandTools(StefanDbContext dbContext, IToolDocumentStore docum
                     Type = d.Type,
                     Action = a.Action,
                     ActionAtUtc = a.AtUtc,
+                    IsArchived = archivedIds.Contains(d.Id),
                     CreatedAt = d.CreatedAt,
                     Payload = DeserializePayload(d.Payload),
                 }))
