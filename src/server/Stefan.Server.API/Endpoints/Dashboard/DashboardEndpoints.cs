@@ -15,5 +15,6 @@ public static class DashboardEndpoints
         group.MapGetCommandsEndpoint();
         group.MapGetCommandEndpoint();
         group.MapGetCommandAudioEndpoint();
+        group.MapGetCommandToolsEndpoint();
     }
 }

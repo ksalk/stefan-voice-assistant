@@ -88,3 +88,18 @@ export interface CommandsResult {
 	page: number;
 	pageSize: number;
 }
+
+export type ToolAction = 'created' | 'updated' | 'deleted';
+
+export interface CommandTool {
+	id: string;
+	type: string;
+	action: ToolAction;
+	actionAtUtc: string;
+	createdAt: string;
+	payload: unknown;
+}
+
+export interface GetCommandToolsResult {
+	tools: CommandTool[];
+}

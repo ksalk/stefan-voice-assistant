@@ -38,6 +38,9 @@ public interface IToolDocumentStore
 
     /// <summary>Documents of the given type (live + archived) touched by the given command, deserialized.</summary>
     Task<IReadOnlyList<T>> ListByCommandAsync<T>(Guid commandId, CancellationToken cancellationToken = default) where T : class, IToolDocument;
+
+    /// <summary>Raw documents of all types (live + archived) touched by the given command.</summary>
+    Task<IReadOnlyList<ToolDocument>> ListDocumentsByCommandAsync(Guid commandId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Lightweight reference to a tool document touched by a command, across all document types.</summary>
@@ -153,6 +156,17 @@ public class ToolDocumentStore(StefanDbContext dbContext) : IToolDocumentStore
             .Select(Deserialize<T>);
 
         return live.Select(Deserialize<T>).Concat(archivedRefs).ToList();
+    }
+
+    public async Task<IReadOnlyList<ToolDocument>> ListDocumentsByCommandAsync(Guid commandId, CancellationToken cancellationToken = default)
+    {
+        var live = await QueryByCommand(dbContext.ToolDocuments, commandId)
+            .ToListAsync(cancellationToken);
+        var archived = await QueryByCommand(dbContext.ToolDocumentArchive, commandId)
+            .Select(d => new ToolDocument { Id = d.Id, Type = d.Type, Payload = d.Payload, CommandActions = d.CommandActions, CreatedAt = d.CreatedAt })
+            .ToListAsync(cancellationToken);
+
+        return live.Concat(archived).ToList();
     }
 
     // CommandActions is an array; containment must use the array form:

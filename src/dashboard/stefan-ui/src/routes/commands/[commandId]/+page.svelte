@@ -8,6 +8,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import LlmConversation from '$lib/components/LlmConversation.svelte';
+	import CommandTools from '$lib/components/CommandTools.svelte';
 	import DurationBar from '$lib/components/DurationBar.svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Mic from '@lucide/svelte/icons/mic';
@@ -15,10 +16,11 @@
 	import { api } from '$lib/api';
 	import { formatDuration, getStatusBadgeVariant } from '$lib/commands';
 	import { toast } from 'svelte-sonner';
-	import type { Command } from '$lib/types';
+	import type { Command, CommandTool } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let command = $state<Command | null>(null);
+	let tools = $state<CommandTool[] | null>(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
 	let showAdvanced = $state(false);
@@ -33,13 +35,30 @@
 	async function fetchCommand(id: string) {
 		loading = true;
 		error = null;
-		try {
-			command = await api.getCommand(id);
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load command details';
-		} finally {
-			loading = false;
+		command = null;
+		tools = null;
+
+		const [commandRes, toolsRes] = await Promise.allSettled([
+			api.getCommand(id),
+			api.getCommandTools(id)
+		]);
+
+		if (commandRes.status === 'fulfilled') {
+			command = commandRes.value;
+		} else {
+			error =
+				commandRes.reason instanceof Error
+					? commandRes.reason.message
+					: 'Failed to load command details';
 		}
+
+		if (toolsRes.status === 'fulfilled') {
+			tools = toolsRes.value.tools;
+		} else {
+			console.error('Failed to load tool effects:', toolsRes.reason);
+		}
+
+		loading = false;
 	}
 
 	async function playAudio(type: 'Request' | 'Response') {
@@ -170,6 +189,12 @@
 			<DurationBar {command} />
 		</Card.Content>
 	</Card.Root>
+
+	{#if tools && tools.length > 0}
+		<div class="mt-4">
+			<CommandTools {tools} />
+		</div>
+	{/if}
 
 	<div class="mt-4">
 		<LlmConversation llmConversationJson={command.llmConversationJson} />

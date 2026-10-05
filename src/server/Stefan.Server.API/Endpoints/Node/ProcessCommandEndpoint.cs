@@ -12,9 +12,10 @@ public static class ProcessCommandEndpoint
             HttpContext context,
             IFormFile file,
             [FromServices] ProcessCommand processCommand,
-            [FromServices] ILogger logger,
+            [FromServices] ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
+            var logger = loggerFactory.CreateLogger("Stefan.Server.API.Endpoints.Node.ProcessCommandEndpoint");
             var headersResult = CommandHeaders.FromHttpRequest(context.Request, logger);
             if (!headersResult.IsSuccess)
             {

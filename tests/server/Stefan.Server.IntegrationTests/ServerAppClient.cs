@@ -94,6 +94,9 @@ public sealed class ServerAppClient : IDisposable
                ?? throw new InvalidOperationException("GetNodeDetails response body was null.");
     }
 
+    public async Task<HttpResponseMessage> GetCommandToolsAsync(Guid commandId, CancellationToken cancellationToken = default) =>
+        await _httpClient.GetAsync($"/api/commands/{commandId}/tools", cancellationToken);
+
     public void Dispose() => _httpClient.Dispose();
 }
 
@@ -142,3 +145,13 @@ public sealed record NodeDetailsDto(
     IReadOnlyList<NodeStatusReportDto> StatusReports);
 
 public sealed record NodeDetailsResult(NodeDetailsDto Node);
+
+public sealed record CommandToolDto(
+    Guid Id,
+    string Type,
+    string Action,
+    DateTime ActionAtUtc,
+    DateTime CreatedAt,
+    JsonElement Payload);
+
+public sealed record GetCommandToolsResult(IReadOnlyList<CommandToolDto> Tools);

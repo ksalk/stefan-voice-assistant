@@ -10,6 +10,7 @@ public static class CommandFeature
         services.AddScoped<GetCommands>();
         services.AddScoped<GetCommand>();
         services.AddScoped<GetCommandAudio>();
+        services.AddScoped<GetCommandTools>();
         return services;
     }
 }

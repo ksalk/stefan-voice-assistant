@@ -1,4 +1,10 @@
-import type { Command, CommandsResult, GetNodeDetailsResult, GetNodesResult } from './types';
+import type {
+	Command,
+	CommandsResult,
+	GetCommandToolsResult,
+	GetNodeDetailsResult,
+	GetNodesResult
+} from './types';
 
 const BASE_URL = 'http://localhost:5285/api';
 
@@ -77,6 +83,9 @@ export const api = {
 
 	getCommand: (id: string, customFetch?: typeof fetch): Promise<Command> =>
 		send({ method: 'GET', path: `commands/${id}`, fetch: customFetch }),
+
+	getCommandTools: (id: string, customFetch?: typeof fetch): Promise<GetCommandToolsResult> =>
+		send({ method: 'GET', path: `commands/${id}/tools`, fetch: customFetch }),
 
 	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);
