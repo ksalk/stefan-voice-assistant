@@ -10,6 +10,12 @@ public class ToolDocumentArchive
     public Guid Id { get; set; }
     public string Type { get; set; } = null!;
     public string Payload { get; set; } = null!;
+
+    /// <summary>
+    /// Command actions copied from the live <see cref="ToolDocument"/> at delete time.
+    /// </summary>
+    public string CommandActions { get; set; } = "[]";
+
     public DateTime CreatedAt { get; set; }
     public DateTime ArchivedAt { get; set; }
 }

@@ -54,7 +54,7 @@ public class FireTimerJob(
             logger.LogError(ex, "Failed to send audio notification for timer {TimerId}", timerId);
         }
 
-        // Remove the timer document from the store (archiving it)
-        await documentStore.DeleteAsync<TimerEntry>(timerId, context.CancellationToken);
+        // Remove the timer document from the store (archiving it). No command runs here, so no provenance is recorded.
+        await documentStore.DeleteAsync<TimerEntry>(timerId, commandId: null, context.CancellationToken);
     }
 }

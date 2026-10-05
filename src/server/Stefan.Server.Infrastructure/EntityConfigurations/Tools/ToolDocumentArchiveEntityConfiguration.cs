@@ -14,9 +14,13 @@ public class ToolDocumentArchiveEntityConfiguration : IEntityTypeConfiguration<T
 
         builder.Property(d => d.Type).IsRequired();
         builder.Property(d => d.Payload).IsRequired().HasColumnType("jsonb");
+        builder.Property(d => d.CommandActions).IsRequired().HasColumnType("jsonb");
         builder.Property(d => d.CreatedAt).IsRequired();
         builder.Property(d => d.ArchivedAt).IsRequired();
 
         builder.HasIndex(d => d.Type);
+
+        // Enables CommandActions @> '[{"commandId":"..."}]'::jsonb lookups.
+        builder.HasIndex(d => d.CommandActions).HasMethod("gin").HasOperators("jsonb_path_ops");
     }
 }

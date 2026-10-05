@@ -168,7 +168,7 @@ public class ProcessCommand(
     {
         try
         {
-            var result = await llm.ProcessCommandAsync(record.Transcript!, deviceId, cancellationToken);
+            var result = await llm.ProcessCommandAsync(record.Transcript!, deviceId, record.Id, cancellationToken);
 
             if (!result.IsSuccess)
             {

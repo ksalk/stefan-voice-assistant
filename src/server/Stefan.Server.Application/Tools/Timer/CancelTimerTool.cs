@@ -40,7 +40,7 @@ public class CancelTimerTool(IToolDocumentStore documentStore, CancelTimerJob ca
         if (timer == null)
             return $"No timer found with ID {timerIdValue}.";
 
-        await documentStore.DeleteAsync<TimerEntry>(timerIdValue, cancellationToken);
+        await documentStore.DeleteAsync<TimerEntry>(timerIdValue, context.CommandId, cancellationToken);
 
         await cancelTimerJob.Handle(timerIdValue, cancellationToken);
 

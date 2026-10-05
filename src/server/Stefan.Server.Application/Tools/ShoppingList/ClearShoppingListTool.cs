@@ -24,7 +24,7 @@ public class ClearShoppingListTool(IToolDocumentStore documentStore) : ITool
     {
         var allItems = await documentStore.ListAsync<ShoppingListItem>(cancellationToken: cancellationToken);
         foreach (var item in allItems)
-            await documentStore.DeleteAsync<ShoppingListItem>(item.Id, cancellationToken);
+            await documentStore.DeleteAsync<ShoppingListItem>(item.Id, context.CommandId, cancellationToken);
 
         return "Cleared all items from the shopping list.";
     }

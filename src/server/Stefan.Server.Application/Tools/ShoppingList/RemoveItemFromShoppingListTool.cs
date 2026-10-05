@@ -41,7 +41,7 @@ public class RemoveItemFromShoppingListTool(IToolDocumentStore documentStore) : 
         if (entry == null)
             throw new ArgumentException($"The item '{itemValue}' does not exist in the shopping list.", nameof(item));
 
-        await documentStore.DeleteAsync<ShoppingListItem>(entry.Id, cancellationToken);
+        await documentStore.DeleteAsync<ShoppingListItem>(entry.Id, context.CommandId, cancellationToken);
 
         return $"Removed '{itemValue}' from the shopping list.";
     }

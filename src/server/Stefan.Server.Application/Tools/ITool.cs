@@ -14,5 +14,8 @@ public class ToolCallContext
 {
     public required string SourceDeviceId { get; set; }
 
+    /// <summary>Id of the command whose execution triggered the tool call (used for provenance tracking).</summary>
+    public required Guid CommandId { get; set; }
+
     // Additional context properties can be added here as needed
 }
