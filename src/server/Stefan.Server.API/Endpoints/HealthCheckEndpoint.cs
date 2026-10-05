@@ -6,7 +6,7 @@ namespace Stefan.Server.API.Endpoints;
 
 public static class HealthEndpoints
 {
-    public static void MapHealthEndpoints(this WebApplication app)
+    public static void MapHealthCheckEndpoint(this WebApplication app)
     {
         app.MapGet("/api/health", (IConfiguration configuration, IOptions<OpenAiOptions> openAiOptions) =>
         {

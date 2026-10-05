@@ -51,10 +51,9 @@ try
         app.MapOpenApi();
     }
 
-    app.MapHealthEndpoints();
+    app.MapHealthCheckEndpoint();
     app.MapNodeEndpoints();
     app.MapDashboardEndpoints();
-
 
     app.Run();
 }
