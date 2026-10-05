@@ -4,12 +4,16 @@ public static class DashboardEndpoints
 {
     public static void MapDashboardEndpoints(this WebApplication app)
     {
-        app.MapGetNodesEndpoint();
-        app.MapGetNodeDetailsEndpoint();
-        app.MapPingNodeEndpoint();
-        app.MapSpeakTextEndpoint();
-        app.MapGetCommandsEndpoint();
-        app.MapGetCommandEndpoint();
-        app.MapGetCommandAudioEndpoint();
+        var group = app.MapGroup("")
+            .RequireAuthorization(AuthPolicy.DashboardPolicy)
+            .RequireCors(CorsPolicy.DashboardPolicy);
+
+        group.MapGetNodesEndpoint();
+        group.MapGetNodeDetailsEndpoint();
+        group.MapPingNodeEndpoint();
+        group.MapSpeakTextEndpoint();
+        group.MapGetCommandsEndpoint();
+        group.MapGetCommandEndpoint();
+        group.MapGetCommandAudioEndpoint();
     }
 }

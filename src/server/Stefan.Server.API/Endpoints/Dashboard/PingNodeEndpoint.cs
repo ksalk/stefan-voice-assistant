@@ -5,9 +5,9 @@ namespace Stefan.Server.API.Endpoints.Dashboard;
 
 public static class PingNodeEndpoint
 {
-    public static void MapPingNodeEndpoint(this WebApplication app)
+    public static void MapPingNodeEndpoint(this RouteGroupBuilder group)
     {
-        app.MapPost("/api/nodes/{nodeId:guid}/ping", async (
+        group.MapPost("/api/nodes/{nodeId:guid}/ping", async (
             Guid nodeId,
             [FromServices] PingNode pingNode,
             CancellationToken cancellationToken) =>
@@ -24,8 +24,6 @@ public static class PingNodeEndpoint
                     statusReport.AudioVolume,
                     statusReport.Status
                 }));
-        })
-        .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors(CorsPolicy.DashboardPolicy);
+        });
     }
 }

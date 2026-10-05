@@ -10,9 +10,9 @@ public sealed class SpeakTextBody
 
 public static class SpeakTextEndpoint
 {
-    public static void MapSpeakTextEndpoint(this WebApplication app)
+    public static void MapSpeakTextEndpoint(this RouteGroupBuilder group)
     {
-        app.MapPost("/api/nodes/{nodeId:guid}/speak-text", async (
+        group.MapPost("/api/nodes/{nodeId:guid}/speak-text", async (
             Guid nodeId,
             [FromBody] SpeakTextBody body,
             [FromServices] SendNodeAudioMessage sendNodeAudioMessage,
@@ -25,8 +25,6 @@ public static class SpeakTextEndpoint
             }, cancellationToken);
 
             return result.ToHttpResult(v => Results.Ok(new { message = "Audio sent", ttsDurationMs = v.TtsDurationMs }));
-        })
-        .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors(CorsPolicy.DashboardPolicy);
+        });
     }
 }

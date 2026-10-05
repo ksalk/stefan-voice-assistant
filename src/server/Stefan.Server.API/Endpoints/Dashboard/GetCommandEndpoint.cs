@@ -5,9 +5,9 @@ namespace Stefan.Server.API.Endpoints.Dashboard;
 
 public static class GetCommandEndpoint
 {
-    public static void MapGetCommandEndpoint(this WebApplication app)
+    public static void MapGetCommandEndpoint(this RouteGroupBuilder group)
     {
-        app.MapGet("api/commands/{commandId:guid}", async (
+        group.MapGet("api/commands/{commandId:guid}", async (
             Guid commandId,
             [FromServices] GetCommand getCommand,
             CancellationToken cancellationToken) =>
@@ -16,8 +16,6 @@ public static class GetCommandEndpoint
 
             return result.ToHttpResult(Results.Ok);
         })
-        .WithName("GetCommand")
-        .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors(CorsPolicy.DashboardPolicy);
+        .WithName("GetCommand");
     }
 }

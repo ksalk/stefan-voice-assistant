@@ -5,9 +5,9 @@ namespace Stefan.Server.API.Endpoints.Dashboard;
 
 public static class GetCommandAudioEndpoint
 {
-    public static void MapGetCommandAudioEndpoint(this WebApplication app)
+    public static void MapGetCommandAudioEndpoint(this RouteGroupBuilder group)
     {
-        app.MapGet("api/commands/{commandId:guid}/audio", async (
+        group.MapGet("api/commands/{commandId:guid}/audio", async (
             Guid commandId,
             [FromQuery] AudioType type,
             [FromServices] GetCommandAudio getCommandAudio,
@@ -21,8 +21,6 @@ public static class GetCommandAudioEndpoint
 
             return result.ToHttpResult(r => Results.File(r.AudioBytes, r.ContentType, r.FileName));
         })
-        .WithName("GetCommandAudio")
-        .RequireAuthorization(AuthPolicy.DashboardPolicy)
-        .RequireCors(CorsPolicy.DashboardPolicy);
+        .WithName("GetCommandAudio");
     }
 }
