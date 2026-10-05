@@ -4,7 +4,10 @@ public static class NodeEndpoints
 {
     public static void MapNodeEndpoints(this WebApplication app)
     {
-        app.MapRegisterNodeEndpoint();
-        app.MapProcessCommandEndpoint();
+        var group = app.MapGroup("")
+            .RequireAuthorization(AuthPolicy.NodePolicy);
+
+        group.MapRegisterNodeEndpoint();
+        group.MapProcessCommandEndpoint();
     }
 }

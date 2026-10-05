@@ -6,15 +6,13 @@ namespace Stefan.Server.API.Endpoints.Node;
 
 public static class ProcessCommandEndpoint
 {
-    public static void MapProcessCommandEndpoint(this WebApplication app)
+    public static void MapProcessCommandEndpoint(this RouteGroupBuilder group)
     {
-        var logger = app.Services.GetRequiredService<ILoggerFactory>()
-            .CreateLogger("Stefan.Server.API.Endpoints.Node.ProcessCommandEndpoint");
-
-        app.MapPost("api/commands", async (
+        group.MapPost("api/commands", async (
             HttpContext context,
             IFormFile file,
             [FromServices] ProcessCommand processCommand,
+            [FromServices] ILogger logger,
             CancellationToken cancellationToken) =>
         {
             var headersResult = CommandHeaders.FromHttpRequest(context.Request, logger);
@@ -46,7 +44,6 @@ public static class ProcessCommandEndpoint
                 return Results.File(response.AudioBytes, "audio/wav", "response.wav");
             });
         })
-        .RequireAuthorization(AuthPolicy.NodePolicy)
         .DisableAntiforgery()
         .WithName("ProcessCommand");
     }

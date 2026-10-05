@@ -13,9 +13,9 @@ public sealed class RegisterNodeBody
 
 public static class RegisterNodeEndpoint
 {
-    public static void MapRegisterNodeEndpoint(this WebApplication app)
+    public static void MapRegisterNodeEndpoint(this RouteGroupBuilder group)
     {
-        app.MapPost("/api/nodes/register", async (
+        group.MapPost("/api/nodes/register", async (
             HttpContext context,
             [FromBody] RegisterNodeBody body,
             [FromServices] RegisterNode registerNode,
@@ -36,8 +36,7 @@ public static class RegisterNodeEndpoint
             }, cancellationToken);
 
             return Results.Ok();
-        })
-        .RequireAuthorization(AuthPolicy.NodePolicy);
+        });
     }
 
     private static string? GetNodeIpAddress(HttpContext context)
