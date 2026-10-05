@@ -2,6 +2,8 @@ using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 using Stefan.Server.API;
 using Stefan.Server.API.Endpoints;
+using Stefan.Server.API.Endpoints.Dashboard;
+using Stefan.Server.API.Endpoints.Node;
 using Stefan.Server.Application;
 using Stefan.Server.Infrastructure.DependencyInjection;
 
@@ -51,7 +53,7 @@ try
 
     app.MapHealthEndpoints();
     app.MapNodeEndpoints();
-    app.MapCommandEndpoints();
+    app.MapDashboardEndpoints();
 
 
     app.Run();

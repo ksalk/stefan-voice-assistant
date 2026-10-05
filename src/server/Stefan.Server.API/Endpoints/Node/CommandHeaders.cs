@@ -1,7 +1,7 @@
 using Stefan.Server.Application;
 using Stefan.Server.Common;
 
-namespace Stefan.Server.API.Endpoints;
+namespace Stefan.Server.API.Endpoints.Node;
 
 public sealed record CommandHeaders(string DeviceId, string SessionId, Guid CommandId)
 {
