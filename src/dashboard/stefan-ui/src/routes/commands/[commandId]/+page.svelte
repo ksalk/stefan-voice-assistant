@@ -9,6 +9,7 @@
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import LlmConversation from '$lib/components/LlmConversation.svelte';
 	import CommandTools from '$lib/components/CommandTools.svelte';
+	import CommandLogs from '$lib/components/CommandLogs.svelte';
 	import DurationBar from '$lib/components/DurationBar.svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Mic from '@lucide/svelte/icons/mic';
@@ -198,6 +199,10 @@
 
 	<div class="mt-4">
 		<LlmConversation llmConversationJson={command.llmConversationJson} />
+	</div>
+
+	<div class="mt-4">
+		<CommandLogs commandId={command.id} />
 	</div>
 
 	<div class="mt-4">

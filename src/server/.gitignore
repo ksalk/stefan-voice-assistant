@@ -34,6 +34,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+# Keep the log-fetching feature source (matches the [Ll]ogs/ runtime-log rule above)
+!Stefan.Server.Application/Logs/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

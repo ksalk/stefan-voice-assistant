@@ -6,6 +6,7 @@ using OpenAI;
 using OpenAI.Chat;
 using Stefan.Server.Application.AI;
 using Stefan.Server.Application.Commands;
+using Stefan.Server.Application.Logs;
 using Stefan.Server.Application.Nodes;
 using Stefan.Server.Application.Scheduling;
 using Stefan.Server.Application.Services;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddCommandFeatures();
         services.AddNodeFeatures();
         services.AddToolFeatures();
+        services.AddLogFeatures(configuration);
 
         services.AddSpeechToTextServices(configuration);
 

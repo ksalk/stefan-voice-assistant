@@ -1,6 +1,7 @@
 import type {
 	Command,
 	CommandsResult,
+	GetCommandLogsResult,
 	GetCommandToolsResult,
 	GetNodeDetailsResult,
 	GetNodesResult
@@ -86,6 +87,9 @@ export const api = {
 
 	getCommandTools: (id: string, customFetch?: typeof fetch): Promise<GetCommandToolsResult> =>
 		send({ method: 'GET', path: `commands/${id}/tools`, fetch: customFetch }),
+
+	getCommandLogs: (id: string, customFetch?: typeof fetch): Promise<GetCommandLogsResult> =>
+		send({ method: 'GET', path: `commands/${id}/logs`, fetch: customFetch }),
 
 	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);

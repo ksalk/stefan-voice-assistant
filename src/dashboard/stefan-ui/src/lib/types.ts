@@ -105,3 +105,13 @@ export interface CommandTool {
 export interface GetCommandToolsResult {
 	tools: CommandTool[];
 }
+
+export interface LogEntry {
+	timestamp: string;
+	line: string;
+	labels: Record<string, string>;
+}
+
+export interface GetCommandLogsResult {
+	entries: LogEntry[];
+}
