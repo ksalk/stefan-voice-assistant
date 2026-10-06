@@ -74,7 +74,7 @@
 			{:else if entries && entries.length > 0}
 				<div class="max-h-96 overflow-y-auto rounded bg-muted/50 p-2 font-mono text-xs">
 					{#each entries as entry (entry.timestamp + entry.line)}
-						<p class="whitespace-pre-wrap break-all">
+						<p class="break-all whitespace-pre-wrap">
 							<span class="text-muted-foreground">{formatTimestamp(entry.timestamp)}</span>
 							{entry.line}
 						</p>
