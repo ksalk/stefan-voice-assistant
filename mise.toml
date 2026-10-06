@@ -151,9 +151,20 @@ docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan
 '''
 
 # Tests
-[tasks.test-dotnet]
-description = "Run .NET tests"
-run = "dotnet test Stefan.sln"
+[tasks.test-server]
+description = "Run server tests"
+run = [
+  "dotnet test tests/server/Stefan.Server.Domain.UnitTests",
+  "dotnet test tests/server/Stefan.Server.DI.UnitTests",
+  "dotnet test tests/server/Stefan.Server.IntegrationTests",
+]
+
+[tasks.test-node]
+description = "Run node tests"
+run = [
+  "dotnet test tests/node/Stefan.Node.UnitTests",
+  "dotnet test tests/node/Stefan.Node.IntegrationTests",
+]
 
 [tasks.test-ui]
 description = "Run dashboard tests"
@@ -161,4 +172,8 @@ run = "pnpm --prefix src/dashboard/stefan-ui test"
 
 [tasks.test]
 description = "Run all tests"
-depends = ["test-dotnet", "test-ui"]
+run = [
+  { task = "test-server" },
+  { task = "test-node" },
+  { task = "test-ui" },
+]
