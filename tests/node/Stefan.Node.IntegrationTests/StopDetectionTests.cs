@@ -5,6 +5,8 @@ namespace Stefan.Node.IntegrationTests;
 
 public class StopDetectionTests : IntegrationTestBase
 {
+    const double IntervalBeforeStopKeyword = 0.6;
+
     [Fact]
     public async Task StopKeywordDetected_WhenPassedValidStopKeywordAudio()
     {
@@ -19,7 +21,7 @@ public class StopDetectionTests : IntegrationTestBase
         // Act
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
-        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(IntervalBeforeStopKeyword));
         await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
 
@@ -44,7 +46,7 @@ public class StopDetectionTests : IntegrationTestBase
         // Act
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
-        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(IntervalBeforeStopKeyword));
         await Task.Delay(TimeSpan.FromSeconds(1)); // Wait for notification sound to finish playing
         await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
@@ -72,7 +74,7 @@ public class StopDetectionTests : IntegrationTestBase
 
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
-        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(IntervalBeforeStopKeyword));
         await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
 
@@ -103,7 +105,7 @@ public class StopDetectionTests : IntegrationTestBase
         // Act
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
         await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
-        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.8));
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(IntervalBeforeStopKeyword));
         await app.WriteAudioFileAsync("TestAudioFiles/stop.wav");
         await app.WriteSilenceAsync(TimeSpan.FromSeconds(2));
 
