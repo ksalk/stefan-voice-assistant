@@ -17,8 +17,8 @@ public class CancelTimerTool(IToolDocumentStore documentStore, CancelTimerJob ca
             "type": "object",
             "properties": {
                 "timerId": {
-                    "type": "integer",
-                    "description": "The ID of the timer to cancel."
+                    "type": "string",
+                    "description": "The GUID of the timer to cancel."
                 }
             },
             "required": [ "timerId" ]
