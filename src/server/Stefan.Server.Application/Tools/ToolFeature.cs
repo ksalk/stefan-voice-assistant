@@ -11,7 +11,8 @@ public static class ToolFeature
         services.AddScoped<ToolRegistry>();
 
         services.AddTimerFeatures();
-        services.AddShoppingListFeatures();
+        // TODO: to uncomment once Shopping List feature is available
+        //services.AddShoppingListFeatures();
 
         return services;
     }
