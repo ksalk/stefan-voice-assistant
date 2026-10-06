@@ -2,6 +2,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -24,6 +25,7 @@ public abstract class IntegrationTestBase
 
         var network = new NetworkBuilder()
             .WithName($"stefan-server-test-{testRunId}")
+            .WithLogger(NullLogger.Instance)
             .Build();
         await network.CreateAsync();
 
@@ -33,6 +35,7 @@ public abstract class IntegrationTestBase
             .WithDatabase(DbName)
             .WithUsername(DbUser)
             .WithPassword(DbPassword)
+            .WithLogger(NullLogger.Instance)
             .Build();
         await db.StartAsync();
 
@@ -51,6 +54,7 @@ public abstract class IntegrationTestBase
             .WithEnvironment("TtsProvider", "XAi")
             .WithEnvironment("xAI__ApiKey", "test-dummy")
             .WithPortBinding(8080, true)
+            .WithLogger(NullLogger.Instance)
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(r => r.ForPath("/api/health").ForPort(8080)));
 

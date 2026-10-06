@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Stefan.Node.IntegrationTests;
 
@@ -84,7 +85,8 @@ public abstract class IntegrationTestBase
             .WithEnvironment("KeywordSpotter__Provider", "cpu")
             .WithEnvironment("KeywordSpotter__FeatureDim", "80")
             .WithBindMount(hostPipeDir, $"/tmp/audio-pipes/{testRunId}")
-            .WithWaitStrategy(BuildWaitStrategy(startMode, nodePort));
+            .WithWaitStrategy(BuildWaitStrategy(startMode, nodePort))
+            .WithLogger(NullLogger.Instance);
 
         if (configureContainer is not null)
             containerBuilder = configureContainer(containerBuilder);
