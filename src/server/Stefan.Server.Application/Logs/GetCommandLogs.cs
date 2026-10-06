@@ -6,6 +6,9 @@ namespace Stefan.Server.Application.Logs;
 public class GetCommandLogsRequest
 {
     public required Guid CommandId { get; init; }
+
+    /// <summary>Environment of the fetching server; used to select the matching {Environment} filter in the query template.</summary>
+    public required string Environment { get; init; }
 }
 
 public record LogEntryDto(DateTimeOffset Timestamp, string Line, IReadOnlyDictionary<string, string> Labels);
@@ -31,7 +34,9 @@ public class GetCommandLogs(LokiHttpClient lokiClient, IOptions<LokiOptions> opt
                 Error.External("Log backend is not configured."));
         }
 
-        var query = lokiOptions.CommandLogsQueryTemplate.Replace("{CommandId}", request.CommandId.ToString(), StringComparison.Ordinal);
+        var query = lokiOptions.CommandLogsQueryTemplate
+            .Replace("{CommandId}", request.CommandId.ToString(), StringComparison.Ordinal)
+            .Replace("{Environment}", request.Environment, StringComparison.Ordinal);
 
         var end = DateTimeOffset.UtcNow;
         var start = end.AddHours(-lokiOptions.MaxLookbackHours);

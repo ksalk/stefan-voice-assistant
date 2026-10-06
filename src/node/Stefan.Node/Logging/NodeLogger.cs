@@ -49,7 +49,8 @@ public static class NodeLogger
                         ? serviceName
                         : configuration["Node:Name"] ?? throw new InvalidOperationException("Node should have an unique name."), //TODO: handle it gracefully
                     ["service.namespace"] = "stefan",
-                    ["service.version"] = typeof(NodeLogger).Assembly.GetName().Version?.ToString() ?? "unknown"
+                    ["service.version"] = typeof(NodeLogger).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    ["deployment.environment"] = ResolveEnvironment(configuration)
                 };
                 AddHeaders(configuration, options);
             });
@@ -68,6 +69,17 @@ public static class NodeLogger
             }
         }
     }
+
+    /// <summary>
+    /// Resolves the running environment for the <c>deployment.environment</c> resource attribute.
+    /// Explicit config wins, then the standard environment variables; "Production" is the default
+    /// for a node deployed without any of them.
+    /// </summary>
+    private static string ResolveEnvironment(IConfiguration configuration) =>
+        configuration["Log:Otlp:Environment"]
+            ?? configuration["DOTNET_ENVIRONMENT"]
+            ?? configuration["ASPNETCORE_ENVIRONMENT"]
+            ?? "Production";
 
     private static LoggerConfiguration ApplyMinimumLevel(LoggerConfiguration loggerConfiguration, IConfiguration configuration)
     {

@@ -22,7 +22,7 @@ try
             .ReadFrom.Configuration(context.Configuration)
             .Enrich.FromLogContext();
 
-        AddOtlpSink(context.Configuration, loggerConfiguration);
+        AddOtlpSink(context.Configuration, context.HostingEnvironment.EnvironmentName, loggerConfiguration);
     });
 
     builder.Services.AddOpenApi();
@@ -72,8 +72,11 @@ return 0;
 /// <summary>
 /// Adds an OTLP/HTTP sink (e.g. the Alloy collector) when <c>Log:Otlp:Endpoint</c> is configured.
 /// The endpoint must be the base URL; the sink appends the standard <c>/v1/logs</c> path itself.
+/// The running environment is attached as the <c>deployment.environment</c> resource attribute
+/// (overridable via <c>Log:Otlp:Environment</c>) so logs from different environments can be
+/// separated in the log backend.
 /// </summary>
-static void AddOtlpSink(IConfiguration configuration, Serilog.LoggerConfiguration loggerConfiguration)
+static void AddOtlpSink(IConfiguration configuration, string environmentName, Serilog.LoggerConfiguration loggerConfiguration)
 {
     var otlpEndpoint = configuration["Log:Otlp:Endpoint"];
     if (string.IsNullOrWhiteSpace(otlpEndpoint))
@@ -91,7 +94,10 @@ static void AddOtlpSink(IConfiguration configuration, Serilog.LoggerConfiguratio
                 ? serviceName
                 : "stefan-server",
             ["service.namespace"] = "stefan",
-            ["service.version"] = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown"
+            ["service.version"] = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+            ["deployment.environment"] = configuration["Log:Otlp:Environment"] is { Length: > 0 } environment
+                ? environment
+                : environmentName
         };
 
         foreach (var header in configuration.GetSection("Log:Otlp:Headers").GetChildren())

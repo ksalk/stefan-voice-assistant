@@ -11,7 +11,7 @@ public class LokiOptions
     /// LogQL template used to correlate logs to a command. The <c>CommandId</c> placeholder is
     /// replaced with the command id before the query is sent.
     /// </summary>
-    public string CommandLogsQueryTemplate { get; set; } = "{service_namespace=\"stefan\"} | json | attributes_CommandId=\"{CommandId}\"";
+    public string CommandLogsQueryTemplate { get; set; } = "{service_namespace=\"stefan\", deployment_environment=\"{Environment}\"} | json | attributes_CommandId=\"{CommandId}\"";
 
     /// <summary>How far back from now the query covers.</summary>
     public int MaxLookbackHours { get; set; } = 24;

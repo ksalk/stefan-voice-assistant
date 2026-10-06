@@ -9,10 +9,16 @@ public static class GetCommandLogsEndpoint
     {
         group.MapGet("api/commands/{commandId:guid}/logs", async (
             Guid commandId,
+            [FromServices] IHostEnvironment hostEnvironment,
             [FromServices] GetCommandLogs getCommandLogs,
             CancellationToken cancellationToken) =>
         {
-            var result = await getCommandLogs.Handle(new GetCommandLogsRequest { CommandId = commandId }, cancellationToken);
+            var request = new GetCommandLogsRequest
+            {
+                CommandId = commandId,
+                Environment = hostEnvironment.EnvironmentName
+            };
+            var result = await getCommandLogs.Handle(request, cancellationToken);
 
             return result.ToHttpResult(Results.Ok);
         })
