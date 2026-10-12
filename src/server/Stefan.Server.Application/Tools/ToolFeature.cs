@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Stefan.Server.Application.Tools.IngredientList;
 using Stefan.Server.Application.Tools.ShoppingList;
 using Stefan.Server.Application.Tools.Timer;
 
@@ -11,6 +12,7 @@ public static class ToolFeature
         services.AddScoped<ToolRegistry>();
 
         services.AddTimerFeatures();
+        services.AddIngredientListFeatures();
         // TODO: to uncomment once Shopping List feature is available
         //services.AddShoppingListFeatures();
 

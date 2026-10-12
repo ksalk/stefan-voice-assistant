@@ -17,7 +17,8 @@
 
 	const typeLabels: Record<string, string> = {
 		timer: 'Timer',
-		'shopping-item': 'Shopping list item'
+		'shopping-item': 'Shopping list item',
+		'ingredient-item': 'Ingredient list item'
 	};
 
 	const actionBadgeVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -48,6 +49,15 @@
 		}
 	}
 
+	function readString(p: Record<string, unknown>, key: string): string {
+		const lower = p[key];
+		if (typeof lower === 'string' && lower) {
+			return lower;
+		}
+		const upper = p[key[0].toUpperCase() + key.slice(1)];
+		return typeof upper === 'string' && upper ? upper : '';
+	}
+
 	function describeTool(tool: CommandTool): string {
 		const payload = tool.payload;
 		if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -57,6 +67,15 @@
 		switch (tool.type) {
 			case 'shopping-item':
 				return typeof p.name === 'string' ? `"${p.name}"` : '';
+			case 'ingredient-item': {
+				// Stored payloads are serializer-cased (PascalCase); accept both.
+				const name = readString(p, 'name');
+				const quantity = readString(p, 'quantity');
+				if (!name) {
+					return '';
+				}
+				return quantity ? `"${name}" · ${quantity}` : `"${name}"`;
+			}
 			case 'timer': {
 				const parts: string[] = [];
 				if (typeof p.label === 'string' && p.label) {
