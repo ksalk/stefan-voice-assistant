@@ -22,9 +22,11 @@ public class ClearIngredientListTool(IToolDocumentStore documentStore) : ITool
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default)
     {
-        var allItems = await documentStore.ListAsync<IngredientListItem>(cancellationToken: cancellationToken);
-        foreach (var item in allItems)
-            await documentStore.DeleteAsync<IngredientListItem>(item.Id, context.CommandId, cancellationToken);
+        // The document is removed entirely, which archives it with a "deleted" provenance
+        // entry. The next add re-creates the singleton row.
+        var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
+        if (existing is not null)
+            await documentStore.DeleteAsync<IngredientListDocument>(existing.Id, context.CommandId, cancellationToken);
 
         return "Cleared all items from the ingredient list.";
     }

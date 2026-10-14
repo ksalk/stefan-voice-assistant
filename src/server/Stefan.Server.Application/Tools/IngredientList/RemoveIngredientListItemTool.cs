@@ -31,25 +31,28 @@ public class RemoveIngredientListItemTool(IToolDocumentStore documentStore) : IT
         using JsonDocument argumentsJson = JsonDocument.Parse(toolCall.FunctionArguments);
         bool hasName = argumentsJson.RootElement.TryGetProperty("name", out JsonElement name);
 
-        if (!hasName)
-            throw new ArgumentNullException(nameof(name), "The name argument is required.");
-
-        string nameValue = name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.");
+        string nameValue = hasName && name.ValueKind == JsonValueKind.String
+            ? name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.")
+            : throw new ArgumentException("The name argument is required and must be a string.", nameof(name));
         if (string.IsNullOrWhiteSpace(nameValue))
             throw new ArgumentException("The name argument must not be empty.", nameof(name));
         nameValue = nameValue.Trim();
 
-        var matchingItems = await documentStore.ListAsync<IngredientListItem>(
-            i => string.Equals(i.Name, nameValue, StringComparison.OrdinalIgnoreCase), cancellationToken);
-
-        if (matchingItems.Count == 0)
+        var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
+        if (existing is null)
             throw new ArgumentException($"The ingredient '{nameValue}' does not exist in the ingredient list.", nameof(name));
 
-        foreach (var entry in matchingItems)
-            await documentStore.DeleteAsync<IngredientListItem>(entry.Id, context.CommandId, cancellationToken);
+        int removedCount = existing.Items.RemoveAll(
+            i => string.Equals(i.Name, nameValue, StringComparison.OrdinalIgnoreCase));
+        if (removedCount == 0)
+            throw new ArgumentException($"The ingredient '{nameValue}' does not exist in the ingredient list.", nameof(name));
 
-        return matchingItems.Count == 1
+        // An emptied list stays as a persisted row with empty Items; the document
+        // itself is only archived by clear_ingredient_list.
+        await documentStore.UpdateAsync(existing, context.CommandId, cancellationToken);
+
+        return removedCount == 1
             ? $"Removed '{nameValue}' from the ingredient list."
-            : $"Removed {matchingItems.Count} entries of '{nameValue}' from the ingredient list.";
+            : $"Removed {removedCount} entries of '{nameValue}' from the ingredient list.";
     }
 }

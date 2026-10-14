@@ -36,39 +36,40 @@ public class UpdateIngredientListItemTool(IToolDocumentStore documentStore) : IT
         bool hasName = argumentsJson.RootElement.TryGetProperty("name", out JsonElement name);
         bool hasQuantity = argumentsJson.RootElement.TryGetProperty("quantity", out JsonElement quantity);
 
-        if (!hasName)
-            throw new ArgumentNullException(nameof(name), "The name argument is required.");
-
-        if (!hasQuantity)
-            throw new ArgumentNullException(nameof(quantity), "The quantity argument is required.");
-
-        string nameValue = name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.");
+        string nameValue = hasName && name.ValueKind == JsonValueKind.String
+            ? name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.")
+            : throw new ArgumentException("The name argument is required and must be a string.", nameof(name));
         if (string.IsNullOrWhiteSpace(nameValue))
             throw new ArgumentException("The name argument must not be empty.", nameof(name));
         nameValue = nameValue.Trim();
 
-        string quantityValue = quantity.ValueKind switch
-        {
-            JsonValueKind.String => quantity.GetString(),
-            JsonValueKind.Number => quantity.GetRawText(),
-            JsonValueKind.Null => throw new ArgumentNullException(nameof(quantity), "The quantity argument is required."),
-            _ => throw new ArgumentException("The quantity argument must be a string as spoken by the user, for example '300g'.", nameof(quantity))
-        } ?? throw new ArgumentNullException(nameof(quantity), "The quantity argument is required.");
+        string quantityValue = hasQuantity
+            ? quantity.ValueKind switch
+            {
+                JsonValueKind.String => quantity.GetString(),
+                JsonValueKind.Number => quantity.GetRawText(),
+                JsonValueKind.Null => throw new ArgumentNullException(nameof(quantity), "The quantity argument is required."),
+                _ => throw new ArgumentException("The quantity argument must be a string as spoken by the user, for example '300g'.", nameof(quantity))
+            } ?? throw new ArgumentNullException(nameof(quantity), "The quantity argument is required.")
+            : throw new ArgumentNullException(nameof(quantity), "The quantity argument is required.");
         if (string.IsNullOrWhiteSpace(quantityValue))
             throw new ArgumentException("The quantity argument must not be empty.", nameof(quantity));
         quantityValue = quantityValue.Trim();
 
-        var matchingItems = await documentStore.ListAsync<IngredientListItem>(
-            i => string.Equals(i.Name, nameValue, StringComparison.OrdinalIgnoreCase), cancellationToken);
+        var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
+        if (existing is null)
+            throw new ArgumentException($"The ingredient '{nameValue}' does not exist in the ingredient list.", nameof(name));
 
+        var matchingItems = existing.Items
+            .Where(i => string.Equals(i.Name, nameValue, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         if (matchingItems.Count == 0)
             throw new ArgumentException($"The ingredient '{nameValue}' does not exist in the ingredient list.", nameof(name));
 
-        foreach (var entry in matchingItems)
-        {
-            entry.Quantity = quantityValue;
-            await documentStore.UpdateAsync(entry, context.CommandId, cancellationToken);
-        }
+        foreach (var item in matchingItems)
+            item.Quantity = quantityValue;
+
+        await documentStore.UpdateAsync(existing, context.CommandId, cancellationToken);
 
         return matchingItems.Count == 1
             ? $"Updated '{nameValue}' to quantity {quantityValue} in the ingredient list."

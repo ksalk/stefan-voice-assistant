@@ -22,14 +22,14 @@ public class ListIngredientListItemsTool(IToolDocumentStore documentStore) : ITo
 
     public async Task<string> Execute(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken = default)
     {
-        var allItems = await documentStore.ListAsync<IngredientListItem>(cancellationToken: cancellationToken);
+        var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
 
-        if (allItems.Count == 0)
+        if (existing is null || existing.Items.Count == 0)
         {
             return "The ingredient list is empty.";
         }
 
-        var itemDescriptions = allItems
+        var itemDescriptions = existing.Items
             .Select(item => string.IsNullOrEmpty(item.Quantity) ? item.Name : $"{item.Name} {item.Quantity}")
             .ToList();
         return $"Ingredient list: {string.Join(", ", itemDescriptions)}";

@@ -36,10 +36,9 @@ public class AddIngredientListItemTool(IToolDocumentStore documentStore) : ITool
         bool hasName = argumentsJson.RootElement.TryGetProperty("name", out JsonElement name);
         bool hasQuantity = argumentsJson.RootElement.TryGetProperty("quantity", out JsonElement quantity);
 
-        if (!hasName)
-            throw new ArgumentNullException(nameof(name), "The name argument is required.");
-
-        string nameValue = name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.");
+        string nameValue = hasName && name.ValueKind == JsonValueKind.String
+            ? name.GetString() ?? throw new ArgumentNullException(nameof(name), "The name argument is required.")
+            : throw new ArgumentException("The name argument is required and must be a string.", nameof(name));
         if (string.IsNullOrWhiteSpace(nameValue))
             throw new ArgumentException("The name argument must not be empty.", nameof(name));
         nameValue = nameValue.Trim();
@@ -57,14 +56,20 @@ public class AddIngredientListItemTool(IToolDocumentStore documentStore) : ITool
         if (string.IsNullOrWhiteSpace(quantityValue))
             quantityValue = null;
 
-        var entry = new IngredientListItem
+        var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
+        var ingredientList = existing ?? new IngredientListDocument();
+        ingredientList.Items.Add(new IngredientItem
         {
-            Id = Guid.NewGuid(),
             Name = nameValue,
             Quantity = quantityValue
-        };
+        });
 
-        await documentStore.AddAsync(entry, context.CommandId, cancellationToken);
+        // Add persists the singleton document only when it does not exist yet;
+        // later adds mutate the existing row. Adding is append-only, duplicates stay.
+        if (existing is null)
+            await documentStore.AddAsync(ingredientList, context.CommandId, cancellationToken);
+        else
+            await documentStore.UpdateAsync(ingredientList, context.CommandId, cancellationToken);
 
         return quantityValue is null
             ? $"Added '{nameValue}' to the ingredient list."

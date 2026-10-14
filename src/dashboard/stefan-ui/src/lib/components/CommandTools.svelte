@@ -18,7 +18,7 @@
 	const typeLabels: Record<string, string> = {
 		timer: 'Timer',
 		'shopping-item': 'Shopping list item',
-		'ingredient-item': 'Ingredient list item'
+		'ingredient-list': 'Ingredient list'
 	};
 
 	const actionBadgeVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -49,13 +49,14 @@
 		}
 	}
 
-	function readString(p: Record<string, unknown>, key: string): string {
+	// Stored payloads are serializer-cased (PascalCase); accept both casings.
+	function readArray(p: Record<string, unknown>, key: string): unknown[] {
 		const lower = p[key];
-		if (typeof lower === 'string' && lower) {
+		if (Array.isArray(lower)) {
 			return lower;
 		}
 		const upper = p[key[0].toUpperCase() + key.slice(1)];
-		return typeof upper === 'string' && upper ? upper : '';
+		return Array.isArray(upper) ? upper : [];
 	}
 
 	function describeTool(tool: CommandTool): string {
@@ -67,14 +68,9 @@
 		switch (tool.type) {
 			case 'shopping-item':
 				return typeof p.name === 'string' ? `"${p.name}"` : '';
-			case 'ingredient-item': {
-				// Stored payloads are serializer-cased (PascalCase); accept both.
-				const name = readString(p, 'name');
-				const quantity = readString(p, 'quantity');
-				if (!name) {
-					return '';
-				}
-				return quantity ? `"${name}" · ${quantity}` : `"${name}"`;
+			case 'ingredient-list': {
+				const count = readArray(p, 'items').length;
+				return count === 0 ? 'empty' : `${count} ingredient${count === 1 ? '' : 's'}`;
 			}
 			case 'timer': {
 				const parts: string[] = [];
