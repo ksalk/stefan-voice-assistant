@@ -82,7 +82,7 @@ The checked-in server configuration selects xAI for both STT and TTS. Provider s
 | `TtsProvider` | `XAi` | `xAI:ApiKey`; calls the xAI text-to-speech endpoint |
 | `TtsProvider` | any other value | Piper, configured by `Piper:ExecutablePath`, `Piper:WorkingDirectory`, and `Piper:ModelKey` |
 
-The LLM uses the OpenAI SDK and the `OpenAI:ApiKey`, `OpenAI:Endpoint`, and `OpenAI:Model` settings. The checked-in endpoint is OpenRouter. LLM tools include timers and shopping-list operations.
+The LLM uses the OpenAI SDK and the `OpenAI:ApiKey`, `OpenAI:Endpoint`, and `OpenAI:Model` settings. The checked-in endpoint is OpenRouter. LLM tools include timers, ingredient-list operations.
 
 The server Docker image contains no speech models. The Whisper, Vosk, and Piper services download their files at startup when they are missing. The Whisper model source is configured by `Whisper:ModelPath` (default `ggml-base.bin` in the server process working directory) and `Whisper:ModelUrl`. The Vosk model source is configured by `Vosk:ModelPath` and `Vosk:ModelUrl` (the default model zip is about 1.8 GB). The Piper service downloads its executable and configured voice model when they are missing.
 
@@ -113,4 +113,4 @@ The current node creates 16 kHz, mono, 16-bit PCM WAV input for the command endp
 
 ## Persistence and background work
 
-The server stores command records, node status, shopping-list items, and timers in PostgreSQL. Quartz persists scheduled jobs, including node health pings and timer actions. The server exposes corresponding node and command information to the dashboard.
+The server stores command records, node status, ingredient-list items, shopping-list items, and timers in PostgreSQL. Quartz persists scheduled jobs, including node health pings and timer actions. The server exposes corresponding node and command information to the dashboard.
