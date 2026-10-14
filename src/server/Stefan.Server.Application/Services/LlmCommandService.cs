@@ -41,7 +41,7 @@ public class LlmCommandService(
         The current date and time is {DateTime.Now:dddd, MMMM d, yyyy h:mm tt}.
         """;
 
-    private const int MaxToolCallIterations = 5;
+    private const int MaxToolCallIterations = 8;
 
     // TODO: remove async from name
     public async Task<Result<LlmCommandResult>> ProcessCommandAsync(string command, string deviceId, Guid commandId, CancellationToken cancellationToken = default, Action<IReadOnlyList<ConversationMessage>>? onConversationUpdated = null)
