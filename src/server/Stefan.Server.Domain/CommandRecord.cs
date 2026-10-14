@@ -48,9 +48,13 @@ public class CommandRecord
         Status = CommandStatus.LlmSuccess;
     }
 
-    public void SaveLlmError(string errorMessage)
+    public void SaveLlmError(string errorMessage, string? llmConversationJson = null)
     {
         ErrorMessage = errorMessage;
+        if (llmConversationJson is not null)
+        {
+            LlmConversationJson = llmConversationJson;
+        }
         Status = CommandStatus.LlmFailed;
     }
 

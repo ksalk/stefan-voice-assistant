@@ -166,24 +166,31 @@ public class ProcessCommand(
 
     private async Task<Result<LlmCommandResult>> RunLlmAsync(CommandRecord record, string deviceId, CancellationToken cancellationToken)
     {
+        string? llmConversationJson = null;
+
         try
         {
-            var result = await llm.ProcessCommandAsync(record.Transcript!, deviceId, record.Id, cancellationToken);
+            var result = await llm.ProcessCommandAsync(
+                record.Transcript!,
+                deviceId,
+                record.Id,
+                cancellationToken,
+                messages => llmConversationJson = JsonSerializer.Serialize(messages, JsonOptions));
 
             if (!result.IsSuccess)
             {
-                return await RecordLlmFailureAsync(record, result.Error?.Message ?? "Unknown LLM error", cancellationToken);
+                return await RecordLlmFailureAsync(record, result.Error?.Message ?? "Unknown LLM error", llmConversationJson, cancellationToken);
             }
 
             if (string.IsNullOrWhiteSpace(result.Value.ResponseText))
             {
                 logger.LogWarning("LLM produced empty response");
-                return await RecordLlmFailureAsync(record, "LLM produced empty response", cancellationToken);
+                return await RecordLlmFailureAsync(record, "LLM produced empty response", llmConversationJson, cancellationToken);
             }
 
             logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.Value.DurationMs);
 
-            record.SaveLlmResult(result.Value.ResponseText, JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
+            record.SaveLlmResult(result.Value.ResponseText, llmConversationJson ?? JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
 
             return result;
         }
@@ -193,18 +200,18 @@ public class ProcessCommand(
             var rawResponse = ex.GetRawResponse()?.Content?.ToString();
             logger.LogError(ex, "LLM failed: {Error} {RawResponse}", ex.Message, rawResponse);
 
-            return await RecordLlmFailureAsync(record, $"{ex.Message} {rawResponse}", cancellationToken);
+            return await RecordLlmFailureAsync(record, $"{ex.Message} {rawResponse}", llmConversationJson, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "LLM failed: {Error}", ex.Message);
-            return await RecordLlmFailureAsync(record, ex.Message, cancellationToken);
+            return await RecordLlmFailureAsync(record, ex.Message, llmConversationJson, cancellationToken);
         }
     }
 
-    private async Task<Result<LlmCommandResult>> RecordLlmFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
+    private async Task<Result<LlmCommandResult>> RecordLlmFailureAsync(CommandRecord record, string detail, string? llmConversationJson, CancellationToken cancellationToken)
     {
-        record.SaveLlmError(detail);
+        record.SaveLlmError(detail, llmConversationJson);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result<LlmCommandResult>.Failure(Error.External($"Language model failed: {detail}"));
     }

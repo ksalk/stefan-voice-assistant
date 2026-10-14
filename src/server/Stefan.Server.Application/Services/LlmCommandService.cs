@@ -44,7 +44,7 @@ public class LlmCommandService(
     private const int MaxToolCallIterations = 5;
 
     // TODO: remove async from name
-    public async Task<Result<LlmCommandResult>> ProcessCommandAsync(string command, string deviceId, Guid commandId, CancellationToken cancellationToken = default)
+    public async Task<Result<LlmCommandResult>> ProcessCommandAsync(string command, string deviceId, Guid commandId, CancellationToken cancellationToken = default, Action<IReadOnlyList<ConversationMessage>>? onConversationUpdated = null)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
         var systemPrompt = BuildSystemPrompt();
@@ -60,6 +60,9 @@ public class LlmCommandService(
             new("system", systemPrompt, null),
             new("user", command, null),
         };
+
+        Action notifyConversation = () => onConversationUpdated?.Invoke(conversationMessages.ToList());
+        notifyConversation();
 
         var toolCallContext = new ToolCallContext()
         {
@@ -85,8 +88,9 @@ public class LlmCommandService(
                         var assistantMessage = completion.Content[0].Text;
                         logger.LogInformation("Assistant response: {AssistantMessage}", assistantMessage);
                         conversationMessages.Add(new ConversationMessage("assistant", assistantMessage, null));
+                        notifyConversation();
                         var durationMs = Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
-                       
+                        
                         return new LlmCommandResult(assistantMessage, conversationMessages, durationMs);
                     }
 
@@ -97,6 +101,9 @@ public class LlmCommandService(
                         if (++toolCallIterations > MaxToolCallIterations)
                         {
                             logger.LogWarning("Tool call limit of {MaxToolCallIterations} exceeded, aborting command", MaxToolCallIterations);
+                            var overflowToolCalls = completion.ToolCalls.Select(toolCall => new ToolCallRecord(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString(), null)).ToList();
+                            conversationMessages.Add(new ConversationMessage("assistant", null, overflowToolCalls));
+                            notifyConversation();
                             return Result<LlmCommandResult>.Failure($"Model exceeded the maximum of {MaxToolCallIterations} tool call iterations.");
                         }
 
@@ -114,6 +121,7 @@ public class LlmCommandService(
                         }
 
                         conversationMessages.Add(new ConversationMessage("assistant", null, toolCalls));
+                        notifyConversation();
 
                         requiresAction = true;
                         break;
