@@ -34,6 +34,9 @@ public class LlmCommandService(
         - If required information is missing, or the request is too ambiguous to act on, do not guess. Briefly state why you cannot complete it.
         - Make an assumption only when it is obvious, safe, and does not materially change the request.
 
+        Tool call format:
+        - Always emit complete, valid JSON arguments for every tool call, including all closing quotes and braces. Prefer compact JSON with no pretty-printing.
+
         Spoken responses:
         - Keep replies concise and natural for text-to-speech. Prefer one short sentence; use a second only when needed.
         - Avoid markdown, bullets, code, emojis, unusual symbols, and abbreviations. Present results as natural speech.
