@@ -133,11 +133,11 @@ run = "docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src
 # Dashboard
 [tasks.run-ui]
 description = "Run the dashboard dev server"
-run = "pnpm --prefix src/dashboard/stefan-ui run dev"
+run = 'VITE_API_URL="${VITE_API_URL:-}" pnpm --prefix src/dashboard/stefan-ui run dev'
 
 [tasks.build-dashboard-image]
 description = "Build the dashboard Docker image"
-run = "docker buildx build --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load"
+run = 'VITE_API_URL="${VITE_API_URL:-}" docker buildx build --build-arg VITE_API_URL="${VITE_API_URL:-}" --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load'
 
 [tasks.publish-dashboard]
 description = "Build and push the dashboard image"
@@ -147,7 +147,7 @@ run = '''
 set -euo pipefail
 version="${usage_version:-$(mise run get-version)}"
 echo "Publishing stefan-dashboard:$version"
-docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="${VITE_API_URL:-}" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
 '''
 
 # Tests
