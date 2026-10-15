@@ -1,9 +1,12 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Copy from '@lucide/svelte/icons/copy';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import { api } from '$lib/api';
+	import { toast } from 'svelte-sonner';
 	import type { LogEntry } from '$lib/types';
 
 	let { commandId }: { commandId: string } = $props();
@@ -12,6 +15,7 @@
 	let entries = $state<LogEntry[] | null>(null);
 	let loading = $state(false);
 	let error: string | null = $state(null);
+	let copying = $state(false);
 
 	async function toggle() {
 		expanded = !expanded;
@@ -31,6 +35,20 @@
 			error = e instanceof Error ? e.message : 'Failed to load logs';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function copyLogs() {
+		if (!entries?.length) return;
+		copying = true;
+		try {
+			const text = entries.map((entry) => `${entry.timestamp} ${entry.line}`).join('\n');
+			await navigator.clipboard.writeText(text);
+			toast.success('Copied logs to clipboard');
+		} catch {
+			toast.error('Failed to copy logs');
+		} finally {
+			copying = false;
 		}
 	}
 
@@ -72,6 +90,12 @@
 			{:else if error}
 				<p class="text-sm text-muted-foreground">{error}</p>
 			{:else if entries && entries.length > 0}
+				<div class="mb-2 flex justify-end">
+					<Button variant="outline" size="sm" onclick={copyLogs} disabled={copying}>
+						<Copy class="size-4" />
+						{copying ? 'Copying...' : 'Copy logs'}
+					</Button>
+				</div>
 				<div class="max-h-96 overflow-y-auto rounded bg-muted/50 p-2 font-mono text-xs">
 					{#each entries as entry (entry.timestamp + entry.line)}
 						<p class="break-all whitespace-pre-wrap">
