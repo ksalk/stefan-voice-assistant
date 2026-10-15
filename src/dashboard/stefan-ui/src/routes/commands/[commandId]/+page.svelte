@@ -24,7 +24,6 @@
 	let tools = $state<CommandTool[] | null>(null);
 	let loading = $state(true);
 	let error: string | null = $state(null);
-	let showAdvanced = $state(false);
 
 	let { params }: PageProps = $props();
 	let commandId = $derived(params.commandId);
@@ -123,6 +122,12 @@
 			>Total duration: {formatDuration(command.totalDurationMs)}</span
 		>
 	</div>
+	{#if command.errorMessage}
+		<div class="mt-2 text-sm text-destructive">
+			<span class="font-medium">Error:</span>
+			{command.errorMessage}
+		</div>
+	{/if}
 
 	<div class="mt-4 grid gap-4 md:grid-cols-2">
 		<Card.Root>
@@ -203,21 +208,5 @@
 
 	<div class="mt-4">
 		<CommandLogs commandId={command.id} />
-	</div>
-
-	<div class="mt-4">
-		<Button variant="ghost" size="sm" onclick={() => (showAdvanced = !showAdvanced)}>
-			{showAdvanced ? 'Hide advanced' : 'Show advanced'}
-		</Button>
-		{#if showAdvanced}
-			<div class="mt-2 grid gap-2 text-sm text-muted-foreground">
-				<p><span class="font-medium">Session ID:</span> {command.sessionId}</p>
-				<p><span class="font-medium">Input format:</span> {command.inputAudioFormat}</p>
-				<p><span class="font-medium">Output format:</span> {command.outputAudioFormat || '—'}</p>
-				{#if command.errorMessage}
-					<p><span class="font-medium text-destructive">Error:</span> {command.errorMessage}</p>
-				{/if}
-			</div>
-		{/if}
 	</div>
 {/if}
