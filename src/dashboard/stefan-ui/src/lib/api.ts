@@ -7,12 +7,18 @@ import type {
 	GetNodesResult
 } from './types';
 
-const normalizeApiOrigin = (url: string) => url.trim().replace(/\/+$/, '').replace(/\/api$/, '');
+const normalizeApiOrigin = (url: string) =>
+	url
+		.trim()
+		.replace(/\/+$/, '')
+		.replace(/\/api$/, '');
 
 const resolveBaseUrl = (): string => {
 	const configuredUrl = import.meta.env.VITE_API_URL;
 	if (!configuredUrl) {
-		throw new Error('VITE_API_URL is required but was not set. Define it in a local .env file or through the active mise environment.');
+		throw new Error(
+			'VITE_API_URL is required but was not set. Define it in a local .env file or through the active mise environment.'
+		);
 	}
 
 	return `${normalizeApiOrigin(configuredUrl)}/api`;
