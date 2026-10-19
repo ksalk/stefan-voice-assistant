@@ -150,9 +150,12 @@ usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" de
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
+# The URL is baked into the image at build time. Publishing without it would
+# ship a dashboard that calls the browser's own localhost, so fail fast.
+test -n "${VITE_API_URL:-}" || { echo "VITE_API_URL is not set - run with -E prod (values live in gitignored mise.prod.toml)" >&2; false; }
 version="${usage_version:-$(mise run get-version)}"
-echo "Publishing stefan-dashboard:$version"
-docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="${VITE_API_URL:-http://localhost:5285}" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+echo "Publishing stefan-dashboard:$version with VITE_API_URL=$VITE_API_URL"
+docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="$VITE_API_URL" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
 '''
 
 # Tests
