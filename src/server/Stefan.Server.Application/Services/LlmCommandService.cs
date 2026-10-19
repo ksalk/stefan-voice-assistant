@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
 using Stefan.Server.Application.Tools;
@@ -149,6 +150,12 @@ public class LlmCommandService(
 
     private async Task<string> DispatchToolCallAsync(ChatToolCall toolCall, ToolCallContext context, CancellationToken cancellationToken)
     {
+        if (!HasValidJsonArguments(toolCall.FunctionArguments))
+        {
+            logger.LogWarning("Tool {ToolName} was called with invalid JSON arguments: {ToolArguments}", toolCall.FunctionName, toolCall.FunctionArguments);
+            return $"Error: the arguments for '{toolCall.FunctionName}' were not valid JSON. Call the tool again with valid JSON arguments.";
+        }
+
         try
         {
             var chatTool = toolRegistry.GetTool(toolCall.FunctionName);
@@ -160,6 +167,28 @@ public class LlmCommandService(
 
             var availableTools = string.Join(", ", toolRegistry.GetAllToolDefinitions().Select(t => t.FunctionName));
             return $"Error: {ex.Message} Available tools: {availableTools}.";
+        }
+    }
+
+    /// <summary>
+    /// Checks that the tool call arguments contain valid JSON.
+    /// An empty payload is valid because tools without arguments receive an empty payload.
+    /// </summary>
+    private static bool HasValidJsonArguments(BinaryData arguments)
+    {
+        if (string.IsNullOrWhiteSpace(arguments.ToString()))
+        {
+            return true;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(arguments);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
