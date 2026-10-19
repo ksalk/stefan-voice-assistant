@@ -18,12 +18,17 @@
 			name: 'Nodes',
 			href: '/nodes',
 			icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>`
+		},
+		{
+			name: 'Tool Entities',
+			href: '/tool-entities',
+			icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>`
 		}
 	];
 
 	function isActive(href: string): boolean {
 		if (href === '/') return page.url.pathname === '/';
-		return page.url.pathname.startsWith(href);
+		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
 </script>
 

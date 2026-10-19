@@ -4,7 +4,9 @@ import type {
 	GetCommandLogsResult,
 	GetCommandToolsResult,
 	GetNodeDetailsResult,
-	GetNodesResult
+	GetNodesResult,
+	ToolDocumentDetails,
+	ToolDocumentsResult
 } from './types';
 
 const normalizeApiOrigin = (url: string) =>
@@ -107,6 +109,35 @@ export const api = {
 
 	getCommandLogs: (id: string, customFetch?: typeof fetch): Promise<GetCommandLogsResult> =>
 		send({ method: 'GET', path: `commands/${id}/logs`, fetch: customFetch }),
+
+	getToolDocuments: (
+		page: number,
+		pageSize: number,
+		options: {
+			scope?: string;
+			type?: string;
+			search?: string;
+			sortBy?: string;
+			sortDirection?: string;
+		} = {},
+		customFetch?: typeof fetch
+	): Promise<ToolDocumentsResult> => {
+		const params = new URLSearchParams();
+		params.set('page', String(page));
+		params.set('pageSize', String(pageSize));
+		if (options.scope) params.set('scope', options.scope);
+		if (options.type) params.set('type', options.type);
+		if (options.search) params.set('search', options.search);
+		if (options.sortBy) params.set('sortBy', options.sortBy);
+		if (options.sortDirection) params.set('sortDirection', options.sortDirection);
+		return send({ method: 'GET', path: `tool-documents?${params.toString()}`, fetch: customFetch });
+	},
+
+	getToolDocument: (
+		id: string,
+		customFetch?: typeof fetch
+	): Promise<{ document: ToolDocumentDetails }> =>
+		send({ method: 'GET', path: `tool-documents/${id}`, fetch: customFetch }),
 
 	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);

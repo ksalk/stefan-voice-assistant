@@ -115,3 +115,37 @@ export interface LogEntry {
 export interface GetCommandLogsResult {
 	entries: LogEntry[];
 }
+
+export type ToolDocumentScope = 'live' | 'archived' | 'all';
+
+export interface ToolDocument {
+	id: string;
+	type: string;
+	createdAt: string;
+	archivedAt: string | null;
+	isArchived: boolean;
+	payload: unknown;
+}
+
+export interface ToolDocumentCommandAction {
+	commandId: string;
+	action: string;
+	atUtc: string;
+}
+
+export interface ToolDocumentDetails {
+	id: string;
+	type: string;
+	createdAt: string;
+	archivedAt: string | null;
+	isArchived: boolean;
+	payload: unknown;
+	commandActions: ToolDocumentCommandAction[];
+}
+
+export interface ToolDocumentsResult {
+	items: ToolDocument[];
+	totalCount: number;
+	page: number;
+	pageSize: number;
+}

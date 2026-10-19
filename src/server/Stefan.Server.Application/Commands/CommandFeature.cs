@@ -11,6 +11,8 @@ public static class CommandFeature
         services.AddScoped<GetCommand>();
         services.AddScoped<GetCommandAudio>();
         services.AddScoped<GetCommandTools>();
+        services.AddScoped<GetToolDocuments>();
+        services.AddScoped<GetToolDocument>();
         return services;
     }
 }
