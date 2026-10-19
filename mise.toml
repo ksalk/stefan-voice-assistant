@@ -133,11 +133,16 @@ run = "docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src
 # Dashboard
 [tasks.run-ui]
 description = "Run the dashboard dev server"
-run = 'VITE_API_URL="${VITE_API_URL:-}" pnpm --prefix src/dashboard/stefan-ui run dev'
+# Do not export an empty VITE_API_URL here. Vite gives process.env priority
+# over .env files, so an empty value would shadow src/dashboard/stefan-ui/.env.
+# Vite falls back to that .env file, and the mise env (mise -E dev) wins if set.
+run = 'pnpm --prefix src/dashboard/stefan-ui run dev'
 
 [tasks.build-dashboard-image]
 description = "Build the dashboard Docker image"
-run = 'VITE_API_URL="${VITE_API_URL:-}" docker buildx build --build-arg VITE_API_URL="${VITE_API_URL:-}" --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load'
+# The Docker build context excludes .env, so the build arg is the only source
+# for VITE_API_URL. Default to the same URL docker-compose.server.yml uses.
+run = 'docker buildx build --build-arg VITE_API_URL="${VITE_API_URL:-http://localhost:5285}" --platform linux/amd64 -t stefan-dashboard -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --load'
 
 [tasks.publish-dashboard]
 description = "Build and push the dashboard image"
@@ -147,7 +152,7 @@ run = '''
 set -euo pipefail
 version="${usage_version:-$(mise run get-version)}"
 echo "Publishing stefan-dashboard:$version"
-docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="${VITE_API_URL:-}" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="${VITE_API_URL:-http://localhost:5285}" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
 '''
 
 # Tests
