@@ -6,6 +6,7 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import { api } from '$lib/api';
+	import { copyTextToClipboard } from '$lib/utils/clipboard';
 	import { toast } from 'svelte-sonner';
 	import type { LogEntry } from '$lib/types';
 
@@ -43,10 +44,11 @@
 		copying = true;
 		try {
 			const text = entries.map((entry) => `${entry.timestamp} ${entry.line}`).join('\n');
-			await navigator.clipboard.writeText(text);
+			await copyTextToClipboard(text);
 			toast.success('Copied logs to clipboard');
-		} catch {
-			toast.error('Failed to copy logs');
+		} catch (e) {
+			console.error('Failed to copy logs:', e);
+			toast.error('Failed to copy logs: ' + (e instanceof Error ? e.message : 'Unknown error'));
 		} finally {
 			copying = false;
 		}
