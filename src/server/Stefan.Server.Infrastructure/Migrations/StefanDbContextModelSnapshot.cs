@@ -200,9 +200,9 @@ namespace Stefan.Server.Infrastructure.Migrations
 
             modelBuilder.Entity("Stefan.Server.Domain.ToolDocumentArchive", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("ArchiveId")
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
@@ -214,6 +214,9 @@ namespace Stefan.Server.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Payload")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -222,12 +225,14 @@ namespace Stefan.Server.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("ArchiveId");
 
                     b.HasIndex("CommandActions");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("CommandActions"), "gin");
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("CommandActions"), new[] { "jsonb_path_ops" });
+
+                    b.HasIndex("Id");
 
                     b.HasIndex("Type");
 

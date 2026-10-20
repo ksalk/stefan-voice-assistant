@@ -124,6 +124,7 @@ export interface ToolDocument {
 	createdAt: string;
 	archivedAt: string | null;
 	isArchived: boolean;
+	archiveId: string | null;
 	payload: unknown;
 }
 

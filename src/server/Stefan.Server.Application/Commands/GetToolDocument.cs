@@ -58,9 +58,12 @@ public class GetToolDocument(StefanDbContext dbContext)
             });
         }
 
+        // A document can be archived more than once, so the newest archive row wins.
         var archived = await dbContext.ToolDocumentArchive
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == request.Id, cancellationToken);
+            .Where(a => a.Id == request.Id)
+            .OrderByDescending(a => a.ArchivedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (archived != null)
         {

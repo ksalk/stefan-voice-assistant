@@ -23,6 +23,10 @@ public class ToolDocumentDto
     public DateTime CreatedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public bool IsArchived { get; set; }
+
+    /// <summary>Id of the archive row. Set for archived documents, null for live ones.</summary>
+    public Guid? ArchiveId { get; set; }
+
     public JsonElement Payload { get; set; }
 }
 
@@ -46,6 +50,7 @@ public class GetToolDocuments(StefanDbContext dbContext)
         public string Payload { get; set; } = null!;
         public bool IsArchived { get; set; }
         public DateTime? ArchivedAt { get; set; }
+        public Guid? ArchiveId { get; set; }
     }
 
     public async Task<GetToolDocumentsResult> Handle(GetToolDocumentsRequest request, CancellationToken cancellationToken)
@@ -92,7 +97,8 @@ public class GetToolDocuments(StefanDbContext dbContext)
             CreatedAt = d.CreatedAt,
             Payload = d.Payload,
             IsArchived = false,
-            ArchivedAt = null
+            ArchivedAt = null,
+            ArchiveId = null
         });
 
         IQueryable<ToolDocumentArchive> archiveEntities = dbContext.ToolDocumentArchive.AsNoTracking();
@@ -118,7 +124,8 @@ public class GetToolDocuments(StefanDbContext dbContext)
             CreatedAt = a.CreatedAt,
             Payload = a.Payload,
             IsArchived = true,
-            ArchivedAt = a.ArchivedAt
+            ArchivedAt = a.ArchivedAt,
+            ArchiveId = a.ArchiveId
         });
 
         IQueryable<Row> query = scope switch
@@ -155,6 +162,7 @@ public class GetToolDocuments(StefanDbContext dbContext)
             CreatedAt = r.CreatedAt,
             ArchivedAt = r.ArchivedAt,
             IsArchived = r.IsArchived,
+            ArchiveId = r.ArchiveId,
             Payload = DeserializePayload(r.Payload)
         }).ToList();
 

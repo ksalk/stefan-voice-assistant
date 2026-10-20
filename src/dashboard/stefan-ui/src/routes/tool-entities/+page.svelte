@@ -280,7 +280,7 @@
 					</Table.Cell>
 				</Table.Row>
 			{:else}
-				{#each items as doc (doc.id + String(doc.isArchived))}
+				{#each items as doc (doc.archiveId ?? doc.id)}
 					<Table.Row class="cursor-pointer hover:bg-muted/50" onclick={() => openDetails(doc.id)}>
 						<Table.Cell class="font-mono text-xs">
 							<a
