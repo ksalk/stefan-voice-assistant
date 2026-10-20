@@ -145,6 +145,10 @@ public class ProcessCommand(
 
             record.SaveTranscriptionResult(result.Value.Transcript, result.Value.DurationMs);
 
+            // The transcript is stored before the model and the tools run, so a
+            // failure later in the command keeps the transcript and its status.
+            await dbContext.SaveChangesAsync(cancellationToken);
+
             logger.LogInformation("Transcription result: {Transcript}", result.Value.Transcript);
             logger.LogInformation("Speech processing time: {SttDurationMs} ms", result.Value.DurationMs);
 
@@ -192,6 +196,10 @@ public class ProcessCommand(
 
             record.SaveLlmResult(result.Value.ResponseText, llmConversationJson ?? JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
 
+            // The response text and the conversation are stored before the speech
+            // synthesis runs, so a failure later keeps them.
+            await dbContext.SaveChangesAsync(cancellationToken);
+
             return result;
         }
         catch (ClientResultException ex)
@@ -235,6 +243,10 @@ public class ProcessCommand(
                 result.Value.DurationMs, compressedOutputAudio.Length);
 
             record.SaveTtsResult(compressedOutputAudio, "opus", result.Value.DurationMs);
+
+            // The audio is stored before the answer travels back to the node, so a
+            // failure later keeps it.
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return Result<byte[]>.Success(wavOutputAudio);
         }
