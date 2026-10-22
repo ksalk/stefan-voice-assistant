@@ -1,4 +1,6 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Stefan.Server.Application.AI;
 
@@ -8,7 +10,7 @@ public static class HealthEndpoints
 {
     public static void MapHealthCheckEndpoint(this WebApplication app)
     {
-        app.MapGet("/api/health", (IConfiguration configuration, IOptions<OpenAiOptions> openAiOptions) =>
+        app.MapGet("/api/health", (IConfiguration configuration, IOptions<OpenAiOptions> openAiOptions, [FromServices] IHostEnvironment hostEnvironment) =>
         {
             var assembly = Assembly.GetExecutingAssembly();
             var informationalVersion = assembly
@@ -29,7 +31,8 @@ public static class HealthEndpoints
                 CommitHash = commitHash,
                 SttProvider = sttProvider,
                 TtsProvider = ttsProvider,
-                LlmModel = openAiOptions.Value.Model
+                LlmModel = openAiOptions.Value.Model,
+                Environment = hostEnvironment.EnvironmentName
             });
         }).AllowAnonymous();
     }
