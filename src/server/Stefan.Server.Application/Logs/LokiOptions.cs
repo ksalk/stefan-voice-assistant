@@ -13,8 +13,17 @@ public class LokiOptions
     /// </summary>
     public string CommandLogsQueryTemplate { get; set; } = "{service_namespace=\"stefan\", deployment_environment=\"{Environment}\"} | json | attributes_CommandId=\"{CommandId}\"";
 
-    /// <summary>How far back from now the query covers.</summary>
-    public int MaxLookbackHours { get; set; } = 24;
+    /// <summary>
+    /// How much time before and after the command the query covers, in minutes. The window
+    /// follows the command, so the logs of old commands stay available.
+    /// </summary>
+    public int CommandWindowPaddingMinutes { get; set; } = 15;
+
+    /// <summary>
+    /// How far back from now the query covers when the command is not in the database, in hours.
+    /// Keep it below the query length limit of the log backend.
+    /// </summary>
+    public int FallbackLookbackHours { get; set; } = 720;
 
     /// <summary>Maximum number of log entries returned by a single query.</summary>
     public int Limit { get; set; } = 1000;
