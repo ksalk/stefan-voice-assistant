@@ -97,6 +97,9 @@ public sealed class ServerAppClient : IDisposable
     public async Task<HttpResponseMessage> GetCommandToolsAsync(Guid commandId, CancellationToken cancellationToken = default) =>
         await _httpClient.GetAsync($"/api/commands/{commandId}/tools", cancellationToken);
 
+    public async Task<HttpResponseMessage> GetCommandLogsAsync(Guid commandId, CancellationToken cancellationToken = default) =>
+        await _httpClient.GetAsync($"/api/commands/{commandId}/logs", cancellationToken);
+
     public void Dispose() => _httpClient.Dispose();
 }
 
