@@ -36,16 +36,14 @@ public class MicRecordingTests : IntegrationTestBase
 
             await Task.Delay(TimeSpan.FromSeconds(5));
 
-            // Assert — both streams were recorded
-            var appLogs = await app.GetLogsAsync();
-            Assert.Contains("[recorder] Recording raw mic input to:", appLogs.Stdout);
-            Assert.Contains("[recorder] Recording processed input to:", appLogs.Stdout);
-
-            // Assert — files landed on the host mount and contain audio
-            Assert.Single(Directory.GetFiles(hostRecordingsDir, "mic_raw_*.wav"));
-            Assert.Single(Directory.GetFiles(hostRecordingsDir, "mic_processed_*.wav"));
+            // Assert — both streams were recorded and contain PCM data
+            var rawFile = Assert.Single(Directory.GetFiles(hostRecordingsDir, "mic_raw_*.wav"));
+            var processedFile = Assert.Single(Directory.GetFiles(hostRecordingsDir, "mic_processed_*.wav"));
+            Assert.True(new FileInfo(rawFile).Length > 44);
+            Assert.True(new FileInfo(processedFile).Length > 44);
 
             // Assert — no wake-word detection and no commands were sent
+            var appLogs = await app.GetLogsAsync();
             Assert.DoesNotContain("[listener] Keyword detected", appLogs.Stdout);
             Assert.False(commandReceivedByServer);
         }
