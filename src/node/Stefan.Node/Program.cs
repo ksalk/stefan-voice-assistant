@@ -67,6 +67,7 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
     builder.Services.AddSingleton<AudioRecorder>();
+    builder.Services.AddSingleton<IWakeWordDetector, SherpaWakeWordDetector>();
     RegisterAudioInputProvider(builder);
     RegisterVoicePipeline(builder);
 

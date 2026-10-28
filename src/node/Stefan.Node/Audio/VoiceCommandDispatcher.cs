@@ -13,6 +13,7 @@ public class VoiceCommandDispatcher(
     AppStateService appStateService,
     AudioPlayer audioPlayer,
     AudioRecorder audioRecorder,
+    IWakeWordDetector wakeWordDetector,
     IOptions<KeywordSpotterOptions> keywordSpotterOptions,
     IOptions<AudioOptions> audioOptions,
     ILogger<VoiceCommandDispatcher> logger) : BackgroundService
@@ -80,10 +81,10 @@ public class VoiceCommandDispatcher(
         Action<string> onKeywordDetected,
         CancellationToken cancellationToken)
     {
-        using var keywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.KeywordsFile);
-        using var keywordStream = keywordSpotter.CreateStream();
-
-        using var stopKeywordSpotter = CreateKeywordSpotter(keywordSpotterOptions.Value.StopKeywordsFile);
+        using var stopKeywordSpotter = KeywordSpotterFactory.Create(
+            keywordSpotterOptions.Value,
+            keywordSpotterOptions.Value.StopKeywordsFile,
+            audioOptions.Value.Input.ProcessingSampleRate);
         using var stopKeywordStream = stopKeywordSpotter.CreateStream();
 
         try
@@ -94,7 +95,7 @@ public class VoiceCommandDispatcher(
 
                 if (appStateService.CurrentState == VoiceAssistantState.ListeningForWakeWord)
                 {
-                    ProcessWakeWord(audioBytes, keywordSpotter, keywordStream, onKeywordDetected);
+                    ProcessWakeWord(audioBytes, onKeywordDetected);
                 }
 
                 if (appStateService.CurrentState == VoiceAssistantState.RecordingCommand)
@@ -119,39 +120,25 @@ public class VoiceCommandDispatcher(
 
     private void ProcessWakeWord(
         byte[] audioBytes,
-        KeywordSpotter keywordSpotter,
-        OnlineStream keywordStream,
         Action<string> onKeywordDetected)
     {
         try
         {
             var chunk = new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat };
-            var monoSamples = AudioProcessing.ConvertPcm16ToFloat(chunk);
-            if (monoSamples.Length == 0)
+            var keyword = wakeWordDetector.Process(chunk);
+            if (keyword is null)
             {
                 return;
             }
 
-            keywordStream.AcceptWaveform(chunk.Format.SampleRate, monoSamples);
+            appStateService.CurrentState = VoiceAssistantState.RecordingCommand;
+            _commandAudioBuffer.Clear();
+            _silentDurationMs = 0f;
+            _recordingStartTime = DateTime.UtcNow;
+            _currentCommandId = Guid.NewGuid();
 
-            while (keywordSpotter.IsReady(keywordStream))
-            {
-                keywordSpotter.Decode(keywordStream);
-
-                var keywordResult = keywordSpotter.GetResult(keywordStream);
-                if (!string.IsNullOrWhiteSpace(keywordResult.Keyword))
-                {
-                    appStateService.CurrentState = VoiceAssistantState.RecordingCommand;
-                    _commandAudioBuffer.Clear();
-                    _silentDurationMs = 0f;
-                    _recordingStartTime = DateTime.UtcNow;
-                    _currentCommandId = Guid.NewGuid();
-
-                    audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
-                    onKeywordDetected(keywordResult.Keyword);
-                    keywordSpotter.Reset(keywordStream);
-                }
-            }
+            audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "notification_sound.wav"));
+            onKeywordDetected(keyword);
         }
         catch (Exception ex)
         {
@@ -259,36 +246,5 @@ public class VoiceCommandDispatcher(
             logger.LogWarning("[listener] Failed to send command: {Error}", result.Error);
             audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "command_failed.wav"));
         }
-    }
-
-    private KeywordSpotter CreateKeywordSpotter(string keywordsFile)
-    {
-        var opts = keywordSpotterOptions.Value;
-        var modelPath = opts.ModelPath;
-        var keywordSpotterConfig = new KeywordSpotterConfig()
-        {
-            ModelConfig = new OnlineModelConfig()
-            {
-                Transducer = new OnlineTransducerModelConfig()
-                {
-                    Encoder = Path.Combine(modelPath, opts.EncoderFile),
-                    Decoder = Path.Combine(modelPath, opts.DecoderFile),
-                    Joiner = Path.Combine(modelPath, opts.JoinerFile)
-                },
-                Tokens = Path.Combine(modelPath, opts.TokensPath),
-                NumThreads = opts.NumThreads,
-                Provider = opts.Provider,
-            },
-            KeywordsFile = keywordsFile,
-            KeywordsScore = opts.KeywordsScore,
-            KeywordsThreshold = opts.KeywordsThreshold,
-            FeatConfig = new FeatureConfig()
-            {
-                SampleRate = audioOptions.Value.Input.ProcessingSampleRate,
-                FeatureDim = opts.FeatureDim
-            }
-        };
-
-        return new KeywordSpotter(keywordSpotterConfig);
     }
 }
