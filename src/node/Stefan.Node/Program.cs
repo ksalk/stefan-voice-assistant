@@ -19,7 +19,8 @@ try
 {
     var app = builder.Build();
 
-    if (!await RegisterNode(app))
+    var recordingEnabled = app.Services.GetRequiredService<IOptions<AudioOptions>>().Value.Recording.Enabled;
+    if (!recordingEnabled && !await RegisterNode(app))
     {
         return 1;
     }
@@ -65,8 +66,9 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
 
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
+    builder.Services.AddSingleton<AudioRecorder>();
     RegisterAudioInputProvider(builder);
-    builder.Services.AddHostedService<VoiceCommandDispatcher>();
+    RegisterVoicePipeline(builder);
 
     // Audio player
     builder.Services.AddSingleton<AudioPlayer>();
@@ -103,6 +105,20 @@ void RegisterAudioInputProvider(WebApplicationBuilder builder)
             Log.Information("[audio] Using microphone input");
             break;
     }
+}
+
+void RegisterVoicePipeline(WebApplicationBuilder builder)
+{
+    var audioOptions = builder.Configuration.GetSection(AudioOptions.SectionName).Get<AudioOptions>() ?? new AudioOptions();
+
+    if (audioOptions.Recording.Enabled)
+    {
+        builder.Services.AddHostedService<AudioRecordingService>();
+        Log.Information("[recorder] Capture mode enabled (Audio:Recording:Enabled). Recording input; wake-word detection and command processing are off.");
+        return;
+    }
+
+    builder.Services.AddHostedService<VoiceCommandDispatcher>();
 }
 
 async Task<bool> RegisterNode(WebApplication app)

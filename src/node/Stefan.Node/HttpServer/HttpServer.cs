@@ -22,6 +22,7 @@ public static class HttpServer
                 State = stateService.CurrentState switch
                 {
                     VoiceAssistantState.RecordingCommand => "recording",
+                    VoiceAssistantState.RecordingInput => "recording",
                     VoiceAssistantState.ListeningForWakeWord => "listening",
                     _ => "online"
                 },

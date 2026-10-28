@@ -12,6 +12,7 @@ public class VoiceCommandDispatcher(
     IAudioInputProvider audioInputProvider,
     AppStateService appStateService,
     AudioPlayer audioPlayer,
+    AudioRecorder audioRecorder,
     IOptions<KeywordSpotterOptions> keywordSpotterOptions,
     IOptions<AudioOptions> audioOptions,
     ILogger<VoiceCommandDispatcher> logger) : BackgroundService
@@ -89,6 +90,8 @@ public class VoiceCommandDispatcher(
         {
             await foreach (var audioBytes in reader.ReadAllAsync(cancellationToken))
             {
+                audioRecorder.WriteProcessed(new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat });
+
                 if (appStateService.CurrentState == VoiceAssistantState.ListeningForWakeWord)
                 {
                     ProcessWakeWord(audioBytes, keywordSpotter, keywordStream, onKeywordDetected);
@@ -223,7 +226,7 @@ public class VoiceCommandDispatcher(
 
     private async Task SaveRecordingAsync(List<RawPcmChunk> monoChunks)
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, "recordings");
+        var dir = Path.Combine(AppContext.BaseDirectory, audioOptions.Value.Recording.Directory);
         Directory.CreateDirectory(dir);
         var filePath = Path.Combine(dir, $"command_{DateTime.Now:yyyyMMdd_HHmmss}.wav");
         var wavBytes = AudioProcessing.BuildWavBytes(monoChunks);

@@ -7,6 +7,7 @@ namespace Stefan.Node.Audio;
 
 public class MicAudioInputProvider(
     IOptions<AudioOptions> audioOptions,
+    AudioRecorder audioRecorder,
     ILogger<MicAudioInputProvider> logger) : IAudioInputProvider
 {
     public Task WriteAudioInput(ChannelWriter<byte[]> audioWriter, CancellationToken cancellationToken)
@@ -37,6 +38,7 @@ public class MicAudioInputProvider(
                             BitsPerSample = input.BitsPerSample
                         }
                     };
+                    audioRecorder.WriteRaw(chunk);
                     var output = AudioProcessing.ConvertAndResample(chunk, input.ProcessingSampleRate);
                     audioWriter.TryWrite(output.Bytes);
                 }

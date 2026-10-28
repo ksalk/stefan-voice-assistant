@@ -504,6 +504,25 @@ public class AudioProcessingTests
         Assert.Equal(dataSize, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(40, 4)));
     }
 
+    [Fact]
+    public void CreateWavHeader_WithChannelsAndBitsPerSample_ProducesCorrectHeader()
+    {
+        var dataSize = 2048;
+        var sampleRate = 24000;
+        var channels = 2;
+
+        var header = AudioProcessing.CreateWavHeader(dataSize, sampleRate, channels, 16);
+
+        Assert.Equal(44, header.Length);
+        Assert.Equal(36 + dataSize, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(4, 4)));
+        Assert.Equal(channels, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(22, 2)));
+        Assert.Equal(sampleRate, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(24, 4)));
+        Assert.Equal(sampleRate * channels * 2, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(28, 4)));
+        Assert.Equal(channels * 2, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(32, 2)));
+        Assert.Equal(16, BinaryPrimitives.ReadInt16LittleEndian(header.AsSpan(34, 2)));
+        Assert.Equal(dataSize, BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(40, 4)));
+    }
+
     #endregion
 
     #region BuildWavBytes

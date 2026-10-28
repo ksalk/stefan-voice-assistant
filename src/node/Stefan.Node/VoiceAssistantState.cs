@@ -1,5 +1,6 @@
 public enum VoiceAssistantState
 {
     ListeningForWakeWord,
-    RecordingCommand
+    RecordingCommand,
+    RecordingInput
 }

@@ -292,6 +292,16 @@ public static class AudioProcessing
     /// </summary>
     public static byte[] CreateWavHeader(int dataSize, int sampleRate)
     {
+        return CreateWavHeader(dataSize, sampleRate, channels: 1, bitsPerSample: 16);
+    }
+
+    /// <summary>
+    /// Creates a standard 44-byte RIFF/WAV header for 16-bit PCM data with the given channel count.
+    /// </summary>
+    public static byte[] CreateWavHeader(int dataSize, int sampleRate, int channels, int bitsPerSample)
+    {
+        var blockAlign = channels * (bitsPerSample / 8);
+        var byteRate = sampleRate * blockAlign;
         var h = new byte[44];
         var s = h.AsSpan();
         "RIFF"u8.CopyTo(s);
@@ -300,11 +310,11 @@ public static class AudioProcessing
         "fmt "u8.CopyTo(s[12..]);
         BinaryPrimitives.WriteInt32LittleEndian(s[16..], 16);
         BinaryPrimitives.WriteInt16LittleEndian(s[20..], 1);
-        BinaryPrimitives.WriteInt16LittleEndian(s[22..], 1);
+        BinaryPrimitives.WriteInt16LittleEndian(s[22..], (short)channels);
         BinaryPrimitives.WriteInt32LittleEndian(s[24..], sampleRate);
-        BinaryPrimitives.WriteInt32LittleEndian(s[28..], sampleRate * 2);
-        BinaryPrimitives.WriteInt16LittleEndian(s[32..], 2);
-        BinaryPrimitives.WriteInt16LittleEndian(s[34..], 16);
+        BinaryPrimitives.WriteInt32LittleEndian(s[28..], byteRate);
+        BinaryPrimitives.WriteInt16LittleEndian(s[32..], (short)blockAlign);
+        BinaryPrimitives.WriteInt16LittleEndian(s[34..], (short)bitsPerSample);
         "data"u8.CopyTo(s[36..]);
         BinaryPrimitives.WriteInt32LittleEndian(s[40..], dataSize);
         return h;

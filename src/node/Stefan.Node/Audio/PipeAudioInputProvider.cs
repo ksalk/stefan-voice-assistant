@@ -7,6 +7,7 @@ namespace Stefan.Node.Audio;
 
 public class PipeAudioInputProvider(
     IOptions<AudioOptions> audioOptions,
+    AudioRecorder audioRecorder,
     ILogger<PipeAudioInputProvider> logger) : IAudioInputProvider
 {
     private const int ChunkSize = 4096;
@@ -68,6 +69,7 @@ public class PipeAudioInputProvider(
                         BitsPerSample = input.BitsPerSample
                     }
                 };
+                audioRecorder.WriteRaw(chunk);
                 var output = AudioProcessing.ConvertAndResample(chunk, input.ProcessingSampleRate);
                 await audioWriter.WriteAsync(output.Bytes, cancellationToken);
             }
