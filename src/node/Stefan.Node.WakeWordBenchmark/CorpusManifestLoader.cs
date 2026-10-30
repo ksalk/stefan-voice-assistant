@@ -36,44 +36,85 @@ public static class CorpusManifestLoader
                 throw new InvalidDataException($"Manifest clip is invalid: {clipElement.GetRawText()}");
             }
 
-            var fileName = Path.GetFullPath(Path.Combine(manifestDirectory, relativePath));
-            if (fileName.StartsWith(manifestDirectory, StringComparison.Ordinal) is false)
+            var fullPath = Path.GetFullPath(Path.Combine(manifestDirectory, relativePath));
+            if (fullPath.StartsWith(manifestDirectory, StringComparison.Ordinal) is false)
             {
                 throw new InvalidDataException($"Manifest clip path is not under the manifest root: {relativePath}");
             }
 
-            if (!File.Exists(fileName))
-            {
-                throw new FileNotFoundException($"Manifest clip not found: {relativePath}", fileName);
-            }
+            var tags = ParseTags(clipElement);
+            var wakeWordEndMs = ParseWakeWordEndMs(clipElement);
 
-            if (seenClips.Contains(fileName))
+            if (Directory.Exists(fullPath))
             {
-                continue;
-            }
-            seenClips.Add(fileName);
-
-            var tags = new List<string>();
-            if (clipElement.TryGetProperty("tags", out var tagsElement) && tagsElement.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var tag in tagsElement.EnumerateArray())
+                // A directory expands to every .wav file below it, recursively.
+                var files = Directory
+                    .EnumerateFiles(fullPath, "*", SearchOption.AllDirectories)
+                    .Where(IsWavFile)
+                    .OrderBy(file => file, StringComparer.Ordinal)
+                    .ToArray();
+                if (files.Length == 0)
                 {
-                    var tagText = tag.GetString();
-                    if (!string.IsNullOrWhiteSpace(tagText))
-                    {
-                        tags.Add(tagText);
-                    }
+                    throw new InvalidDataException($"Manifest directory contains no .wav files: {relativePath}");
+                }
+
+                foreach (var file in files)
+                {
+                    AddClip(clips, seenClips, file, Path.GetRelativePath(manifestDirectory, file), label, wakeWordEndMs, tags);
                 }
             }
-
-            var wakeWordEndMs = clipElement.TryGetProperty("wakeWordEndMs", out var wakeWordEndElement) &&
-                wakeWordEndElement.ValueKind == JsonValueKind.Number
-                ? wakeWordEndElement.GetDouble()
-                : (double?)null;
-
-            clips.Add(new CorpusClip(fileName, relativePath, label, wakeWordEndMs, tags));
+            else if (File.Exists(fullPath))
+            {
+                AddClip(clips, seenClips, fullPath, relativePath, label, wakeWordEndMs, tags);
+            }
+            else
+            {
+                throw new FileNotFoundException($"Manifest clip not found: {relativePath}", fullPath);
+            }
         }
 
         return new CorpusManifest(clips);
     }
+
+    private static bool IsWavFile(string path) =>
+        string.Equals(Path.GetExtension(path), ".wav", StringComparison.OrdinalIgnoreCase);
+
+    private static void AddClip(
+        List<CorpusClip> clips,
+        HashSet<string> seenClips,
+        string fileName,
+        string relativePath,
+        string label,
+        double? wakeWordEndMs,
+        IReadOnlyList<string> tags)
+    {
+        if (seenClips.Add(fileName))
+        {
+            clips.Add(new CorpusClip(fileName, relativePath, label, wakeWordEndMs, tags));
+        }
+    }
+
+    private static List<string> ParseTags(JsonElement clipElement)
+    {
+        var tags = new List<string>();
+        if (clipElement.TryGetProperty("tags", out var tagsElement) && tagsElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var tag in tagsElement.EnumerateArray())
+            {
+                var tagText = tag.GetString();
+                if (!string.IsNullOrWhiteSpace(tagText))
+                {
+                    tags.Add(tagText);
+                }
+            }
+        }
+
+        return tags;
+    }
+
+    private static double? ParseWakeWordEndMs(JsonElement clipElement) =>
+        clipElement.TryGetProperty("wakeWordEndMs", out var wakeWordEndElement) &&
+        wakeWordEndElement.ValueKind == JsonValueKind.Number
+            ? wakeWordEndElement.GetDouble()
+            : null;
 }
