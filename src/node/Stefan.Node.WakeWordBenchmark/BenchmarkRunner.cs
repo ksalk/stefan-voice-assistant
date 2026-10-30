@@ -21,9 +21,18 @@ public sealed class BenchmarkRunner
         var results = new List<BenchmarkResult>();
         var stopwatch = Stopwatch.StartNew();
         var process = Process.GetCurrentProcess();
+        var reporter = new ConsoleReporter();
 
-        foreach (var configuration in configurations)
+        for (var configurationIndex = 0; configurationIndex < configurations.Count; configurationIndex++)
         {
+            var configuration = configurations[configurationIndex];
+            reporter.BeginConfiguration(configurationIndex + 1, configurations.Count, configuration);
+            var configurationStopwatch = Stopwatch.StartNew();
+            var clipsDone = 0;
+            var positivesDone = 0;
+            var hits = 0;
+            var falseAlarms = 0;
+
             using var detector = new SherpaWakeWordDetector(
                 Microsoft.Extensions.Options.Options.Create(configuration.KeywordSpotterOptions),
                 Microsoft.Extensions.Options.Options.Create(configuration.AudioOptions));
@@ -57,7 +66,7 @@ public sealed class BenchmarkRunner
                     : (double?)null;
                 var peakWorkingSetMb = process.PeakWorkingSet64 / 1024.0 / 1024.0;
 
-                results.Add(new BenchmarkResult(
+                var result = new BenchmarkResult(
                     configuration,
                     clip,
                     audioDurationMs,
@@ -65,14 +74,40 @@ public sealed class BenchmarkRunner
                     firstDetectionOffsetMs,
                     processingStopwatch.Elapsed.TotalMilliseconds,
                     peakWorkingSetMb,
-                    rtf ?? 0.0));
+                    rtf ?? 0.0);
+                results.Add(result);
+
+                clipsDone++;
+                if (result.Outcome is ClipOutcome.Hit or ClipOutcome.Miss)
+                {
+                    positivesDone++;
+                }
+
+                if (result.Outcome == ClipOutcome.Hit)
+                {
+                    hits++;
+                }
+                else if (result.Outcome == ClipOutcome.FalseActivation)
+                {
+                    falseAlarms++;
+                }
+
+                reporter.UpdateProgress(
+                    clipsDone,
+                    manifest.Clips.Count,
+                    positivesDone,
+                    hits,
+                    falseAlarms,
+                    configurationStopwatch.Elapsed);
             }
+
+            reporter.EndConfiguration(positivesDone, hits, falseAlarms, configurationStopwatch.Elapsed);
         }
 
         stopwatch.Stop();
         var summary = Summarize(configurations, results, process, stopwatch.ElapsedMilliseconds);
-        BenchmarkReportWriter.Write(_options, results, summary);
-        Print(_options.OutputDirectory, summary);
+        var runDirectory = BenchmarkReportWriter.Write(_options, manifest, results, summary);
+        reporter.PrintReport(_options, manifest, results, summary, runDirectory, stopwatch.Elapsed);
         return summary;
     }
 
@@ -130,14 +165,15 @@ public sealed class BenchmarkRunner
                 .Where(result => string.Equals(result.CorpusClip.Label, "negative", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
 
-            var detectedCount = positives.Count(result => result.DetectionCount > 0);
+            var detectedCount = positives.Count(result => result.Outcome == ClipOutcome.Hit);
             var falseActivations = negatives.Sum(result => result.DetectionCount);
             var falseActivationsPerHour = negatives.Length > 0
                 ? falseActivations / (negatives.Sum(result => result.AudioDurationMs) / 3_600_000.0)
                 : (double?)null;
             var latencyValues = positives
-                .Where(result => result.FirstDetectionOffsetMs is not null && result.CorpusClip.WakeWordEndMs is not null)
-                .Select(result => result.FirstDetectionOffsetMs!.Value - result.CorpusClip.WakeWordEndMs!.Value)
+                .Select(result => result.LatencyMs)
+                .Where(latency => latency is not null)
+                .Select(latency => latency!.Value)
                 .OrderBy(item => item)
                 .ToArray();
             var averageLatencyMs = latencyValues.Length > 0 ? latencyValues.Average() : (double?)null;
@@ -171,16 +207,6 @@ public sealed class BenchmarkRunner
         return new BenchmarkSummary(rows);
     }
 
-    private static void Print(string? outputDirectory, BenchmarkSummary summary)
-    {
-        foreach (var row in summary.Rows)
-        {
-            Console.WriteLine(
-                $"{row.ConfigurationId}: recall={row.Recall * 100:0.##}% false_activations/hour={row.FalseActivationsPerHour:0.###} rtf={row.Rtf:0.####}");
-        }
-
-        Console.WriteLine($"Results: {outputDirectory}");
-    }
 }
 
 internal static class BenchmarkConfigurations

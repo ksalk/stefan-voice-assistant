@@ -19,6 +19,14 @@ public sealed record BenchmarkConfiguration(
     KeywordSpotterOptions KeywordSpotterOptions,
     AudioOptions AudioOptions);
 
+public enum ClipOutcome
+{
+    Hit,
+    Miss,
+    FalseActivation,
+    Clean,
+}
+
 public sealed record BenchmarkResult(
     BenchmarkConfiguration Configuration,
     CorpusClip CorpusClip,
@@ -27,9 +35,37 @@ public sealed record BenchmarkResult(
     double? FirstDetectionOffsetMs,
     double ProcessingTimeMs,
     double PeakWorkingSetMb,
-    double Rtf);
+    double Rtf)
+{
+    public ClipOutcome Outcome
+    {
+        get
+        {
+            var isPositive = string.Equals(CorpusClip.Label, "positive", StringComparison.OrdinalIgnoreCase);
+            return (isPositive, DetectionCount > 0) switch
+            {
+                (true, true) => ClipOutcome.Hit,
+                (true, false) => ClipOutcome.Miss,
+                (false, true) => ClipOutcome.FalseActivation,
+                (false, false) => ClipOutcome.Clean,
+            };
+        }
+    }
 
-public sealed record BenchmarkSummary(IReadOnlyList<BenchmarkSummaryRow> Rows);
+    public double? LatencyMs =>
+        FirstDetectionOffsetMs is not null && CorpusClip.WakeWordEndMs is not null
+            ? FirstDetectionOffsetMs.Value - CorpusClip.WakeWordEndMs.Value
+            : null;
+}
+
+public sealed record BenchmarkSummary(IReadOnlyList<BenchmarkSummaryRow> Rows)
+{
+    public IReadOnlyList<BenchmarkSummaryRow> Rank() => Rows
+        .OrderByDescending(row => row.Recall ?? -1.0)
+        .ThenBy(row => row.FalseActivationsPerHour ?? double.MaxValue)
+        .ThenBy(row => row.Rtf)
+        .ToArray();
+}
 
 public sealed record BenchmarkSummaryRow(
     string ConfigurationId,
