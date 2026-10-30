@@ -130,6 +130,32 @@ run = "dotnet run --project src/node/Stefan.Node --play-file ${usage_filepath?}"
 description = "Build the node test image"
 run = "docker build --build-arg TARGET_ARCH=linux-x64 -t stefan-node:test -f src/node/Dockerfile . --load"
 
+# Wake word
+[tasks.wake-word-benchmark]
+description = "Run the wake-word replay benchmark against a corpus manifest"
+usage = '''
+arg "<manifest>" help="Path to the corpus manifest" default="recordings/manifest.json"
+flag "-o --output <dir>" help="Base directory for runs; each run writes a timestamped subdirectory with summary.csv / results.csv / results.jsonl / report.md / configuration.json" default="recordings/results"
+flag "--model-path <dir>" help="Directory that contains the ONNX model files" default="models/onnx"
+flag "--scores <values>" help="Comma-separated KeywordsScore values"
+flag "--thresholds <values>" help="Comma-separated KeywordsThreshold values"
+flag "--keywords-file <files>" help="Comma-separated keywords files to compare"
+flag "--chunk-bytes <bytes>" help="PCM chunk size in bytes (~128 ms at the default 16 kHz mono)" default="4096"
+flag "--tail-ms <ms>" help="Silence appended after each clip so trailing audio flushes" default="600"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+args=(--manifest "${usage_manifest:?}" --model-path "${usage_model_path:?}" --output-dir "${usage_output:?}"
+  --chunk-bytes "${usage_chunk_bytes:?}" --tail-ms "${usage_tail_ms:?}")
+
+if [[ -n "${usage_scores:-}" ]]; then args+=(--scores "${usage_scores}"); fi
+if [[ -n "${usage_thresholds:-}" ]]; then args+=(--thresholds "${usage_thresholds}"); fi
+if [[ -n "${usage_keywords_file:-}" ]]; then args+=(--keywords-file "${usage_keywords_file}"); fi
+
+dotnet run --project src/node/Stefan.Node.WakeWordBenchmark -- "${args[@]}"
+'''
+
 # Dashboard
 [tasks.run-ui]
 description = "Run the dashboard dev server"
