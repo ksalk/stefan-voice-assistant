@@ -86,6 +86,7 @@ public sealed class ConsoleReporter
         if (ranked.Count > 0)
         {
             PrintLeaderboard(ranked);
+            PrintLegend();
             if (ranked.All(row => row.AverageLatencyMs is null))
             {
                 Console.WriteLine();
@@ -136,6 +137,21 @@ public sealed class ConsoleReporter
     {
         var padded = cells.Select((cell, column) => cell.PadRight(widths[column]));
         Console.WriteLine(string.Join("  ", padded));
+    }
+
+    private static void PrintLegend()
+    {
+        Console.WriteLine();
+        Console.WriteLine("Legend:");
+        Console.WriteLine("  Rank      position after sorting: recall first, then false activations. * marks the best.");
+        Console.WriteLine("  Config    keywords file used for this configuration");
+        Console.WriteLine("  Score     keywords_score — boost added to tokens of the keyword. Higher means easier detection.");
+        Console.WriteLine("  Thr       keywords_threshold — minimum token score to emit a detection. Higher means stricter.");
+        Console.WriteLine("  Recall    detected positives / all positive clips in the corpus");
+        Console.WriteLine("  FA/h      false activations per hour of negative audio");
+        Console.WriteLine("  Latency   detection offset after the wake word ends, avg / p50. Needs wakeWordEndMs in the manifest.");
+        Console.WriteLine("  RTF       real-time factor: processing time / audio time. Lower is faster.");
+        Console.WriteLine("  Peak mem  peak process working set while running.");
     }
 
     private static void PrintBestConfigFailures(
