@@ -7,7 +7,7 @@ namespace Stefan.Node.Audio;
 public sealed class SherpaWakeWordDetector : IWakeWordDetector
 {
     private readonly KeywordSpotter _keywordSpotter;
-    private readonly OnlineStream _keywordStream;
+    private OnlineStream _keywordStream;
 
     public SherpaWakeWordDetector(
         IOptions<KeywordSpotterOptions> keywordSpotterOptions,
@@ -48,7 +48,12 @@ public sealed class SherpaWakeWordDetector : IWakeWordDetector
 
     public void Reset()
     {
-        _keywordSpotter.Reset(_keywordStream);
+        // Sherpa's KeywordSpotter.Reset only clears the decoder hypothesis; the
+        // stream keeps the accumulated audio context and encoder state. That
+        // makes the next utterance depend on whatever preceded the reset. A
+        // fresh stream gives every utterance a pristine decoding state.
+        _keywordStream.Dispose();
+        _keywordStream = _keywordSpotter.CreateStream();
     }
 
     public void Dispose()
