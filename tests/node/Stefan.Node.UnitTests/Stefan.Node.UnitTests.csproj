@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\..\src\node\Stefan.Node\Stefan.Node.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\node\Stefan.Node.WakeWordBenchmark\Stefan.Node.WakeWordBenchmark.csproj" />
+  </ItemGroup>
+
 </Project>
