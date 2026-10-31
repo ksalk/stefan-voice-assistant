@@ -258,7 +258,11 @@
 				{#each commands as command (command.id)}
 					<Table.Row>
 						<Table.Cell>
-							<a href={resolve(`/commands/${command.id}`)} class="font-medium hover:underline">
+							<a
+								href={resolve(`/commands/${command.id}`)}
+								class="font-medium hover:underline"
+								class:text-muted-foreground={!command.transcript}
+							>
 								{command.transcript ? truncate(command.transcript, 40) : '(no transcript)'}
 							</a>
 						</Table.Cell>

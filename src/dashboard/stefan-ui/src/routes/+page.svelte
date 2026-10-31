@@ -209,8 +209,9 @@
 										<a
 											href={resolve(`/commands/${command.id}`)}
 											class="font-medium hover:underline"
+											class:text-muted-foreground={!command.transcript}
 										>
-											{truncate(command.transcript)}
+											{command.transcript ? truncate(command.transcript) : '(no transcript)'}
 										</a>
 									</Table.Cell>
 									<Table.Cell>
