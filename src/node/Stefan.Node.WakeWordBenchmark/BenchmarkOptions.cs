@@ -1,20 +1,30 @@
 using System.Globalization;
+using System.Text.Json;
 using Stefan.Node.Options;
 
 namespace Stefan.Node.WakeWordBenchmark;
+
+public sealed record EnsembleMember(string KeywordsFile, float Score, float Threshold);
 
 public sealed record BenchmarkOptions(
     string ManifestPath,
     string OutputDirectory,
     string ModelPath,
     IReadOnlyList<string> KeywordFiles,
+    IReadOnlyList<EnsembleMember> EnsembleMembers,
     IReadOnlyList<string> KeywordTranscriptions,
     IReadOnlyList<float> Scores,
     IReadOnlyList<float> Thresholds,
+    IReadOnlyList<int> MaxActivePaths,
+    IReadOnlyList<int> NumTrailingBlanks,
+    string EncoderFile,
+    string DecoderFile,
+    string JoinerFile,
     int ChunkBytes,
     int TailMs,
     int Threads,
     int ProcessingSampleRate,
+    bool NoResample,
     KeywordSpotterOptions KeywordSpotterOptions,
     AudioOptions AudioOptions)
 {
@@ -36,6 +46,13 @@ public sealed record BenchmarkOptions(
         var tailMs = parser.GetInt("tail-ms", 600);
         var threads = parser.GetInt("threads", 2);
         var processingSampleRate = parser.GetInt("processing-sample-rate", 16000);
+        var maxActivePaths = parser.GetIntList("max-active-paths", "4");
+        var numTrailingBlanks = parser.GetIntList("num-trailing-blanks", "1");
+        var encoderFile = parser.GetString("encoder-file", "encoder-epoch-13-avg-2-chunk-16-left-64.onnx");
+        var decoderFile = parser.GetString("decoder-file", "decoder-epoch-13-avg-2-chunk-16-left-64.onnx");
+        var joinerFile = parser.GetString("joiner-file", "joiner-epoch-13-avg-2-chunk-16-left-64.onnx");
+        var ensembleMembers = LoadEnsemble(parser.GetString("ensemble", null));
+        var noResample = ParserHasFlag(args, "no-resample");
 
         var keywordSpotterOptions = new KeywordSpotterOptions
         {
@@ -44,8 +61,41 @@ public sealed record BenchmarkOptions(
             Provider = "cpu",
             FeatureDim = 80,
             KeywordsScore = scores.First(),
-            KeywordsThreshold = thresholds.First()
+            KeywordsThreshold = thresholds.First(),
+            EncoderFile = encoderFile,
+            DecoderFile = decoderFile,
+            JoinerFile = joinerFile,
+            MaxActivePaths = maxActivePaths.First(),
+            NumTrailingBlanks = numTrailingBlanks.First()
         };
+
+        if (ensembleMembers.Count > 0)
+        {
+            // Ensemble mode: every member provides its own keywords file, score and threshold.
+            var groups = new List<KeywordGroupOptions>();
+            foreach (var member in ensembleMembers)
+            {
+                groups.Add(new KeywordGroupOptions
+                {
+                    KeywordsFile = member.KeywordsFile,
+                    KeywordsScore = member.Score,
+                    KeywordsThreshold = member.Threshold,
+                });
+            }
+            keywordSpotterOptions = new KeywordSpotterOptions
+            {
+                ModelPath = modelPath,
+                NumThreads = threads,
+                Provider = "cpu",
+                FeatureDim = 80,
+                EncoderFile = encoderFile,
+                DecoderFile = decoderFile,
+                JoinerFile = joinerFile,
+                MaxActivePaths = maxActivePaths.First(),
+                NumTrailingBlanks = numTrailingBlanks.First(),
+                Groups = groups.ToArray(),
+            };
+        }
 
         var audioOptions = new AudioOptions
         {
@@ -69,15 +119,60 @@ public sealed record BenchmarkOptions(
             outputDirectory,
             modelPath,
             keywordFiles,
+            ensembleMembers,
             keywordTranscriptions,
             scores,
             thresholds,
+            maxActivePaths,
+            numTrailingBlanks,
+            encoderFile,
+            decoderFile,
+            joinerFile,
             chunkBytes,
             tailMs,
             threads,
             processingSampleRate,
+            noResample,
             keywordSpotterOptions,
             audioOptions);
+    }
+
+    private static bool ParserHasFlag(string[] args, string name)
+    {
+        var flag = $"--{name}";
+        return args.Any(arg => string.Equals(arg, flag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<EnsembleMember> LoadEnsemble(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return [];
+        }
+
+        var resolved = File.Exists(path) ? Path.GetFullPath(path) : path;
+        var json = File.ReadAllText(resolved);
+        var members = JsonSerializer.Deserialize<List<EnsembleMember>>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+        }) ?? throw new InvalidDataException($"Ensemble file '{resolved}' is empty.");
+
+        for (var i = 0; i < members.Count; i++)
+        {
+            var member = members[i];
+            if (string.IsNullOrWhiteSpace(member.KeywordsFile))
+            {
+                throw new InvalidDataException($"Ensemble member {i} has empty keywordsFile: '{resolved}'.");
+            }
+            var keywordsPath = File.Exists(member.KeywordsFile)
+                ? Path.GetFullPath(member.KeywordsFile)
+                : Path.GetFullPath(Path.Join(Path.GetDirectoryName(resolved)!, member.KeywordsFile));
+            members[i] = member with { KeywordsFile = keywordsPath };
+        }
+
+        return members;
     }
 
     private sealed class ArgumentParser(string[] args)

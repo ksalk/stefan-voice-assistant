@@ -50,7 +50,9 @@ public sealed class BenchmarkRunner
 
                 foreach (var chunk in chunks)
                 {
-                    var processedChunk = AudioProcessing.ConvertAndResample(chunk, _options.ProcessingSampleRate);
+                    var processedChunk = _options.NoResample
+                        ? chunk
+                        : AudioProcessing.ConvertAndResample(chunk, _options.ProcessingSampleRate);
                     var keyword = detector.Process(processedChunk);
                     audioDurationMs += AudioDurationMs(processedChunk);
                     if (keyword is not null)
@@ -213,6 +215,20 @@ internal static class BenchmarkConfigurations
 {
     public static List<BenchmarkConfiguration> Create(BenchmarkOptions options)
     {
+        if (options.EnsembleMembers.Count > 0)
+        {
+            // One configuration: the ensemble itself. Score/threshold sweeps do not apply;
+            // each member carries its own per-line score and threshold.
+            var configuration = new BenchmarkConfiguration(
+                $"ens|{string.Join("+", options.EnsembleMembers.Select(m => $"{Path.GetFileName(m.KeywordsFile)}:{m.Score:0.####}/{m.Threshold:0.####}"))}",
+                string.Join(", ", options.EnsembleMembers.Select(m => m.KeywordsFile)),
+                0,
+                0,
+                CreateKeywordSpotterOptions(options),
+                CreateAudioOptions(options));
+            return [configuration];
+        }
+
         var configurations = new List<BenchmarkConfiguration>();
         var index = 0;
         foreach (var score in options.Scores)
@@ -221,14 +237,20 @@ internal static class BenchmarkConfigurations
             {
                 foreach (var keywordsFile in options.KeywordFiles)
                 {
-                    configurations.Add(new BenchmarkConfiguration(
-                        $"{index:D3}|{Path.GetFileName(keywordsFile)}|score:{score:0.####}|threshold:{threshold:0.####}",
-                        keywordsFile,
-                        score,
-                        threshold,
-                        CreateKeywordSpotterOptions(options, keywordsFile, score, threshold),
-                        CreateAudioOptions(options)));
-                    index++;
+                    foreach (var maxActivePaths in options.MaxActivePaths)
+                    {
+                        foreach (var numTrailingBlanks in options.NumTrailingBlanks)
+                        {
+                            configurations.Add(new BenchmarkConfiguration(
+                                $"{index:D3}|{Path.GetFileName(keywordsFile)}|score:{score:0.####}|threshold:{threshold:0.####}|paths:{maxActivePaths}|blanks:{numTrailingBlanks}",
+                                keywordsFile,
+                                score,
+                                threshold,
+                                CreateKeywordSpotterOptions(options, keywordsFile, score, threshold, maxActivePaths, numTrailingBlanks),
+                                CreateAudioOptions(options)));
+                            index++;
+                        }
+                    }
                 }
             }
         }
@@ -236,19 +258,44 @@ internal static class BenchmarkConfigurations
         return configurations;
     }
 
-    private static KeywordSpotterOptions CreateKeywordSpotterOptions(
-        BenchmarkOptions options,
-        string keywordsFile,
-        float score,
-        float threshold)
+    private static KeywordSpotterOptions CreateKeywordSpotterOptions(BenchmarkOptions options)
     {
         var settings = options.KeywordSpotterOptions;
         return new KeywordSpotterOptions
         {
             ModelPath = settings.ModelPath,
-            EncoderFile = settings.EncoderFile,
-            DecoderFile = settings.DecoderFile,
-            JoinerFile = settings.JoinerFile,
+            EncoderFile = options.EncoderFile,
+            DecoderFile = options.DecoderFile,
+            JoinerFile = options.JoinerFile,
+            TokensPath = settings.TokensPath,
+            KeywordsFile = settings.KeywordsFile,
+            StopKeywordsFile = settings.StopKeywordsFile,
+            NumThreads = settings.NumThreads,
+            Provider = settings.Provider,
+            FeatureDim = settings.FeatureDim,
+            KeywordsScore = settings.KeywordsScore,
+            KeywordsThreshold = settings.KeywordsThreshold,
+            MaxActivePaths = settings.MaxActivePaths,
+            NumTrailingBlanks = settings.NumTrailingBlanks,
+            Groups = settings.Groups,
+        };
+    }
+
+    private static KeywordSpotterOptions CreateKeywordSpotterOptions(
+        BenchmarkOptions options,
+        string keywordsFile,
+        float score,
+        float threshold,
+        int maxActivePaths,
+        int numTrailingBlanks)
+    {
+        var settings = options.KeywordSpotterOptions;
+        return new KeywordSpotterOptions
+        {
+            ModelPath = settings.ModelPath,
+            EncoderFile = options.EncoderFile,
+            DecoderFile = options.DecoderFile,
+            JoinerFile = options.JoinerFile,
             TokensPath = settings.TokensPath,
             KeywordsFile = keywordsFile,
             StopKeywordsFile = settings.StopKeywordsFile,
@@ -257,6 +304,8 @@ internal static class BenchmarkConfigurations
             FeatureDim = settings.FeatureDim,
             KeywordsScore = score,
             KeywordsThreshold = threshold,
+            MaxActivePaths = maxActivePaths,
+            NumTrailingBlanks = numTrailingBlanks,
         };
     }
 

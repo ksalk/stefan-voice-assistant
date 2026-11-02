@@ -27,6 +27,8 @@ public static class KeywordSpotterFactory
             KeywordsFile = keywordsFile,
             KeywordsScore = options.KeywordsScore,
             KeywordsThreshold = options.KeywordsThreshold,
+            MaxActivePaths = options.MaxActivePaths,
+            NumTrailingBlanks = options.NumTrailingBlanks,
             FeatConfig = new FeatureConfig()
             {
                 SampleRate = sampleRate,
