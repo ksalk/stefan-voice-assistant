@@ -15,6 +15,10 @@ public class CommandRecord
     public string InputAudioFormat { get; set; } = null!;
     public double InputAudioDurationMs { get; set; }
 
+    public byte[]? WakeWordAudio { get; set; }
+    public string? WakeWordAudioFormat { get; set; }
+    public double? WakeWordAudioDurationMs { get; set; }
+
     public string? Transcript { get; set; } = null!;
     public string? LlmConversationJson { get; set; } = null!;
     public string? ResponseText { get; set; } = null!;

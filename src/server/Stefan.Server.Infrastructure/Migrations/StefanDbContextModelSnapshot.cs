@@ -82,6 +82,15 @@ namespace Stefan.Server.Infrastructure.Migrations
                     b.Property<double?>("TtsDurationMs")
                         .HasColumnType("double precision");
 
+                    b.Property<byte[]>("WakeWordAudio")
+                        .HasColumnType("bytea");
+
+                    b.Property<double?>("WakeWordAudioDurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("WakeWordAudioFormat")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.ToTable("CommandRecords");

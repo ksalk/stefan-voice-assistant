@@ -53,6 +53,7 @@ public sealed class ServerAppClient : IDisposable
         string? deviceId,
         string? sessionId,
         string? commandId,
+        byte[]? wakeWordAudio = null,
         CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/commands");
@@ -66,7 +67,7 @@ public sealed class ServerAppClient : IDisposable
             request.Headers.Add("X-Command-ID", commandId);
 
         var audio = new byte[] { 82, 73, 70, 70, 36, 0, 0, 0, 87, 65, 86, 0x00 };
-        request.Content = new MultipartFormDataContent
+        var content = new MultipartFormDataContent
         {
             {
                 new ByteArrayContent(audio) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } },
@@ -75,8 +76,24 @@ public sealed class ServerAppClient : IDisposable
             }
         };
 
+        if (wakeWordAudio is not null)
+        {
+            content.Add(
+                new ByteArrayContent(wakeWordAudio) { Headers = { ContentType = new MediaTypeHeaderValue("audio/wav") } },
+                "wakeWordFile",
+                "wake-word.wav");
+        }
+
+        request.Content = content;
+
         return await _httpClient.SendAsync(request, cancellationToken);
     }
+
+    public async Task<HttpResponseMessage> GetCommandAudioAsync(
+        Guid commandId,
+        string type,
+        CancellationToken cancellationToken = default) =>
+        await _httpClient.GetAsync($"/api/commands/{commandId}/audio?type={type}", cancellationToken);
 
     public async Task<GetNodesResult> GetNodesAsync(CancellationToken cancellationToken = default)
     {

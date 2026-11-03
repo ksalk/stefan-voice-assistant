@@ -18,6 +18,10 @@ public class CommandRecordEntityConfiguration : IEntityTypeConfiguration<Command
         builder.Property(c => c.InputAudioFormat).IsRequired();
         builder.Property(c => c.InputAudioDurationMs).IsRequired();
 
+        builder.Property(c => c.WakeWordAudio).IsRequired(false);
+        builder.Property(c => c.WakeWordAudioFormat).IsRequired(false);
+        builder.Property(c => c.WakeWordAudioDurationMs).IsRequired(false);
+
         builder.Property(c => c.Transcript).IsRequired(false);
         builder.Property(c => c.LlmConversationJson).IsRequired(false);
         builder.Property(c => c.ResponseText).IsRequired(false);

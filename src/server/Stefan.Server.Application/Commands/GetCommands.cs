@@ -21,6 +21,8 @@ public class CommandSummaryDto
     public DateTime ReceivedAt { get; set; }
     public string InputAudioFormat { get; set; } = null!;
     public double InputAudioDurationMs { get; set; }
+    public string? WakeWordAudioFormat { get; set; }
+    public double? WakeWordAudioDurationMs { get; set; }
     public string? Transcript { get; set; }
     public string? ResponseText { get; set; }
     public string? OutputAudioFormat { get; set; }
@@ -79,6 +81,8 @@ public class GetCommands(StefanDbContext dbContext)
                 ReceivedAt = r.ReceivedAt,
                 InputAudioFormat = r.InputAudioFormat,
                 InputAudioDurationMs = r.InputAudioDurationMs,
+                WakeWordAudioFormat = r.WakeWordAudioFormat,
+                WakeWordAudioDurationMs = r.WakeWordAudioDurationMs,
                 Transcript = r.Transcript,
                 ResponseText = r.ResponseText,
                 OutputAudioFormat = r.OutputAudioFormat,

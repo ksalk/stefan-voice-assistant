@@ -21,7 +21,8 @@ public class GetCommandAudioResult
 public enum AudioType
 {
     Request,
-    Response
+    Response,
+    WakeWord
 }
 
 public class GetCommandAudio(
@@ -39,18 +40,18 @@ public class GetCommandAudio(
             return Result<GetCommandAudioResult>.Failure(Error.NotFound("Command not found"));
         }
 
-        var compressedAudio = request.Type == AudioType.Request
-            ? command.InputAudio
-            : command.OutputAudio;
+        var (compressedAudio, audioFormat, fileNameSuffix) = request.Type switch
+        {
+            AudioType.Request => (command.InputAudio, command.InputAudioFormat, "request"),
+            AudioType.Response => (command.OutputAudio, command.OutputAudioFormat, "response"),
+            AudioType.WakeWord => (command.WakeWordAudio, command.WakeWordAudioFormat, "wakeword"),
+            _ => (null, null, null),
+        };
 
-        if (compressedAudio == null)
+        if (compressedAudio == null || string.IsNullOrEmpty(audioFormat))
         {
             return Result<GetCommandAudioResult>.Failure(Error.NotFound("Audio not available for this command"));
         }
-
-        var audioFormat = request.Type == AudioType.Request
-            ? command.InputAudioFormat
-            : command.OutputAudioFormat;
 
         // Decompress Opus audio to WAV for browser playback
         byte[] wavBytes;
@@ -64,9 +65,7 @@ public class GetCommandAudio(
             wavBytes = compressedAudio;
         }
 
-        var fileName = request.Type == AudioType.Request
-            ? $"command_{request.CommandId}_request.wav"
-            : $"command_{request.CommandId}_response.wav";
+        var fileName = $"command_{request.CommandId}_{fileNameSuffix}.wav";
 
         return Result<GetCommandAudioResult>.Success(new GetCommandAudioResult
         {

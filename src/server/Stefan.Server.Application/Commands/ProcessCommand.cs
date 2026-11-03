@@ -16,6 +16,7 @@ public class ProcessCommandRequest
     public required string DeviceId { get; set; }
     public required string SessionId { get; set; }
     public required Stream AudioStream { get; set; }
+    public Stream? WakeWordAudioStream { get; set; }
 }
 
 public class ProcessCommand(
@@ -49,6 +50,7 @@ public class ProcessCommand(
 
         // TODO: is this really required, is audio read twice at all?
         var inputAudio = await PrepareInputAudioAsync(request.AudioStream, cancellationToken);
+        var wakeWordAudio = await PrepareWakeWordAudioAsync(request.WakeWordAudioStream, cancellationToken);
 
         // Create initial command record with input audio and duration, so we have a record even if STT fails
         var commandRecord = await CreateAndSaveCommandRecord(
@@ -57,6 +59,7 @@ public class ProcessCommand(
             request.SessionId,
             inputAudio.CompressedOpus,
             inputAudio.DurationMs,
+            wakeWordAudio,
             cancellationToken);
 
         var sttResult = await RunSttAsync(commandRecord, inputAudio.WavBytes, cancellationToken);
@@ -122,6 +125,45 @@ public class ProcessCommand(
         var compressedOpus = await CompressAudio(wavBytes, cancellationToken);
 
         return new InputAudio(wavBytes, compressedOpus, durationMs);
+    }
+
+    private async Task<InputAudio?> PrepareWakeWordAudioAsync(Stream? audioStream, CancellationToken cancellationToken)
+    {
+        if (audioStream is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var audioBuffer = new MemoryStream();
+            await audioStream.CopyToAsync(audioBuffer, cancellationToken);
+
+            var wavBytes = audioBuffer.ToArray();
+            if (wavBytes.Length <= 44)
+            {
+                logger.LogWarning("Wake word audio is empty; continuing without it");
+                return null;
+            }
+
+            var durationMs = WavAudio.GetDurationMs(wavBytes);
+            var compressedOpus = await CompressAudio(wavBytes, cancellationToken);
+
+            logger.LogInformation(
+                "Wake word audio: {DurationMs} ms, compressed size: {CompressedSize} bytes",
+                durationMs, compressedOpus.Length);
+
+            return new InputAudio(wavBytes, compressedOpus, durationMs);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Wake word audio could not be processed; continuing without it");
+            return null;
+        }
     }
 
     private async Task<Result<SpeechToTextTranscription>> RunSttAsync(CommandRecord record, byte[] inputWavBytes, CancellationToken cancellationToken)
@@ -279,7 +321,7 @@ public class ProcessCommand(
     }
 
     private async Task<CommandRecord> CreateAndSaveCommandRecord(Guid commandId, Guid nodeId, string sessionId,
-        byte[] inputAudio, double inputAudioDurationMs, CancellationToken cancellationToken)
+        byte[] inputAudio, double inputAudioDurationMs, InputAudio? wakeWordAudio, CancellationToken cancellationToken)
     {
         var record = new CommandRecord
         {
@@ -290,6 +332,9 @@ public class ProcessCommand(
             InputAudio = inputAudio,
             InputAudioFormat = "opus",
             InputAudioDurationMs = inputAudioDurationMs,
+            WakeWordAudio = wakeWordAudio?.CompressedOpus,
+            WakeWordAudioFormat = wakeWordAudio is null ? null : "opus",
+            WakeWordAudioDurationMs = wakeWordAudio?.DurationMs,
             Status = CommandStatus.Received
         };
 

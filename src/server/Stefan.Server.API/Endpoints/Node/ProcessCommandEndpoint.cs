@@ -11,6 +11,7 @@ public static class ProcessCommandEndpoint
         group.MapPost("api/commands", async (
             HttpContext context,
             IFormFile file,
+            IFormFile? wakeWordFile,
             [FromServices] ProcessCommand processCommand,
             [FromServices] ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
@@ -25,10 +26,12 @@ public static class ProcessCommandEndpoint
             var headers = headersResult.Value!;
 
             logger.LogInformation(
-                "Received command {CommandId} from device {DeviceId}: {FileName}, {FileSize} bytes",
-                headers.CommandId, headers.DeviceId, file.FileName, file.Length);
+                "Received command {CommandId} from device {DeviceId}: {FileName}, {FileSize} bytes; wake word audio: {WakeWordFileName}, {WakeWordFileSize} bytes",
+                headers.CommandId, headers.DeviceId, file.FileName, file.Length,
+                wakeWordFile?.FileName ?? "(none)", wakeWordFile?.Length ?? 0);
 
             await using var fileStream = file.OpenReadStream();
+            await using var wakeWordStream = wakeWordFile?.OpenReadStream();
 
             var result = await processCommand.Handle(new ProcessCommandRequest
             {
@@ -36,6 +39,7 @@ public static class ProcessCommandEndpoint
                 DeviceId = headers.DeviceId,
                 SessionId = headers.SessionId,
                 AudioStream = fileStream,
+                WakeWordAudioStream = wakeWordStream,
             }, cancellationToken);
 
             return result.ToHttpResult(response =>

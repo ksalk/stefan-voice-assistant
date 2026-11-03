@@ -25,11 +25,13 @@ X-Command-ID: <non-empty GUID>
 Content-Type: multipart/form-data
 ```
 
-The request contains a multipart field named `file` with the command WAV. A successful response contains:
+The request contains a multipart field named `file` with the command WAV. It can also contain an optional field named `wakeWordFile` with the audio that triggered the wake word. A successful response contains:
 
 - `audio/wav` response audio in the body
 - `X-Command-ID` with the accepted command ID
 - `X-Response-Text` with the URL-escaped response text
+
+Dashboard clients can play stored audio from `GET /api/commands/{commandId}/audio?type=Request|Response|WakeWord`.
 
 ### Health
 

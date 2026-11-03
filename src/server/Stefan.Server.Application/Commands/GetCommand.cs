@@ -24,6 +24,8 @@ public class GetCommand(StefanDbContext dbContext)
                 ReceivedAt = r.ReceivedAt,
                 InputAudioFormat = r.InputAudioFormat,
                 InputAudioDurationMs = r.InputAudioDurationMs,
+                WakeWordAudioFormat = r.WakeWordAudioFormat,
+                WakeWordAudioDurationMs = r.WakeWordAudioDurationMs,
                 Transcript = r.Transcript,
                 ResponseText = r.ResponseText,
                 OutputAudioFormat = r.OutputAudioFormat,
