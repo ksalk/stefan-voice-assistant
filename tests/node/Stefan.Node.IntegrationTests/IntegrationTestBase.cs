@@ -217,12 +217,21 @@ public abstract class IntegrationTestBase
         {
             if (_pipeStream is null)
             {
+                // The node creates the pipe only after registration and hosted-service startup,
+                // including model loading. Under parallel test execution this can take several seconds.
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(1));
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
 
-                while (!File.Exists(_pipePath))
+                try
                 {
-                    await Task.Delay(100, timeoutCts.Token);
+                    while (!File.Exists(_pipePath))
+                    {
+                        await Task.Delay(100, timeoutCts.Token);
+                    }
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException($"Timed out waiting for the audio pipe '{_pipePath}'.");
                 }
 
                 _pipeStream = new FileStream(_pipePath, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
