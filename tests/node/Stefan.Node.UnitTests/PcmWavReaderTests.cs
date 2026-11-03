@@ -33,12 +33,12 @@ public sealed class PcmWavReaderTests
 
         bytes.AddRange("fmt "u8);
         bytes.AddRange(BitConverter.GetBytes(16));
-        bytes.AddRange(BitConverter.GetBytes(1));
-        bytes.AddRange(BitConverter.GetBytes(1));
+        bytes.AddRange(BitConverter.GetBytes((ushort)1));
+        bytes.AddRange(BitConverter.GetBytes((ushort)1));
         bytes.AddRange(BitConverter.GetBytes(16000));
         bytes.AddRange(BitConverter.GetBytes(32000));
-        bytes.AddRange(BitConverter.GetBytes(2));
-        bytes.AddRange(BitConverter.GetBytes(16));
+        bytes.AddRange(BitConverter.GetBytes((ushort)2));
+        bytes.AddRange(BitConverter.GetBytes((ushort)16));
 
         bytes.AddRange("data"u8);
         bytes.AddRange(BitConverter.GetBytes(2));
@@ -55,12 +55,12 @@ public sealed class PcmWavReaderTests
 
         bytes.AddRange("fmt "u8);
         bytes.AddRange(BitConverter.GetBytes(16));
-        bytes.AddRange(BitConverter.GetBytes(0));
-        bytes.AddRange(BitConverter.GetBytes(1));
+        bytes.AddRange(BitConverter.GetBytes((ushort)0));
+        bytes.AddRange(BitConverter.GetBytes((ushort)1));
         bytes.AddRange(BitConverter.GetBytes(16000));
         bytes.AddRange(BitConverter.GetBytes(32000));
-        bytes.AddRange(BitConverter.GetBytes(2));
-        bytes.AddRange(BitConverter.GetBytes(16));
+        bytes.AddRange(BitConverter.GetBytes((ushort)2));
+        bytes.AddRange(BitConverter.GetBytes((ushort)16));
 
         bytes.AddRange("data"u8);
         bytes.AddRange(BitConverter.GetBytes(2));
