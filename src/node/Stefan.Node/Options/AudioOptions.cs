@@ -41,4 +41,10 @@ public class AudioOptions
     public float SilenceThreshold { get; set; } = 0.02f;
     public int SilenceTimeoutMs { get; set; } = 1000;
     public int MaxRecordingMs { get; set; } = 10_000;
+
+    /// <summary>
+    /// Amount of processed audio kept before a wake-word trigger and sent with the command.
+    /// Zero disables the wake-word audio upload.
+    /// </summary>
+    public int WakeWordAudioMs { get; set; } = 2_500;
 }

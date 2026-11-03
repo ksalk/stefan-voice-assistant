@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
@@ -92,6 +93,45 @@ public class WakeWordDetectionTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task WakeWordDetected_SendsWakeWordAudioWithCommand()
+    {
+        // Arrange
+        var commandAudio = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wakeWordAudio = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", async (HttpRequest request) =>
+                {
+                    var form = await request.ReadFormAsync();
+                    commandAudio.TrySetResult(await ReadFileAsync(form.Files.GetFile("file")));
+                    wakeWordAudio.TrySetResult(await ReadFileAsync(form.Files.GetFile("wakeWordFile")));
+                    return Results.Ok();
+                });
+            }
+        );
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(0.5));
+        await app.WriteAudioFileAsync("TestAudioFiles/how-much-longer.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+
+        // Assert
+        var wakeWordBytes = await wakeWordAudio.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.NotNull(wakeWordBytes);
+        Assert.True(wakeWordBytes.Length > 44);
+        Assert.Equal("RIFF", Encoding.ASCII.GetString(wakeWordBytes, 0, 4));
+
+        var commandBytes = await commandAudio.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.NotNull(commandBytes);
+        Assert.True(commandBytes.Length > 44);
+    }
+
+    [Fact]
     public async Task WakeWordNotDetected_WhenPassedInvalidWakeWordAudio()
     {
         // Arrange
@@ -135,5 +175,17 @@ public class WakeWordDetectionTests : IntegrationTestBase
         // Assert
         var appLogs = await app.GetLogsAsync();
         Assert.DoesNotContain("[listener] Keyword detected: stefan", appLogs.Stdout);
+    }
+
+    private static async Task<byte[]?> ReadFileAsync(IFormFile? file)
+    {
+        if (file is null)
+        {
+            return null;
+        }
+
+        using var stream = new MemoryStream();
+        await file.CopyToAsync(stream);
+        return stream.ToArray();
     }
 }

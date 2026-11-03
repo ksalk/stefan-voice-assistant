@@ -19,7 +19,11 @@ public class VoiceCommandDispatcher(
     ILogger<VoiceCommandDispatcher> logger) : BackgroundService
 {
     private readonly List<RawPcmChunk> _commandAudioBuffer = [];
-    private float _silentDurationMs;
+    // The detector returns only a keyword, so this rolling pre-roll is the only way to keep
+    // the audio that triggered it.
+    private readonly List<RawPcmChunk> _wakeWordAudioBuffer = [];
+    private double _wakeWordAudioDurationMs;
+    private double _silentDurationMs;
     private DateTime _recordingStartTime = DateTime.MinValue;
     private Guid _currentCommandId;
 
@@ -91,16 +95,18 @@ public class VoiceCommandDispatcher(
         {
             await foreach (var audioBytes in reader.ReadAllAsync(cancellationToken))
             {
-                audioRecorder.WriteProcessed(new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat });
+                var chunk = new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat };
+                audioRecorder.WriteProcessed(chunk);
 
                 if (appStateService.CurrentState == VoiceAssistantState.ListeningForWakeWord)
                 {
-                    ProcessWakeWord(audioBytes, onKeywordDetected);
+                    AppendWakeWordAudio(chunk);
+                    ProcessWakeWord(chunk, onKeywordDetected);
                 }
 
                 if (appStateService.CurrentState == VoiceAssistantState.RecordingCommand)
                 {
-                    await ProcessRecordingAsync(audioBytes, stopKeywordSpotter, stopKeywordStream);
+                    await ProcessRecordingAsync(chunk, stopKeywordSpotter, stopKeywordStream);
                 }
             }
         }
@@ -119,12 +125,11 @@ public class VoiceCommandDispatcher(
     }
 
     private void ProcessWakeWord(
-        byte[] audioBytes,
+        RawPcmChunk chunk,
         Action<string> onKeywordDetected)
     {
         try
         {
-            var chunk = new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat };
             var keyword = wakeWordDetector.Process(chunk);
             if (keyword is null)
             {
@@ -147,14 +152,13 @@ public class VoiceCommandDispatcher(
     }
 
     private async Task ProcessRecordingAsync(
-        byte[] audioBytes,
+        RawPcmChunk chunk,
         KeywordSpotter stopKeywordSpotter,
         OnlineStream stopKeywordStream)
     {
-        var chunk = new RawPcmChunk { Bytes = audioBytes, Format = ProcessingAudioFormat };
         _commandAudioBuffer.Add(chunk);
 
-        var chunkDurationMs = audioBytes.Length / 32f;
+        var chunkDurationMs = GetDurationMs(chunk);
         var rms = AudioProcessing.ComputeRms(chunk);
 
         if (rms < audioOptions.Value.SilenceThreshold)
@@ -189,10 +193,9 @@ public class VoiceCommandDispatcher(
                     logger.LogInformation("[listener] Stop keyword detected. Returning to wake word detection.");
                 }
 
-                _commandAudioBuffer.Clear();
-                _silentDurationMs = 0f;
+                ClearCommandBuffers();
                 audioPlayer.CancelCurrent();
-                
+
                 appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
                 stopKeywordSpotter.Reset(stopKeywordStream);
                 return;
@@ -203,12 +206,45 @@ public class VoiceCommandDispatcher(
         {
             using var commandScope = logger.BeginScope(CommandScope());
 
-            await SendCommandToServerAsync(_commandAudioBuffer);
-            _commandAudioBuffer.Clear();
-            _silentDurationMs = 0f;
+            await SendCommandToServerAsync(_commandAudioBuffer, _wakeWordAudioBuffer);
+            ClearCommandBuffers();
             appStateService.CurrentState = VoiceAssistantState.ListeningForWakeWord;
             logger.LogInformation("[listener] Finished command processing. Returning to wake word detection.");
         }
+    }
+
+    private void AppendWakeWordAudio(RawPcmChunk chunk)
+    {
+        var maxDurationMs = audioOptions.Value.WakeWordAudioMs;
+        if (maxDurationMs <= 0)
+        {
+            return;
+        }
+
+        _wakeWordAudioBuffer.Add(chunk);
+        _wakeWordAudioDurationMs += GetDurationMs(chunk);
+
+        // Keep one chunk even when it is longer than the configured window.
+        while (_wakeWordAudioDurationMs > maxDurationMs && _wakeWordAudioBuffer.Count > 1)
+        {
+            var removed = _wakeWordAudioBuffer[0];
+            _wakeWordAudioBuffer.RemoveAt(0);
+            _wakeWordAudioDurationMs -= GetDurationMs(removed);
+        }
+    }
+
+    private void ClearCommandBuffers()
+    {
+        _commandAudioBuffer.Clear();
+        _wakeWordAudioBuffer.Clear();
+        _wakeWordAudioDurationMs = 0;
+        _silentDurationMs = 0;
+    }
+
+    private static double GetDurationMs(RawPcmChunk chunk)
+    {
+        var bytesPerSecond = chunk.Format.SampleRate * chunk.Format.Channels * (chunk.Format.BitsPerSample / 8);
+        return bytesPerSecond > 0 ? chunk.Bytes.Length * 1000.0 / bytesPerSecond : 0;
     }
 
     private async Task SaveRecordingAsync(List<RawPcmChunk> monoChunks)
@@ -221,7 +257,7 @@ public class VoiceCommandDispatcher(
         logger.LogInformation("[listener] Saved: {FilePath}", filePath);
     }
 
-    private async Task SendCommandToServerAsync(List<RawPcmChunk> monoChunks)
+    private async Task SendCommandToServerAsync(List<RawPcmChunk> monoChunks, List<RawPcmChunk> wakeWordChunks)
     {
         byte[] wavBytes;
         try
@@ -235,7 +271,21 @@ public class VoiceCommandDispatcher(
             return;
         }
 
-        var result = await remoteServerClient.SendCommandAsync(wavBytes, _currentCommandId);
+        byte[]? wakeWordWavBytes = null;
+        if (wakeWordChunks.Count > 0)
+        {
+            try
+            {
+                wakeWordWavBytes = AudioProcessing.BuildWavBytes(wakeWordChunks);
+                logger.LogInformation("[listener] Wake word audio captured: {WakeWordBytes} bytes", wakeWordWavBytes.Length);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "[listener] Error building wake word WAV data; sending the command without it");
+            }
+        }
+
+        var result = await remoteServerClient.SendCommandAsync(wavBytes, _currentCommandId, wakeWordWavBytes);
         if (result.IsSuccess)
         {
             logger.LogInformation("[listener] Command sent successfully. Queuing response audio for playback.");

@@ -42,7 +42,7 @@ public class RemoteServerClient(
         return Result.Success();
     }
 
-    public async Task<Result<CommandResponse>> SendCommandAsync(byte[] commandAudio, Guid commandId)
+    public async Task<Result<CommandResponse>> SendCommandAsync(byte[] commandAudio, Guid commandId, byte[]? wakeWordAudio = null)
     {
         using var commandScope = logger.BeginScope(
             new Dictionary<string, object> { [Correlation.CommandIdProperty] = commandId });
@@ -54,6 +54,13 @@ public class RemoteServerClient(
         {
             { audioContent, "file", "command.wav" }
         };
+
+        if (wakeWordAudio is { Length: > 0 })
+        {
+            var wakeWordContent = new ByteArrayContent(wakeWordAudio);
+            wakeWordContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+            content.Add(wakeWordContent, "wakeWordFile", "wake-word.wav");
+        }
 
         var request = new HttpRequestMessage(HttpMethod.Post, "api/commands")
         {
