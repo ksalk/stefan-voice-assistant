@@ -8,7 +8,10 @@
 **/.vs/
 **/TestResults/
 **/*.db
+**/logs/
 recordings/
+models/
+audio-pipes/
 node_modules/
 CHANGELOG.md
 LICENSE
