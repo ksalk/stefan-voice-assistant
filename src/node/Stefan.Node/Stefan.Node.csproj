@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <PackageReference Include="Alsa.Net" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="NanoWakeWord" />
     <PackageReference Include="org.k2fsa.sherpa.onnx" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
@@ -23,6 +25,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="stop_keywords.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="WakeWordDetection\nanowakeword\*.onnx">
+      <Link>models\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="WakeWordDetection\sherpa-onnx\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\notification_sound.wav">

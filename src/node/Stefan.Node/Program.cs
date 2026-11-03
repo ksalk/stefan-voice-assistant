@@ -62,12 +62,13 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
     builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
     builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
+    builder.Services.Configure<NanoWakeWordOptions>(builder.Configuration.GetSection(NanoWakeWordOptions.SectionName));
     builder.Services.Configure<AudioOptions>(builder.Configuration.GetSection(AudioOptions.SectionName));
 
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
     builder.Services.AddSingleton<AudioRecorder>();
-    builder.Services.AddSingleton<IWakeWordDetector, SherpaWakeWordDetector>();
+    builder.Services.AddSingleton<IWakeWordDetector, NanoWakeWordDetector>();
     RegisterAudioInputProvider(builder);
     RegisterVoicePipeline(builder);
 
