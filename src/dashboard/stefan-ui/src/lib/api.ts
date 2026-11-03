@@ -139,7 +139,7 @@ export const api = {
 	): Promise<{ document: ToolDocumentDetails }> =>
 		send({ method: 'GET', path: `tool-documents/${id}`, fetch: customFetch }),
 
-	getCommandAudio: async (commandId: string, type: 'Request' | 'Response') => {
+	getCommandAudio: async (commandId: string, type: 'Request' | 'Response' | 'WakeWord') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);
 		if (!res.ok) {
 			const errorData = await res.json().catch(() => ({}));

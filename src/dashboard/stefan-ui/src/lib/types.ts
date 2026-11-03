@@ -70,6 +70,8 @@ export interface Command {
 	receivedAt: string;
 	inputAudioFormat: string;
 	inputAudioDurationMs: number;
+	wakeWordAudioFormat: string | null;
+	wakeWordAudioDurationMs: number | null;
 	transcript: string;
 	responseText: string;
 	outputAudioFormat: string;

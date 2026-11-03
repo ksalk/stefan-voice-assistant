@@ -12,6 +12,7 @@
 	import CommandLogs from '$lib/components/CommandLogs.svelte';
 	import DurationBar from '$lib/components/DurationBar.svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import AudioWaveform from '@lucide/svelte/icons/audio-waveform';
 	import Mic from '@lucide/svelte/icons/mic';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { api } from '$lib/api';
@@ -61,7 +62,7 @@
 		loading = false;
 	}
 
-	async function playAudio(type: 'Request' | 'Response') {
+	async function playAudio(type: 'Request' | 'Response' | 'WakeWord') {
 		if (!command) return;
 		try {
 			const blob = await api.getCommandAudio(command.id, type);
@@ -129,7 +130,7 @@
 		</div>
 	{/if}
 
-	<div class="mt-4 grid gap-4 md:grid-cols-2">
+	<div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 		<Card.Root>
 			<Card.Header class="flex flex-row items-center justify-between">
 				<Card.Title class="text-base">Transcript</Card.Title>
@@ -164,6 +165,28 @@
 			<Card.Content>
 				<p class="text-base whitespace-pre-wrap">
 					{command.responseText || 'No response available.'}
+				</p>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header class="flex flex-row items-center justify-between">
+				<Card.Title class="text-base">Wake Word</Card.Title>
+				<Button
+					variant="outline"
+					size="icon"
+					aria-label="Play wake word audio"
+					disabled={!command.wakeWordAudioFormat}
+					onclick={() => playAudio('WakeWord')}
+				>
+					<AudioWaveform class="size-4" />
+				</Button>
+			</Card.Header>
+			<Card.Content>
+				<p class="text-base whitespace-pre-wrap">
+					{command.wakeWordAudioFormat
+						? `Captured audio (${formatDuration(command.wakeWordAudioDurationMs ?? 0)}) before the command.`
+						: 'No wake word audio available for this command.'}
 				</p>
 			</Card.Content>
 		</Card.Root>

@@ -11,6 +11,7 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import AudioWaveform from '@lucide/svelte/icons/audio-waveform';
 	import Mic from '@lucide/svelte/icons/mic';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -113,7 +114,7 @@
 		return 'No commands recorded yet.';
 	}
 
-	async function playAudio(commandId: string, type: 'Request' | 'Response') {
+	async function playAudio(commandId: string, type: 'Request' | 'Response' | 'WakeWord') {
 		try {
 			const blob = await api.getCommandAudio(commandId, type);
 			const url = URL.createObjectURL(blob);
@@ -200,7 +201,7 @@
 				<Table.Head class="w-[150px]">Received</Table.Head>
 				<Table.Head>Response</Table.Head>
 				<Table.Head class="w-[100px]">Duration</Table.Head>
-				<Table.Head class="w-[100px]">Audio</Table.Head>
+				<Table.Head class="w-[150px]">Audio</Table.Head>
 				<Table.Head class="w-[70px]">Actions</Table.Head>
 			</Table.Row>
 		</Table.Header>
@@ -215,6 +216,7 @@
 					<Table.Cell><Skeleton class="h-4 w-16" /></Table.Cell>
 					<Table.Cell>
 						<div class="flex gap-1">
+							<Skeleton class="h-8 w-8 rounded-md" />
 							<Skeleton class="h-8 w-8 rounded-md" />
 							<Skeleton class="h-8 w-8 rounded-md" />
 						</div>
@@ -243,7 +245,7 @@
 				<Table.Head class="w-[150px]">Received</Table.Head>
 				<Table.Head>Response</Table.Head>
 				<Table.Head class="w-[100px]">Duration</Table.Head>
-				<Table.Head class="w-[100px]">Audio</Table.Head>
+				<Table.Head class="w-[150px]">Audio</Table.Head>
 				<Table.Head class="w-[70px]">Actions</Table.Head>
 			</Table.Row>
 		</Table.Header>
@@ -297,6 +299,16 @@
 								>
 									<Volume2 class="size-4" />
 								</Button>
+								{#if command.wakeWordAudioFormat}
+									<Button
+										variant="outline"
+										size="icon"
+										aria-label="Play wake word audio"
+										onclick={() => playAudio(command.id, 'WakeWord')}
+									>
+										<AudioWaveform class="size-4" />
+									</Button>
+								{/if}
 							</div>
 						</Table.Cell>
 						<Table.Cell>
