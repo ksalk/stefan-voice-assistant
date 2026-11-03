@@ -42,6 +42,14 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
         }
 
         _runtime = CreateRuntime();
+
+        _logger.LogInformation(
+            "[wake] NanoWakeWord ready. Model: {Model}, threshold: {Threshold}, trigger level: {TriggerLevel}, refractory: {Refractory}, step frames: {StepFrames}",
+            _options.Model,
+            _options.Threshold,
+            _options.TriggerLevel,
+            _options.Refractory,
+            _options.StepFrames);
     }
 
     public string? Process(RawPcmChunk chunk)
@@ -69,15 +77,22 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
         // NanoWakeWord has no reset API. Drop the runtime so the next wake-word session starts
         // with empty sample, mel, embedding, activation and refractory state. Reloading is
         // deferred to the next Process call, which happens after the command session closes.
-        Reset();
+        DisposeRuntime();
 
         return detectedIndex == 0 ? _options.Keyword : null;
     }
 
     public void Reset()
     {
-        _runtime?.Dispose();
-        _runtime = null;
+        if (_disposed)
+        {
+            return;
+        }
+
+        // Recreate eagerly. Callers such as the benchmark reset before timing a clip, so the
+        // model load must not be attributed to inference time.
+        DisposeRuntime();
+        _runtime = CreateRuntime();
     }
 
     public void Dispose()
@@ -88,6 +103,11 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
         }
 
         _disposed = true;
+        DisposeRuntime();
+    }
+
+    private void DisposeRuntime()
+    {
         _runtime?.Dispose();
         _runtime = null;
     }
@@ -95,14 +115,6 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
     private WakeWordRuntime CreateRuntime()
     {
         EnsureModelFiles();
-
-        _logger.LogInformation(
-            "[wake] NanoWakeWord ready. Model: {Model}, threshold: {Threshold}, trigger level: {TriggerLevel}, refractory: {Refractory}, step frames: {StepFrames}",
-            _options.Model,
-            _options.Threshold,
-            _options.TriggerLevel,
-            _options.Refractory,
-            _options.StepFrames);
 
         return new WakeWordRuntime(new WakeWordRuntimeConfig
         {

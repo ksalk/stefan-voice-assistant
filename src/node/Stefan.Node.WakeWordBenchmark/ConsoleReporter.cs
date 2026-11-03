@@ -78,22 +78,25 @@ public sealed class ConsoleReporter
                 $"RESULTS · {manifest.Clips.Count} clips ({positiveCount} positive / {negativeCount} negative," +
                 $" {negativeHours:0.###} h) · {ranked.Count} {configurationWord}"));
         Console.WriteLine(new string('=', 75));
+        var model = string.Equals(options.Detector, "nanowakeword", StringComparison.OrdinalIgnoreCase)
+            ? options.NanoWakeWordOptions.Model
+            : options.ModelPath;
         Console.WriteLine(
-            $"Model {options.ModelPath} · chunk {options.ChunkBytes} B · tail {options.TailMs} ms" +
-            $" · {options.ProcessingSampleRate} Hz");
+            $"Detector {options.Detector} · model {model} · chunk {options.ChunkBytes} B · lead {options.LeadMs} ms" +
+            $" · tail {options.TailMs} ms · {options.ProcessingSampleRate} Hz");
         Console.WriteLine();
 
         if (ranked.Count > 0)
         {
             PrintLeaderboard(ranked);
-            PrintLegend();
+            PrintLegend(options.Detector);
             if (ranked.All(row => row.AverageLatencyMs is null))
             {
                 Console.WriteLine();
                 Console.WriteLine("Latency unavailable: manifest clips have no wakeWordEndMs.");
             }
 
-            PrintBestConfigFailures(ranked[0], results);
+            PrintBestConfigFailures(ranked[0], results, options.Detector);
         }
 
         Console.WriteLine();
@@ -139,14 +142,23 @@ public sealed class ConsoleReporter
         Console.WriteLine(string.Join("  ", padded));
     }
 
-    private static void PrintLegend()
+    private static void PrintLegend(string detector)
     {
         Console.WriteLine();
         Console.WriteLine("Legend:");
         Console.WriteLine("  Rank      position after sorting: recall first, then false activations. * marks the best.");
-        Console.WriteLine("  Config    keywords file used for this configuration");
-        Console.WriteLine("  Score     keywords_score — boost added to tokens of the keyword. Higher means easier detection.");
-        Console.WriteLine("  Thr       keywords_threshold — minimum token score to emit a detection. Higher means stricter.");
+        if (string.Equals(detector, "nanowakeword", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("  Config    NanoWakeWord model used for this configuration");
+            Console.WriteLine("  Score     unused for NanoWakeWord");
+            Console.WriteLine("  Thr       model probability threshold. Higher means stricter.");
+        }
+        else
+        {
+            Console.WriteLine("  Config    keywords file used for this configuration");
+            Console.WriteLine("  Score     keywords_score — boost added to tokens of the keyword. Higher means easier detection.");
+            Console.WriteLine("  Thr       keywords_threshold — minimum token score to emit a detection. Higher means stricter.");
+        }
         Console.WriteLine("  Recall    detected positives / all positive clips in the corpus");
         Console.WriteLine("  FA/h      false activations per hour of negative audio");
         Console.WriteLine("  Latency   detection offset after the wake word ends, avg / p50. Needs wakeWordEndMs in the manifest.");
@@ -156,7 +168,8 @@ public sealed class ConsoleReporter
 
     private static void PrintBestConfigFailures(
         BenchmarkSummaryRow best,
-        IReadOnlyList<BenchmarkResult> results)
+        IReadOnlyList<BenchmarkResult> results,
+        string detector)
     {
         var bestResults = results
             .Where(result => result.Configuration.Id == best.ConfigurationId)
@@ -165,7 +178,11 @@ public sealed class ConsoleReporter
         var falseActivations = bestResults
             .Where(result => result.Outcome == ClipOutcome.FalseActivation)
             .ToArray();
-        var description = BenchmarkFormatting.Describe(best.KeywordsFile, best.Score, best.Threshold);
+        var description = string.Equals(detector, "nanowakeword", StringComparison.OrdinalIgnoreCase)
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Path.GetFileName(best.KeywordsFile)} · threshold {best.Threshold:0.0##}")
+            : BenchmarkFormatting.Describe(best.KeywordsFile, best.Score, best.Threshold);
 
         Console.WriteLine();
         Console.WriteLine($"Missed wake words (best: {description}):");

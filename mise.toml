@@ -156,6 +156,63 @@ if [[ -n "${usage_keywords_file:-}" ]]; then args+=(--keywords-file "${usage_key
 dotnet run --project src/node/Stefan.Node.WakeWordBenchmark -- "${args[@]}"
 '''
 
+[tasks.wake-word-benchmark-detector]
+description = "Run the wake-word benchmark with a specific detector implementation (sherpa | nanowakeword)"
+usage = '''
+arg "<manifest>" help="Path to the corpus manifest" default="recordings/manifest.json"
+flag "-o --output <dir>" help="Base output directory" default="recordings/results"
+flag "--detector <name>" help="Detector implementation: sherpa or nanowakeword" default="sherpa"
+flag "--ensemble <file>" help="Ensemble JSON with per-member keywords files (sherpa only)"
+flag "--threads <n>" help="ORT intra-op threads" default="2"
+flag "--encoder-file <name>" help="Encoder ONNX file" default="encoder-epoch-13-avg-2-chunk-16-left-64.onnx"
+flag "--chunk-bytes <bytes>" help="PCM chunk size in bytes" default="4096"
+flag "--lead-ms <ms>" help="Silence prepended to each clip (default: 2000 for nanowakeword)"
+flag "--tail-ms <ms>" help="Silence appended after each clip" default="600"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+args=(--manifest "${usage_manifest:?}" --model-path models/onnx --output-dir "${usage_output:?}"
+  --detector "${usage_detector:?}" --chunk-bytes "${usage_chunk_bytes:?}"
+  --tail-ms "${usage_tail_ms:?}" --threads "${usage_threads:?}" --encoder-file "${usage_encoder_file:?}")
+
+if [[ -n "${usage_lead_ms:-}" ]]; then args+=(--lead-ms "${usage_lead_ms}"); fi
+if [[ -n "${usage_ensemble:-}" ]]; then args+=(--ensemble "${usage_ensemble}"); fi
+
+dotnet run --project src/node/Stefan.Node.WakeWordBenchmark -- "${args[@]}"
+'''
+
+[tasks.wake-word-benchmark-nano]
+description = "Run the wake-word replay benchmark with the NanoWakeWord detector"
+usage = '''
+arg "<manifest>" help="Path to the corpus manifest" default="recordings/manifest.json"
+flag "-o --output <dir>" help="Base output directory" default="recordings/nanowakeword"
+flag "--nano-model <name>" help="NanoWakeWord model name without .onnx" default="stefan_v0.2"
+flag "--nano-thresholds <values>" help="Comma-separated probability thresholds" default="0.75"
+flag "--nano-trigger-level <n>" help="Consecutive threshold crossings required" default="1"
+flag "--nano-refractory <n>" help="Cooldown frames after a detection" default="60"
+flag "--nano-step-frames <n>" help="Audio frames per pipeline step" default="4"
+flag "--chunk-bytes <bytes>" help="PCM chunk size in bytes" default="4096"
+flag "--lead-ms <ms>" help="Silence prepended to each clip (NanoWakeWord needs context)" default="2000"
+flag "--tail-ms <ms>" help="Silence appended after each clip" default="600"
+'''
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dotnet run --project src/node/Stefan.Node.WakeWordBenchmark -c Release -- \
+  --manifest "${usage_manifest:?}" \
+  --detector nanowakeword \
+  --output-dir "${usage_output:?}" \
+  --nano-model "${usage_nano_model:?}" \
+  --nano-thresholds "${usage_nano_thresholds:?}" \
+  --nano-trigger-level "${usage_nano_trigger_level:?}" \
+  --nano-refractory "${usage_nano_refractory:?}" \
+  --nano-step-frames "${usage_nano_step_frames:?}" \
+  --chunk-bytes "${usage_chunk_bytes:?}" \
+  --lead-ms "${usage_lead_ms:?}" \
+  --tail-ms "${usage_tail_ms:?}"
+'''
+
 # Dashboard
 [tasks.run-ui]
 description = "Run the dashboard dev server"

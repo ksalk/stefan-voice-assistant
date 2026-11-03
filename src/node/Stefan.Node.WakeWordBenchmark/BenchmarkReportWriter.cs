@@ -30,15 +30,19 @@ public static class BenchmarkReportWriter
         {
             manifest_path = options.ManifestPath,
             output_directory = runDirectory,
+            detector = options.Detector,
             model_path = options.ModelPath,
             keywords = options.KeywordFiles,
             keyword_transcriptions = options.KeywordTranscriptions,
             processing_sample_rate = options.ProcessingSampleRate,
             chunk_bytes = options.ChunkBytes,
+            lead_ms = options.LeadMs,
             tail_ms = options.TailMs,
             threads = options.Threads,
             audio_options = options.AudioOptions,
             keyword_spotter_options = options.KeywordSpotterOptions,
+            nano_wake_word_options = options.NanoWakeWordOptions,
+            nano_thresholds = options.NanoThresholds,
         }, new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -86,7 +90,7 @@ public static class BenchmarkReportWriter
 
     private static string FormatResults(IReadOnlyList<BenchmarkResult> results)
     {
-        var builder = new StringBuilder("configuration_id,keywords_file,score,threshold,clip_path,label,outcome,audio_duration_ms,detection_count,first_detection_offset_ms,latency_ms,processing_time_ms,peak_working_set_mb,rtf\n");
+        var builder = new StringBuilder("configuration_id,keywords_file,score,threshold,clip_path,label,outcome,audio_duration_ms,clip_duration_ms,detection_count,first_detection_offset_ms,latency_ms,processing_time_ms,peak_working_set_mb,rtf\n");
         foreach (var result in results)
         {
             builder.Append(Csv(result.Configuration.Id));
@@ -104,6 +108,8 @@ public static class BenchmarkReportWriter
             builder.Append(BenchmarkFormatting.OutcomeName(result.Outcome));
             builder.Append(',');
             builder.Append(FormatNumber(result.AudioDurationMs));
+            builder.Append(',');
+            builder.Append(FormatNumber(result.ClipDurationMs));
             builder.Append(',');
             builder.Append(FormatNumber(result.DetectionCount));
             builder.Append(',');
@@ -138,6 +144,7 @@ public static class BenchmarkReportWriter
                 tags = result.CorpusClip.Tags,
                 outcome = BenchmarkFormatting.OutcomeName(result.Outcome),
                 audio_duration_ms = Round(result.AudioDurationMs),
+                clip_duration_ms = Round(result.ClipDurationMs),
                 detection_count = result.DetectionCount,
                 first_detection_offset_ms = RoundNullable(result.FirstDetectionOffsetMs),
                 latency_ms = RoundNullable(result.LatencyMs),
@@ -170,7 +177,11 @@ public static class BenchmarkReportWriter
                 CultureInfo.InvariantCulture,
                 $"- **Date:** {timestamp:yyyy-MM-dd HH:mm:ss}"));
         builder.AppendLine($"- **Manifest:** {options.ManifestPath}");
-        builder.AppendLine($"- **Model:** {options.ModelPath}");
+        builder.AppendLine($"- **Detector:** {options.Detector}");
+        builder.AppendLine(
+            string.Equals(options.Detector, "nanowakeword", StringComparison.OrdinalIgnoreCase)
+                ? $"- **Model:** {options.NanoWakeWordOptions.Model}"
+                : $"- **Model:** {options.ModelPath}");
         builder.AppendLine(
             string.Create(
                 CultureInfo.InvariantCulture,
@@ -178,7 +189,7 @@ public static class BenchmarkReportWriter
                 $" {negativeCount} negative ({negativeHours:0.###} h of negative audio)"));
         builder.AppendLine(
             $"- **Processing:** {options.ProcessingSampleRate} Hz, chunk {options.ChunkBytes} B," +
-            $" tail {options.TailMs} ms");
+            $" lead {options.LeadMs} ms, tail {options.TailMs} ms");
         if (ranked.Count > 0 && ranked.All(row => row.AverageLatencyMs is null))
         {
             builder.AppendLine("- **Latency:** unavailable (manifest clips have no `wakeWordEndMs`)");
@@ -204,10 +215,14 @@ public static class BenchmarkReportWriter
                 .ToArray();
 
             builder.AppendLine();
-            builder.AppendLine(
-                $"### {Path.GetFileName(row.KeywordsFile)} —" +
-                $" score {row.Score.ToString("0.0##", CultureInfo.InvariantCulture)}," +
-                $" threshold {row.Threshold.ToString("0.0##", CultureInfo.InvariantCulture)}");
+            var configurationDescription =
+                string.Equals(options.Detector, "nanowakeword", StringComparison.OrdinalIgnoreCase)
+                    ? $"### {Path.GetFileName(row.KeywordsFile)} —" +
+                      $" threshold {row.Threshold.ToString("0.0##", CultureInfo.InvariantCulture)}"
+                    : $"### {Path.GetFileName(row.KeywordsFile)} —" +
+                      $" score {row.Score.ToString("0.0##", CultureInfo.InvariantCulture)}," +
+                      $" threshold {row.Threshold.ToString("0.0##", CultureInfo.InvariantCulture)}";
+            builder.AppendLine(configurationDescription);
             builder.AppendLine();
             AppendMarkdownClipList(
                 builder,

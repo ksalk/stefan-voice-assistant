@@ -21,11 +21,15 @@ public sealed record BenchmarkOptions(
     string DecoderFile,
     string JoinerFile,
     int ChunkBytes,
+    int LeadMs,
     int TailMs,
     int Threads,
     int ProcessingSampleRate,
     bool NoResample,
+    string Detector,
     KeywordSpotterOptions KeywordSpotterOptions,
+    NanoWakeWordOptions NanoWakeWordOptions,
+    IReadOnlyList<float> NanoThresholds,
     AudioOptions AudioOptions)
 {
     public static BenchmarkOptions CreateFromArguments(string[] args)
@@ -53,6 +57,31 @@ public sealed record BenchmarkOptions(
         var joinerFile = parser.GetString("joiner-file", "joiner-epoch-13-avg-2-chunk-16-left-64.onnx");
         var ensembleMembers = LoadEnsemble(parser.GetString("ensemble", null));
         var noResample = ParserHasFlag(args, "no-resample");
+        var detector = parser.GetString("detector", "sherpa");
+        if (detector is not ("sherpa" or "nanowakeword"))
+        {
+            throw new InvalidOperationException(
+                $"Unknown --detector '{detector}'. Supported values: sherpa, nanowakeword.");
+        }
+
+        if (detector == "nanowakeword" && ensembleMembers.Count > 0)
+        {
+            throw new InvalidOperationException("--ensemble is only supported with the sherpa detector.");
+        }
+
+        // NanoWakeWord needs audio context before an early wake word. Sherpa keeps the old default.
+        var leadMs = parser.GetInt("lead-ms", detector == "nanowakeword" ? 2000 : 0);
+
+        var nanoThresholds = parser.GetFloatList("nano-thresholds", "0.75");
+        var nanoWakeWordOptions = new NanoWakeWordOptions
+        {
+            Model = parser.GetString("nano-model", "stefan_v0.2"),
+            Keyword = parser.GetString("nano-keyword", "stefan"),
+            Threshold = nanoThresholds.First(),
+            TriggerLevel = parser.GetInt("nano-trigger-level", 1),
+            Refractory = parser.GetInt("nano-refractory", 60),
+            StepFrames = parser.GetInt("nano-step-frames", 4),
+        };
 
         var keywordSpotterOptions = new KeywordSpotterOptions
         {
@@ -129,11 +158,15 @@ public sealed record BenchmarkOptions(
             decoderFile,
             joinerFile,
             chunkBytes,
+            leadMs,
             tailMs,
             threads,
             processingSampleRate,
             noResample,
+            detector,
             keywordSpotterOptions,
+            nanoWakeWordOptions,
+            nanoThresholds,
             audioOptions);
     }
 

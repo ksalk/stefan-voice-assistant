@@ -17,7 +17,8 @@ public sealed record BenchmarkConfiguration(
     float Score,
     float Threshold,
     KeywordSpotterOptions KeywordSpotterOptions,
-    AudioOptions AudioOptions);
+    AudioOptions AudioOptions,
+    NanoWakeWordOptions? NanoWakeWordOptions = null);
 
 public enum ClipOutcome
 {
@@ -31,6 +32,7 @@ public sealed record BenchmarkResult(
     BenchmarkConfiguration Configuration,
     CorpusClip CorpusClip,
     double AudioDurationMs,
+    double ClipDurationMs,
     int DetectionCount,
     double? FirstDetectionOffsetMs,
     double ProcessingTimeMs,

@@ -8,4 +8,11 @@
     <ProjectReference Include="..\Stefan.Node\Stefan.Node.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\Stefan.Node\WakeWordDetection\nanowakeword\*.onnx">
+      <Link>models\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

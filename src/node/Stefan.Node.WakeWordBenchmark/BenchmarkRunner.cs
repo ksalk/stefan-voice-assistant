@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Stefan.Node.Audio;
 using Stefan.Node.Options;
@@ -33,14 +34,13 @@ public sealed class BenchmarkRunner
             var hits = 0;
             var falseAlarms = 0;
 
-            using var detector = new SherpaWakeWordDetector(
-                Microsoft.Extensions.Options.Options.Create(configuration.KeywordSpotterOptions),
-                Microsoft.Extensions.Options.Options.Create(configuration.AudioOptions));
+            using var detector = CreateDetector(configuration);
 
             foreach (var clip in manifest.Clips)
             {
                 var wav = PcmWavReader.Read(clip.FileName);
-                var chunks = ReplayChunks(wav, _options.ChunkBytes, _options.TailMs);
+                var chunks = ReplayChunks(wav, _options.ChunkBytes, _options.TailMs, _options.LeadMs);
+                var clipDurationMs = ClipDurationMs(wav);
                 detector.Reset();
 
                 var processingStopwatch = Stopwatch.StartNew();
@@ -58,7 +58,8 @@ public sealed class BenchmarkRunner
                     if (keyword is not null)
                     {
                         detectionCount++;
-                        firstDetectionOffsetMs ??= audioDurationMs;
+                        // Report detection offsets relative to the clip start, not the lead-in silence.
+                        firstDetectionOffsetMs ??= Math.Max(0.0, audioDurationMs - _options.LeadMs);
                     }
                 }
                 processingStopwatch.Stop();
@@ -72,6 +73,7 @@ public sealed class BenchmarkRunner
                     configuration,
                     clip,
                     audioDurationMs,
+                    clipDurationMs,
                     detectionCount,
                     firstDetectionOffsetMs,
                     processingStopwatch.Elapsed.TotalMilliseconds,
@@ -113,23 +115,54 @@ public sealed class BenchmarkRunner
         return summary;
     }
 
+    private IWakeWordDetector CreateDetector(BenchmarkConfiguration configuration)
+    {
+        return _options.Detector switch
+        {
+            "sherpa" => new SherpaWakeWordDetector(
+                Microsoft.Extensions.Options.Options.Create(configuration.KeywordSpotterOptions),
+                Microsoft.Extensions.Options.Options.Create(configuration.AudioOptions)),
+            "nanowakeword" => new NanoWakeWordDetector(
+                Microsoft.Extensions.Options.Options.Create(
+                    configuration.NanoWakeWordOptions
+                    ?? throw new InvalidOperationException("NanoWakeWord configuration is missing.")),
+                NullLogger<NanoWakeWordDetector>.Instance),
+            _ => throw new InvalidOperationException($"Unknown detector '{_options.Detector}'."),
+        };
+    }
+
     private static double AudioDurationMs(RawPcmChunk chunk)
     {
         var bytesPerSample = chunk.Format.BitsPerSample / 8;
         return chunk.Bytes.Length * 1000.0 / bytesPerSample / chunk.Format.SampleRate;
     }
 
+    private static double ClipDurationMs(PcmWav wav)
+    {
+        var bytesPerSample = wav.Format.BitsPerSample / 8;
+        return wav.Data.Length * 1000.0 / bytesPerSample / wav.Format.SampleRate;
+    }
+
     public static IEnumerable<RawPcmChunk> ReplayChunks(
         PcmWav wav,
         int requestedChunkBytes,
-        int tailMs)
+        int tailMs,
+        int leadMs = 0)
     {
         var frameBytes = wav.Format.Channels * (wav.Format.BitsPerSample / 8);
         var chunkBytes = Math.Max(frameBytes, (requestedChunkBytes / frameBytes) * frameBytes);
+        var leadBytes = (int)Math.Ceiling(wav.Format.SampleRate * frameBytes * leadMs / 1000.0);
+        leadBytes = (leadBytes + frameBytes - 1) / frameBytes * frameBytes;
+        var leadData = leadMs > 0 ? new byte[leadBytes] : Array.Empty<byte>();
         var tailBytes = (int)Math.Ceiling(wav.Format.SampleRate * frameBytes * tailMs / 1000.0);
         tailBytes = (tailBytes + frameBytes - 1) / frameBytes * frameBytes;
         var tailData = tailMs > 0 ? new byte[tailBytes] : Array.Empty<byte>();
         var data = wav.Data;
+
+        foreach (var chunk in ReplaySilence(leadData, chunkBytes, wav.Format))
+        {
+            yield return chunk;
+        }
 
         for (var offset = 0; offset < data.Length; offset += chunkBytes)
         {
@@ -139,12 +172,20 @@ public sealed class BenchmarkRunner
             yield return new RawPcmChunk { Bytes = buffer, Format = wav.Format };
         }
 
-        for (var offset = 0; offset < tailData.Length; offset += chunkBytes)
+        foreach (var chunk in ReplaySilence(tailData, chunkBytes, wav.Format))
         {
-            var bytes = Math.Min(tailData.Length - offset, chunkBytes);
+            yield return chunk;
+        }
+    }
+
+    private static IEnumerable<RawPcmChunk> ReplaySilence(byte[] silence, int chunkBytes, AudioFormat format)
+    {
+        for (var offset = 0; offset < silence.Length; offset += chunkBytes)
+        {
+            var bytes = Math.Min(silence.Length - offset, chunkBytes);
             var buffer = new byte[bytes];
-            tailData.AsSpan(offset, bytes).CopyTo(buffer);
-            yield return new RawPcmChunk { Bytes = buffer, Format = wav.Format };
+            silence.AsSpan(offset, bytes).CopyTo(buffer);
+            yield return new RawPcmChunk { Bytes = buffer, Format = format };
         }
     }
 
@@ -169,8 +210,11 @@ public sealed class BenchmarkRunner
 
             var detectedCount = positives.Count(result => result.Outcome == ClipOutcome.Hit);
             var falseActivations = negatives.Sum(result => result.DetectionCount);
-            var falseActivationsPerHour = negatives.Length > 0
-                ? falseActivations / (negatives.Sum(result => result.AudioDurationMs) / 3_600_000.0)
+            // Use the real clip duration, not the padded replay. Lead-in and tail silence would
+            // otherwise dilute the false-activation rate.
+            var negativeHours = negatives.Sum(result => result.ClipDurationMs) / 3_600_000.0;
+            var falseActivationsPerHour = negativeHours > 0.0
+                ? falseActivations / negativeHours
                 : (double?)null;
             var latencyValues = positives
                 .Select(result => result.LatencyMs)
@@ -198,7 +242,7 @@ public sealed class BenchmarkRunner
                 detectedCount,
                 positives.Length > 0 ? (double)detectedCount / positives.Length : null,
                 falseActivations,
-                (double)negatives.Sum(result => result.AudioDurationMs) / 3_600_000.0,
+                negativeHours,
                 falseActivationsPerHour,
                 averageLatencyMs,
                 medianLatencyMs,
@@ -215,13 +259,18 @@ internal static class BenchmarkConfigurations
 {
     public static List<BenchmarkConfiguration> Create(BenchmarkOptions options)
     {
+        if (string.Equals(options.Detector, "nanowakeword", StringComparison.OrdinalIgnoreCase))
+        {
+            return CreateNanoWakeWordConfigurations(options);
+        }
+
         if (options.EnsembleMembers.Count > 0)
         {
             // One configuration: the ensemble itself. Score/threshold sweeps do not apply;
             // each member carries its own per-line score and threshold.
             var configuration = new BenchmarkConfiguration(
                 $"ens|{string.Join("+", options.EnsembleMembers.Select(m => $"{Path.GetFileName(m.KeywordsFile)}:{m.Score:0.####}/{m.Threshold:0.####}"))}",
-                string.Join(", ", options.EnsembleMembers.Select(m => m.KeywordsFile)),
+                string.Join(", ", options.EnsembleMembers.Select(m => Path.GetFileName(m.KeywordsFile))),
                 0,
                 0,
                 CreateKeywordSpotterOptions(options),
@@ -253,6 +302,36 @@ internal static class BenchmarkConfigurations
                     }
                 }
             }
+        }
+
+        return configurations;
+    }
+
+    private static List<BenchmarkConfiguration> CreateNanoWakeWordConfigurations(BenchmarkOptions options)
+    {
+        var configurations = new List<BenchmarkConfiguration>();
+        var index = 0;
+        foreach (var threshold in options.NanoThresholds)
+        {
+            var nano = new NanoWakeWordOptions
+            {
+                Model = options.NanoWakeWordOptions.Model,
+                Keyword = options.NanoWakeWordOptions.Keyword,
+                Threshold = threshold,
+                TriggerLevel = options.NanoWakeWordOptions.TriggerLevel,
+                Refractory = options.NanoWakeWordOptions.Refractory,
+                StepFrames = options.NanoWakeWordOptions.StepFrames,
+            };
+
+            configurations.Add(new BenchmarkConfiguration(
+                $"{index:D3}|nano|{nano.Model}|threshold:{threshold:0.####}|trigger:{nano.TriggerLevel}|refractory:{nano.Refractory}|step:{nano.StepFrames}",
+                $"{nano.Model}.onnx",
+                0,
+                threshold,
+                CreateKeywordSpotterOptions(options),
+                CreateAudioOptions(options),
+                nano));
+            index++;
         }
 
         return configurations;

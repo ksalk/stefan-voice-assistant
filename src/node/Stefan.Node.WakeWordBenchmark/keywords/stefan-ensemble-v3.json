@@ -1,0 +1,4 @@
+[
+  { "keywordsFile": "stefan-base.txt", "score": 2, "threshold": 0.18 },
+  { "keywordsFile": "solo-ster1.txt", "score": 1.4, "threshold": 0.18 }
+]

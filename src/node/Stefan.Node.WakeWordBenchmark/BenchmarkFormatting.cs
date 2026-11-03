@@ -5,7 +5,11 @@ namespace Stefan.Node.WakeWordBenchmark;
 internal static class BenchmarkFormatting
 {
     public static string Describe(BenchmarkConfiguration configuration) =>
-        Describe(configuration.KeywordsFile, configuration.Score, configuration.Threshold);
+        configuration.NanoWakeWordOptions is { } nano
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"{Path.GetFileName(configuration.KeywordsFile)} · threshold {nano.Threshold:0.0##} · trigger {nano.TriggerLevel}")
+            : Describe(configuration.KeywordsFile, configuration.Score, configuration.Threshold);
 
     public static string Describe(string keywordsFile, float score, float threshold) =>
         string.Create(
