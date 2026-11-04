@@ -312,7 +312,7 @@ public class ProcessCommand(
         {
             return await audioConverter.CompressToOpusAsync(inputWavBytes, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // TODO: also log error, but continue processing with uncompressed audio to avoid failing the whole command just because compression failed. We can compress it later when we save the record to db, so at least we have compressed audio stored even if compression fails here.
             logger.LogWarning(ex, "Audio compression failed, falling back to uncompressed audio");

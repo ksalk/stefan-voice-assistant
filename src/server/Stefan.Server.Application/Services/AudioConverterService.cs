@@ -44,15 +44,26 @@ public class AudioConverterService
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         process.Start();
 
-        await process.StandardInput.BaseStream.WriteAsync(inputBytes, cancellationToken);
-        await process.StandardInput.BaseStream.FlushAsync(cancellationToken);
-        process.StandardInput.Close();
-
         using var ms = new MemoryStream();
-        await process.StandardOutput.BaseStream.CopyToAsync(ms, cancellationToken);
 
-        var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        // Drain stdout and stderr while writing stdin. Waiting for the write to
+        // finish first can deadlock when either pipe buffer fills up.
+        var writeInputTask = WriteInputAsync(process, inputBytes, cancellationToken);
+        var readOutputTask = process.StandardOutput.BaseStream.CopyToAsync(ms, cancellationToken);
+        var readErrorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+        try
+        {
+            await Task.WhenAll(writeInputTask, readOutputTask, readErrorTask);
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch
+        {
+            KillProcess(process);
+            throw;
+        }
+
+        var stderr = await readErrorTask;
 
         if (process.ExitCode != 0)
         {
@@ -60,6 +71,34 @@ public class AudioConverterService
         }
 
         return ms.ToArray();
+    }
+
+    private static async Task WriteInputAsync(Process process, byte[] inputBytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await process.StandardInput.BaseStream.WriteAsync(inputBytes, cancellationToken);
+            await process.StandardInput.BaseStream.FlushAsync(cancellationToken);
+        }
+        finally
+        {
+            process.StandardInput.Close();
+        }
+    }
+
+    private static void KillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The process exited before it could be killed.
+        }
     }
 
     private static string? FindExecutable(string name)
