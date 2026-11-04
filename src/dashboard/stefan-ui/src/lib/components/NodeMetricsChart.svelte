@@ -3,6 +3,7 @@
 	import { LineChart } from 'layerchart';
 	import type { NodeStatusReport } from '$lib/types';
 	import { formatDateTime } from '$lib/utils/date';
+	import { trailingAverage } from '$lib/utils/metrics';
 
 	type RangeKey = '1h' | '24h' | '7d' | '30d' | 'All';
 
@@ -24,20 +25,35 @@
 
 	const chartConfig = {
 		cpuUsage: { label: 'CPU', color: '#ef4444' },
+		cpuAvgUsage: { label: 'CPU (1h avg)', color: '#b91c1c' },
 		memoryUsage: { label: 'Memory', color: '#3b82f6' },
 		diskUsage: { label: 'Disk', color: '#22c55e' },
 		audioVolume: { label: 'Volume', color: '#a855f7' }
 	} satisfies Chart.ChartConfig;
 
+	const CPU_AVG_WINDOW_MS = 60 * 60 * 1000;
+
 	const sortedReports = $derived(
 		[...reports].sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp))
 	);
 
+	const smoothedReports = $derived.by(() => {
+		const averages = trailingAverage(
+			sortedReports.map((report) => ({
+				timestamp: new Date(report.timestamp),
+				value: report.cpuUsage
+			})),
+			CPU_AVG_WINDOW_MS
+		);
+
+		return sortedReports.map((report, i) => ({ report, cpuAvgUsage: averages[i] }));
+	});
+
 	const filteredReports = $derived.by(() => {
 		const r = RANGES.find((x) => x.key === range);
-		if (!r || r.ms === null) return sortedReports;
+		if (!r || r.ms === null) return smoothedReports;
 		const cutoff = Date.now() - r.ms;
-		return sortedReports.filter((rep) => +new Date(rep.timestamp) >= cutoff);
+		return smoothedReports.filter((row) => +new Date(row.report.timestamp) >= cutoff);
 	});
 
 	const MAX_POINTS = 300;
@@ -49,36 +65,40 @@
 		const out: {
 			timestamp: Date;
 			cpuUsage: number | null;
+			cpuAvgUsage: number | null;
 			memoryUsage: number | null;
 			diskUsage: number | null;
 			audioVolume: number | null;
 		}[] = [];
+
+		const toRow = (row: (typeof rows)[number]) => ({
+			timestamp: new Date(row.report.timestamp),
+			cpuUsage: row.report.cpuUsage,
+			cpuAvgUsage: row.cpuAvgUsage,
+			memoryUsage: row.report.memoryUsage,
+			diskUsage: row.report.diskUsage,
+			audioVolume: row.report.audioVolume
+		});
+
 		for (let i = 0; i < rows.length; i += step) {
-			const rep = rows[i];
-			out.push({
-				timestamp: new Date(rep.timestamp),
-				cpuUsage: rep.cpuUsage,
-				memoryUsage: rep.memoryUsage,
-				diskUsage: rep.diskUsage,
-				audioVolume: rep.audioVolume
-			});
+			out.push(toRow(rows[i]));
 		}
 		const last = rows[rows.length - 1];
 		const lastRow = out[out.length - 1];
-		if (lastRow && +lastRow.timestamp !== +new Date(last.timestamp)) {
-			out.push({
-				timestamp: new Date(last.timestamp),
-				cpuUsage: last.cpuUsage,
-				memoryUsage: last.memoryUsage,
-				diskUsage: last.diskUsage,
-				audioVolume: last.audioVolume
-			});
+		if (lastRow && +lastRow.timestamp !== +new Date(last.report.timestamp)) {
+			out.push(toRow(last));
 		}
 		return out;
 	});
 
 	const series = [
 		{ key: 'cpuUsage', label: chartConfig.cpuUsage.label, color: chartConfig.cpuUsage.color },
+		{
+			key: 'cpuAvgUsage',
+			label: chartConfig.cpuAvgUsage.label,
+			color: chartConfig.cpuAvgUsage.color,
+			props: { 'stroke-dasharray': '6 4' }
+		},
 		{
 			key: 'memoryUsage',
 			label: chartConfig.memoryUsage.label,
