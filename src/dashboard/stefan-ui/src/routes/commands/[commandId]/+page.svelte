@@ -11,13 +11,10 @@
 	import CommandTools from '$lib/components/CommandTools.svelte';
 	import CommandLogs from '$lib/components/CommandLogs.svelte';
 	import DurationBar from '$lib/components/DurationBar.svelte';
+	import AudioWaveform from '$lib/components/AudioWaveform.svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-	import AudioWaveform from '@lucide/svelte/icons/audio-waveform';
-	import Mic from '@lucide/svelte/icons/mic';
-	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { api } from '$lib/api';
 	import { formatDuration, getStatusBadgeVariant } from '$lib/commands';
-	import { toast } from 'svelte-sonner';
 	import type { Command, CommandTool } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -60,21 +57,6 @@
 		}
 
 		loading = false;
-	}
-
-	async function playAudio(type: 'Request' | 'Response' | 'WakeWord') {
-		if (!command) return;
-		try {
-			const blob = await api.getCommandAudio(command.id, type);
-			const url = URL.createObjectURL(blob);
-			const audio = new Audio(url);
-			audio.onended = () => URL.revokeObjectURL(url);
-			audio.onerror = () => URL.revokeObjectURL(url);
-			await audio.play();
-		} catch (e) {
-			console.error('Failed to play audio:', e);
-			toast.error('Failed to play audio: ' + (e instanceof Error ? e.message : 'Unknown error'));
-		}
 	}
 </script>
 
@@ -132,62 +114,41 @@
 
 	<div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
+			<Card.Header>
 				<Card.Title class="text-base">Transcript</Card.Title>
-				<Button
-					variant="outline"
-					size="icon"
-					aria-label="Play request audio"
-					onclick={() => playAudio('Request')}
-				>
-					<Mic class="size-4" />
-				</Button>
 			</Card.Header>
 			<Card.Content>
 				<p class="text-base whitespace-pre-wrap">
 					{command.transcript || 'No transcript available.'}
 				</p>
+				<AudioWaveform commandId={command.id} type="Request" class="mt-4" />
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
+			<Card.Header>
 				<Card.Title class="text-base">Response</Card.Title>
-				<Button
-					variant="outline"
-					size="icon"
-					aria-label="Play response audio"
-					onclick={() => playAudio('Response')}
-				>
-					<Volume2 class="size-4" />
-				</Button>
 			</Card.Header>
 			<Card.Content>
 				<p class="text-base whitespace-pre-wrap">
 					{command.responseText || 'No response available.'}
 				</p>
+				<AudioWaveform commandId={command.id} type="Response" class="mt-4" />
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root>
-			<Card.Header class="flex flex-row items-center justify-between">
+			<Card.Header>
 				<Card.Title class="text-base">Wake Word</Card.Title>
-				<Button
-					variant="outline"
-					size="icon"
-					aria-label="Play wake word audio"
-					disabled={!command.wakeWordAudioFormat}
-					onclick={() => playAudio('WakeWord')}
-				>
-					<AudioWaveform class="size-4" />
-				</Button>
 			</Card.Header>
 			<Card.Content>
-				<p class="text-base whitespace-pre-wrap">
-					{command.wakeWordAudioFormat
-						? `Captured audio (${formatDuration(command.wakeWordAudioDurationMs ?? 0)}) before the command.`
-						: 'No wake word audio available for this command.'}
-				</p>
+				{#if command.wakeWordAudioFormat}
+					<AudioWaveform commandId={command.id} type="WakeWord" />
+				{:else}
+					<p class="text-base whitespace-pre-wrap">
+						No wake word audio available for this command.
+					</p>
+				{/if}
 			</Card.Content>
 		</Card.Root>
 	</div>
