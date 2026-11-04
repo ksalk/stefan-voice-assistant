@@ -15,10 +15,10 @@ public class NanoWakeWordOptions
     public string Keyword { get; set; } = "stefan";
 
     /// <summary>Minimum model probability for a wake-word candidate.</summary>
-    public float Threshold { get; set; } = 0.75f;
+    public float Threshold { get; set; } = 0.65f;
 
     /// <summary>Number of consecutive threshold crossings required before a detection.</summary>
-    public int TriggerLevel { get; set; } = 1;
+    public int TriggerLevel { get; set; } = 2;
 
     /// <summary>Cooldown period, in frames, after a detection.</summary>
     public int Refractory { get; set; } = 60;
