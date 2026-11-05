@@ -61,14 +61,21 @@ WebApplicationBuilder ConfigureServices(WebApplicationBuilder builder)
     builder.Services.Configure<NodeOptions>(builder.Configuration.GetSection(NodeOptions.SectionName));
     builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
     builder.Services.Configure<RemoteServerOptions>(builder.Configuration.GetSection(RemoteServerOptions.SectionName));
+    builder.Services.Configure<WakeWordOptions>(builder.Configuration.GetSection(WakeWordOptions.SectionName));
     builder.Services.Configure<KeywordSpotterOptions>(builder.Configuration.GetSection(KeywordSpotterOptions.SectionName));
     builder.Services.Configure<NanoWakeWordOptions>(builder.Configuration.GetSection(NanoWakeWordOptions.SectionName));
     builder.Services.Configure<AudioOptions>(builder.Configuration.GetSection(AudioOptions.SectionName));
 
+    // Validate the selection before the node registers with the server, so a typo fails fast.
+    var wakeWordOptions = builder.Configuration
+        .GetSection(WakeWordOptions.SectionName)
+        .Get<WakeWordOptions>() ?? new WakeWordOptions();
+    Log.Information("[wake] Detector: {Detector}", WakeWordOptions.Normalize(wakeWordOptions.Detector));
+
     // Voice command handling
     builder.Services.AddSingleton<AppStateService>();
     builder.Services.AddSingleton<AudioRecorder>();
-    builder.Services.AddSingleton<IWakeWordDetector, NanoWakeWordDetector>();
+    builder.Services.AddSingleton<IWakeWordDetector>(WakeWordDetectorFactory.Create);
     RegisterAudioInputProvider(builder);
     RegisterVoicePipeline(builder);
 

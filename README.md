@@ -143,6 +143,7 @@ Important settings include:
 | `Audio:SilenceThreshold` | `0.02` | Normalized RMS silence threshold |
 | `Audio:SilenceTimeoutMs` | `1000` | Silence duration before sending a command |
 | `Audio:MaxRecordingMs` | `10000` | Maximum command duration |
+| `WakeWord:Detector` | `nanowakeword` | Wake-word detector: `nanowakeword` or `sherpa`. Stop-keyword detection always uses Sherpa-ONNX |
 | `KeywordSpotter:ModelPath` | `/app/models` | Directory containing the Sherpa-ONNX model files |
 
 The Docker image uses `/app/models`; configure a different model path for a local run.

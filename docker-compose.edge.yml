@@ -27,6 +27,7 @@ services:
       Audio__SilenceThreshold: ${AUDIO_SILENCE_THRESHOLD:-0.02}
       Audio__SilenceTimeoutMs: ${AUDIO_SILENCE_TIMEOUT_MS:-1000}
       Audio__MaxRecordingMs: ${AUDIO_MAX_RECORDING_MS:-10000}
+      WakeWord__Detector: ${WAKE_WORD_DETECTOR:-nanowakeword}
       KeywordSpotter__NumThreads: ${KEYWORD_SPOTTER_NUM_THREADS:-2}
       KeywordSpotter__Provider: ${KEYWORD_SPOTTER_PROVIDER:-cpu}
       KeywordSpotter__FeatureDim: ${KEYWORD_SPOTTER_FEATURE_DIM:-80}
