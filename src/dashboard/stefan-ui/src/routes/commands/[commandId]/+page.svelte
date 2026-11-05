@@ -118,10 +118,10 @@
 				<Card.Title class="text-base">Transcript</Card.Title>
 			</Card.Header>
 			<Card.Content>
-				<p class="text-base whitespace-pre-wrap">
+				<AudioWaveform commandId={command.id} type="Request" />
+				<p class="mt-4 text-base whitespace-pre-wrap">
 					{command.transcript || 'No transcript available.'}
 				</p>
-				<AudioWaveform commandId={command.id} type="Request" class="mt-4" />
 			</Card.Content>
 		</Card.Root>
 
@@ -130,10 +130,10 @@
 				<Card.Title class="text-base">Response</Card.Title>
 			</Card.Header>
 			<Card.Content>
-				<p class="text-base whitespace-pre-wrap">
+				<AudioWaveform commandId={command.id} type="Response" />
+				<p class="mt-4 text-base whitespace-pre-wrap">
 					{command.responseText || 'No response available.'}
 				</p>
-				<AudioWaveform commandId={command.id} type="Response" class="mt-4" />
 			</Card.Content>
 		</Card.Root>
 
