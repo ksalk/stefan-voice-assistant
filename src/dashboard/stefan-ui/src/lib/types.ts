@@ -45,7 +45,8 @@ export type CommandStatus =
 	| 'TtsSuccess'
 	| 'HttpFailed'
 	| 'Completed'
-	| 'Failed';
+	| 'Failed'
+	| 'Canceled';
 
 export type StatusGroup = 'all' | 'inProgress' | 'completed' | 'failed';
 

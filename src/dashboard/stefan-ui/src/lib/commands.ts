@@ -9,14 +9,15 @@ export const statusGroups: { value: StatusGroup; label: string }[] = [
 	{ value: 'failed', label: 'Failed' }
 ];
 
-const inProgressStatuses: CommandStatus[] = ['Received', 'SttSuccess', 'LlmSuccess', 'TtsSuccess'];
-const completedStatuses: CommandStatus[] = ['Completed'];
+const inProgressStatuses: CommandStatus[] = ['Received', 'SttSuccess', 'LlmSuccess'];
+const completedStatuses: CommandStatus[] = ['Completed', 'TtsSuccess']; // TtsSuccess: legacy rows
 const failedStatuses: CommandStatus[] = [
 	'SttFailed',
 	'LlmFailed',
 	'TtsFailed',
 	'HttpFailed',
-	'Failed'
+	'Failed',
+	'Canceled'
 ];
 
 export function getStatusGroup(status: CommandStatus): StatusGroup {

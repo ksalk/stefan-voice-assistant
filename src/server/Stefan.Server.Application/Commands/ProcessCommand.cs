@@ -40,60 +40,98 @@ public class ProcessCommand(
             "Processing command {CommandId} for device {DeviceId}, session {SessionId}",
             request.CommandId, request.DeviceId, request.SessionId);
 
-        var nodeResult = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
-        if (!nodeResult.IsSuccess)
+        CommandRecord? commandRecord = null;
+
+        try
         {
-            return Result<ProcessCommandResponse>.Failure(nodeResult.Error!);
+            var nodeResult = await ValidateNodeAndSession(request.DeviceId, request.SessionId, cancellationToken);
+            if (!nodeResult.IsSuccess)
+            {
+                return Result<ProcessCommandResponse>.Failure(nodeResult.Error!);
+            }
+
+            var node = nodeResult.Value!;
+
+            // TODO: is this really required, is audio read twice at all?
+            var inputAudio = await PrepareInputAudioAsync(request.AudioStream, cancellationToken);
+            var wakeWordAudio = await PrepareWakeWordAudioAsync(request.WakeWordAudioStream, cancellationToken);
+
+            // Create initial command record with input audio and duration, so we have a record even if STT fails
+            commandRecord = await CreateAndSaveCommandRecord(
+                request.CommandId,
+                node.Id,
+                request.SessionId,
+                inputAudio.CompressedOpus,
+                inputAudio.DurationMs,
+                wakeWordAudio,
+                cancellationToken);
+
+            var sttResult = await RunSttAsync(commandRecord, inputAudio.WavBytes, cancellationToken);
+            if (!sttResult.IsSuccess)
+            {
+                return Result<ProcessCommandResponse>.Failure(sttResult.Error!);
+            }
+
+            var llmResult = await RunLlmAsync(commandRecord, request.DeviceId, cancellationToken);
+            if (!llmResult.IsSuccess)
+            {
+                return Result<ProcessCommandResponse>.Failure(llmResult.Error!);
+            }
+
+            var ttsResult = await RunTtsAsync(commandRecord, cancellationToken);
+            if (!ttsResult.IsSuccess)
+            {
+                return Result<ProcessCommandResponse>.Failure(ttsResult.Error!);
+            }
+
+            node.MarkSeen();
+
+            var totalDurationMs = Stopwatch.GetElapsedTime(totalTimestamp).TotalMilliseconds;
+            commandRecord.Complete(totalDurationMs);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation(
+                "Command {CommandId} completed in {TotalDurationMs} ms", request.CommandId, totalDurationMs);
+
+            return Result<ProcessCommandResponse>.Success(new ProcessCommandResponse
+            {
+                AudioBytes = ttsResult.Value!,
+                ResponseText = commandRecord.ResponseText!,
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            await FinalizeAsync(commandRecord, record =>
+                record.Cancel("The command was canceled before it completed."));
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await FinalizeAsync(commandRecord, record => record.Fail(ex.Message));
+            throw;
+        }
+    }
+
+    private async Task FinalizeAsync(CommandRecord? record, Action<CommandRecord> transition)
+    {
+        if (record is null)
+        {
+            return;
         }
 
-        var node = nodeResult.Value!;
-
-        // TODO: is this really required, is audio read twice at all?
-        var inputAudio = await PrepareInputAudioAsync(request.AudioStream, cancellationToken);
-        var wakeWordAudio = await PrepareWakeWordAudioAsync(request.WakeWordAudioStream, cancellationToken);
-
-        // Create initial command record with input audio and duration, so we have a record even if STT fails
-        var commandRecord = await CreateAndSaveCommandRecord(
-            request.CommandId,
-            node.Id,
-            request.SessionId,
-            inputAudio.CompressedOpus,
-            inputAudio.DurationMs,
-            wakeWordAudio,
-            cancellationToken);
-
-        var sttResult = await RunSttAsync(commandRecord, inputAudio.WavBytes, cancellationToken);
-        if (!sttResult.IsSuccess)
+        try
         {
-            return Result<ProcessCommandResponse>.Failure(sttResult.Error!);
+            transition(record);
+
+            if (dbContext.ChangeTracker.HasChanges())
+            {
+                await dbContext.SaveChangesAsync(CancellationToken.None);
+            }
         }
-
-        var llmResult = await RunLlmAsync(commandRecord, request.DeviceId, cancellationToken);
-        if (!llmResult.IsSuccess)
+        catch (Exception ex)
         {
-            return Result<ProcessCommandResponse>.Failure(llmResult.Error!);
+            logger.LogError(ex, "Failed to persist the terminal state for command {CommandId}", record.Id);
         }
-
-        var ttsResult = await RunTtsAsync(commandRecord, cancellationToken);
-        if (!ttsResult.IsSuccess)
-        {
-            return Result<ProcessCommandResponse>.Failure(ttsResult.Error!);
-        }
-
-        node.MarkSeen();
-
-        var totalDurationMs = Stopwatch.GetElapsedTime(totalTimestamp).TotalMilliseconds;
-        commandRecord.SetTotalDuration(totalDurationMs);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        logger.LogInformation(
-            "Command {CommandId} completed in {TotalDurationMs} ms", request.CommandId, totalDurationMs);
-
-        return Result<ProcessCommandResponse>.Success(new ProcessCommandResponse
-        {
-            AudioBytes = ttsResult.Value!,
-            ResponseText = commandRecord.ResponseText!,
-        });
     }
 
     private async Task<Result<Node>> ValidateNodeAndSession(string deviceId, string sessionId, CancellationToken cancellationToken)
@@ -166,41 +204,46 @@ public class ProcessCommand(
         }
     }
 
-    private async Task<Result<SpeechToTextTranscription>> RunSttAsync(CommandRecord record, byte[] inputWavBytes, CancellationToken cancellationToken)
+    private async Task<Result<SpeechToTextTranscription>> RunSttAsync(
+        CommandRecord record,
+        byte[] inputWavBytes,
+        CancellationToken cancellationToken)
     {
+        Result<SpeechToTextTranscription> result;
+
         try
         {
             // TODO: maybe pass inputWavBytes directly to avoid creating another MemoryStream, but need to check if stt.TranscribeAsync can read from the same byte array without issues
             using var sttStream = new MemoryStream(inputWavBytes);
-            var result = await stt.TranscribeAsync(sttStream, cancellationToken);
-
-            if (!result.IsSuccess)
-            {
-                return await RecordSttFailureAsync(record, result.Error?.Message ?? "Unknown STT error", cancellationToken);
-            }
-
-            if (string.IsNullOrWhiteSpace(result.Value.Transcript))
-            {
-                logger.LogWarning("STT produced empty transcript");
-                return await RecordSttFailureAsync(record, "STT produced empty transcript", cancellationToken);
-            }
-
-            record.SaveTranscriptionResult(result.Value.Transcript, result.Value.DurationMs);
-
-            // The transcript is stored before the model and the tools run, so a
-            // failure later in the command keeps the transcript and its status.
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation("Transcription result: {Transcript}", result.Value.Transcript);
-            logger.LogInformation("Speech processing time: {SttDurationMs} ms", result.Value.DurationMs);
-
-            return result;
+            result = await stt.TranscribeAsync(sttStream, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "STT failed: {Error}", ex.Message);
             return await RecordSttFailureAsync(record, ex.Message, cancellationToken);
         }
+
+        if (!result.IsSuccess)
+        {
+            return await RecordSttFailureAsync(record, result.Error?.Message ?? "Unknown STT error", cancellationToken);
+        }
+
+        if (string.IsNullOrWhiteSpace(result.Value.Transcript))
+        {
+            logger.LogWarning("STT produced empty transcript");
+            return await RecordSttFailureAsync(record, "STT produced empty transcript", cancellationToken);
+        }
+
+        record.SaveTranscriptionResult(result.Value.Transcript, result.Value.DurationMs);
+
+        // The transcript is stored before the model and the tools run, so a
+        // failure later in the command keeps the transcript and its status.
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Transcription result: {Transcript}", result.Value.Transcript);
+        logger.LogInformation("Speech processing time: {SttDurationMs} ms", result.Value.DurationMs);
+
+        return result;
     }
 
     private async Task<Result<SpeechToTextTranscription>> RecordSttFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
@@ -210,39 +253,22 @@ public class ProcessCommand(
         return Result<SpeechToTextTranscription>.Failure(Error.External($"Speech recognition failed: {detail}"));
     }
 
-    private async Task<Result<LlmCommandResult>> RunLlmAsync(CommandRecord record, string deviceId, CancellationToken cancellationToken)
+    private async Task<Result<LlmCommandResult>> RunLlmAsync(
+        CommandRecord record,
+        string deviceId,
+        CancellationToken cancellationToken)
     {
         string? llmConversationJson = null;
+        Result<LlmCommandResult> result;
 
         try
         {
-            var result = await llm.ProcessCommandAsync(
+            result = await llm.ProcessCommandAsync(
                 record.Transcript!,
                 deviceId,
                 record.Id,
                 cancellationToken,
                 messages => llmConversationJson = JsonSerializer.Serialize(messages, JsonOptions));
-
-            if (!result.IsSuccess)
-            {
-                return await RecordLlmFailureAsync(record, result.Error?.Message ?? "Unknown LLM error", llmConversationJson, cancellationToken);
-            }
-
-            if (string.IsNullOrWhiteSpace(result.Value.ResponseText))
-            {
-                logger.LogWarning("LLM produced empty response");
-                return await RecordLlmFailureAsync(record, "LLM produced empty response", llmConversationJson, cancellationToken);
-            }
-
-            logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.Value.DurationMs);
-
-            record.SaveLlmResult(result.Value.ResponseText, llmConversationJson ?? JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
-
-            // The response text and the conversation are stored before the speech
-            // synthesis runs, so a failure later keeps them.
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            return result;
         }
         catch (ClientResultException ex)
         {
@@ -257,6 +283,27 @@ public class ProcessCommand(
             logger.LogError(ex, "LLM failed: {Error}", ex.Message);
             return await RecordLlmFailureAsync(record, ex.Message, llmConversationJson, cancellationToken);
         }
+
+        if (!result.IsSuccess)
+        {
+            return await RecordLlmFailureAsync(record, result.Error?.Message ?? "Unknown LLM error", llmConversationJson, cancellationToken);
+        }
+
+        if (string.IsNullOrWhiteSpace(result.Value.ResponseText))
+        {
+            logger.LogWarning("LLM produced empty response");
+            return await RecordLlmFailureAsync(record, "LLM produced empty response", llmConversationJson, cancellationToken);
+        }
+
+        logger.LogInformation("LLM processing time: {LlmDurationMs} ms", result.Value.DurationMs);
+
+        record.SaveLlmResult(result.Value.ResponseText, llmConversationJson ?? JsonSerializer.Serialize(result.Value.Messages, JsonOptions), result.Value.DurationMs);
+
+        // The response text and the conversation are stored before the speech
+        // synthesis runs, so a failure later keeps them.
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return result;
     }
 
     private async Task<Result<LlmCommandResult>> RecordLlmFailureAsync(CommandRecord record, string detail, string? llmConversationJson, CancellationToken cancellationToken)
@@ -266,37 +313,41 @@ public class ProcessCommand(
         return Result<LlmCommandResult>.Failure(Error.External($"Language model failed: {detail}"));
     }
 
-    private async Task<Result<byte[]>> RunTtsAsync(CommandRecord record, CancellationToken cancellationToken)
+    private async Task<Result<byte[]>> RunTtsAsync(
+        CommandRecord record,
+        CancellationToken cancellationToken)
     {
+        Result<TextToSpeechResult> result;
+
         try
         {
-            var result = await tts.SynthesizeAsync(record.ResponseText!, cancellationToken);
-
-            if (!result.IsSuccess)
-            {
-                return await RecordTtsFailureAsync(record, result.Error?.Message ?? "Unknown TTS error", cancellationToken);
-            }
-
-            var wavOutputAudio = result.Value.AudioBytes;
-            var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
-
-            logger.LogInformation(
-                "TTS synthesis time: {TtsDurationMs} ms, compressed size: {CompressedSize} bytes",
-                result.Value.DurationMs, compressedOutputAudio.Length);
-
-            record.SaveTtsResult(compressedOutputAudio, "opus", result.Value.DurationMs);
-
-            // The audio is stored before the answer travels back to the node, so a
-            // failure later keeps it.
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            return Result<byte[]>.Success(wavOutputAudio);
+            result = await tts.SynthesizeAsync(record.ResponseText!, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "TTS failed: {Error}", ex.Message);
             return await RecordTtsFailureAsync(record, ex.Message, cancellationToken);
         }
+
+        if (!result.IsSuccess)
+        {
+            return await RecordTtsFailureAsync(record, result.Error?.Message ?? "Unknown TTS error", cancellationToken);
+        }
+
+        var wavOutputAudio = result.Value.AudioBytes;
+        var compressedOutputAudio = await CompressAudio(wavOutputAudio, cancellationToken);
+
+        logger.LogInformation(
+            "TTS synthesis time: {TtsDurationMs} ms, compressed size: {CompressedSize} bytes",
+            result.Value.DurationMs, compressedOutputAudio.Length);
+
+        record.SaveTtsResult(compressedOutputAudio, "opus", result.Value.DurationMs);
+
+        // The audio is stored before the answer travels back to the node, so a
+        // failure later keeps it.
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result<byte[]>.Success(wavOutputAudio);
     }
 
     private async Task<Result<byte[]>> RecordTtsFailureAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
@@ -334,8 +385,7 @@ public class ProcessCommand(
             InputAudioDurationMs = inputAudioDurationMs,
             WakeWordAudio = wakeWordAudio?.CompressedOpus,
             WakeWordAudioFormat = wakeWordAudio is null ? null : "opus",
-            WakeWordAudioDurationMs = wakeWordAudio?.DurationMs,
-            Status = CommandStatus.Received
+            WakeWordAudioDurationMs = wakeWordAudio?.DurationMs
         };
 
         await dbContext.CommandRecords.AddAsync(record, cancellationToken);

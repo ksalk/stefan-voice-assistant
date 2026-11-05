@@ -8,7 +8,7 @@ public class CommandRecord
     public Guid NodeId { get; set; }
     public string SessionId { get; set; } = null!;
     public DateTime ReceivedAt { get; set; }
-    public CommandStatus Status { get; set; }
+    public CommandStatus Status { get; private set; } = CommandStatus.Received;
     public string? ErrorMessage { get; set; }
 
     public byte[] InputAudio { get; set; } = null!;
@@ -33,52 +33,82 @@ public class CommandRecord
 
     public void SaveTranscriptionResult(string transcript, double sttDurationMs)
     {
+        TransitionTo(CommandStatus.SttSuccess);
         Transcript = transcript;
         SttDurationMs = sttDurationMs;
-        Status = CommandStatus.SttSuccess;
     }
 
     public void SaveTranscriptionError(string errorMessage)
     {
+        TransitionTo(CommandStatus.SttFailed);
         ErrorMessage = errorMessage;
-        Status = CommandStatus.SttFailed;
     }
 
     public void SaveLlmResult(string responseText, string llmConversationJson, double llmDurationMs)
     {
+        TransitionTo(CommandStatus.LlmSuccess);
         ResponseText = responseText;
         LlmConversationJson = llmConversationJson;
         LlmDurationMs = llmDurationMs;
-        Status = CommandStatus.LlmSuccess;
     }
 
     public void SaveLlmError(string errorMessage, string? llmConversationJson = null)
     {
+        TransitionTo(CommandStatus.LlmFailed);
         ErrorMessage = errorMessage;
+
         if (llmConversationJson is not null)
         {
             LlmConversationJson = llmConversationJson;
         }
-        Status = CommandStatus.LlmFailed;
     }
 
     public void SaveTtsResult(byte[] outputAudio, string outputAudioFormat, double ttsDurationMs)
     {
+        TransitionTo(CommandStatus.TtsSuccess);
         OutputAudio = outputAudio;
         OutputAudioFormat = outputAudioFormat;
         TtsDurationMs = ttsDurationMs;
-        Status = CommandStatus.TtsSuccess;
     }
 
     public void SaveTtsError(string errorMessage)
     {
+        TransitionTo(CommandStatus.TtsFailed);
         ErrorMessage = errorMessage;
-        Status = CommandStatus.TtsFailed;
     }
 
-    public void SetTotalDuration(double totalDurationMs)
+    public void Complete(double totalDurationMs)
     {
+        TransitionTo(CommandStatus.Completed);
         TotalDurationMs = totalDurationMs;
+    }
+
+    public void Fail(string errorMessage)
+    {
+        if (CommandStatusTransitions.IsTerminal(Status))
+        {
+            return;
+        }
+
+        TransitionTo(CommandStatus.Failed);
+        ErrorMessage = errorMessage;
+    }
+
+    public void Cancel(string? errorMessage = null)
+    {
+        if (CommandStatusTransitions.IsTerminal(Status))
+        {
+            return;
+        }
+
+        TransitionTo(CommandStatus.Canceled);
+        ErrorMessage ??= errorMessage;
+    }
+
+    private void TransitionTo(CommandStatus next)
+    {
+        CommandStatusTransitions.Ensure(Status, next);
+        Status = next;
     }
 }
 
@@ -94,5 +124,6 @@ public enum CommandStatus
     TtsSuccess,
     HttpFailed,
     Completed,
-    Failed
+    Failed,
+    Canceled
 }
