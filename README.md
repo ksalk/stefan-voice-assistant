@@ -144,6 +144,11 @@ Important settings include:
 | `Audio:SilenceTimeoutMs` | `1000` | Silence duration before sending a command |
 | `Audio:MaxRecordingMs` | `10000` | Maximum command duration |
 | `WakeWord:Detector` | `nanowakeword` | Wake-word detector: `nanowakeword` or `sherpa`. Stop-keyword detection always uses Sherpa-ONNX |
+| `NanoWakeWord:Threshold` | `0.65` | NanoWakeWord detection threshold |
+| `NanoWakeWord:StepFrames` | `4` | Audio frames per NanoWakeWord pipeline step |
+| `NanoWakeWord:IntraOpThreads` | `1` | ONNX Runtime intra-op threads per session |
+| `NanoWakeWord:InterOpThreads` | `1` | ONNX Runtime inter-op threads per session |
+| `NanoWakeWord:AllowSpinning` | `false` | Allow ONNX Runtime worker threads to spin while idle |
 | `KeywordSpotter:ModelPath` | `/app/models` | Directory containing the Sherpa-ONNX model files |
 
 The Docker image uses `/app/models`; configure a different model path for a local run.

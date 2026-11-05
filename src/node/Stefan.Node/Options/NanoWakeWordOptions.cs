@@ -25,4 +25,16 @@ public class NanoWakeWordOptions
 
     /// <summary>Audio frames processed per pipeline step. Four frames is 320 ms at 16 kHz.</summary>
     public int StepFrames { get; set; } = 4;
+
+    /// <summary>ONNX Runtime intra-op threads per session. One thread is enough for these models.</summary>
+    public int IntraOpThreads { get; set; } = 1;
+
+    /// <summary>ONNX Runtime inter-op threads per session.</summary>
+    public int InterOpThreads { get; set; } = 1;
+
+    /// <summary>
+    /// Allow ONNX Runtime worker threads to spin while waiting for work. Keep this off on the
+    /// Raspberry Pi; spinning keeps every core busy even when no wake word is spoken.
+    /// </summary>
+    public bool AllowSpinning { get; set; }
 }

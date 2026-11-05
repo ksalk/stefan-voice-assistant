@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using NanoWakeWord;
+using Stefan.Node.Audio.NanoWakeWord;
 using Stefan.Node.Options;
 
 namespace Stefan.Node.Audio;
@@ -11,13 +11,6 @@ namespace Stefan.Node.Audio;
 public sealed class NanoWakeWordDetector : IWakeWordDetector
 {
     private const int RequiredSampleRate = 16_000;
-
-    /// <summary>Models embedded in NanoWakeWord. The library extracts them next to the app binary.</summary>
-    private static readonly string[] LibraryModelFiles =
-    [
-        "melspectrogram.onnx",
-        "embedding_model.onnx",
-    ];
 
     private readonly NanoWakeWordOptions _options;
     private readonly ILogger<NanoWakeWordDetector> _logger;
@@ -41,15 +34,23 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
             throw new InvalidOperationException("NanoWakeWord:StepFrames must be greater than zero.");
         }
 
+        if (_options.IntraOpThreads <= 0 || _options.InterOpThreads <= 0)
+        {
+            throw new InvalidOperationException("NanoWakeWord thread counts must be greater than zero.");
+        }
+
         _runtime = CreateRuntime();
 
         _logger.LogInformation(
-            "[wake] NanoWakeWord ready. Model: {Model}, threshold: {Threshold}, trigger level: {TriggerLevel}, refractory: {Refractory}, step frames: {StepFrames}",
+            "[wake] NanoWakeWord ready. Model: {Model}, threshold: {Threshold}, trigger level: {TriggerLevel}, refractory: {Refractory}, step frames: {StepFrames}, intra-op threads: {IntraOpThreads}, inter-op threads: {InterOpThreads}, spinning: {AllowSpinning}",
             _options.Model,
             _options.Threshold,
             _options.TriggerLevel,
             _options.Refractory,
-            _options.StepFrames);
+            _options.StepFrames,
+            _options.IntraOpThreads,
+            _options.InterOpThreads,
+            _options.AllowSpinning);
     }
 
     public string? Process(RawPcmChunk chunk)
@@ -74,10 +75,9 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
             return null;
         }
 
-        // NanoWakeWord has no reset API. Drop the runtime so the next wake-word session starts
-        // with empty sample, mel, embedding, activation and refractory state. Reloading is
-        // deferred to the next Process call, which happens after the command session closes.
-        DisposeRuntime();
+        // Clear the streaming state so the next wake-word session starts with empty sample,
+        // mel, embedding, activation and refractory state. The ONNX sessions stay loaded.
+        runtime.Reset();
 
         return detectedIndex == 0 ? _options.Keyword : null;
     }
@@ -89,10 +89,10 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
             return;
         }
 
-        // Recreate eagerly. Callers such as the benchmark reset before timing a clip, so the
-        // model load must not be attributed to inference time.
-        DisposeRuntime();
-        _runtime = CreateRuntime();
+        // Callers such as the benchmark reset before timing a clip. The runtime is already
+        // loaded, so this only clears the streaming state.
+        _runtime ??= CreateRuntime();
+        _runtime.Reset();
     }
 
     public void Dispose()
@@ -114,11 +114,14 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
 
     private WakeWordRuntime CreateRuntime()
     {
-        EnsureModelFiles();
+        var modelDirectory = Path.Combine(AppContext.BaseDirectory, "models");
 
         return new WakeWordRuntime(new WakeWordRuntimeConfig
         {
             StepFrames = _options.StepFrames,
+            IntraOpThreads = _options.IntraOpThreads,
+            InterOpThreads = _options.InterOpThreads,
+            AllowSpinning = _options.AllowSpinning,
             WakeWords =
             [
                 new WakeWordConfig
@@ -129,48 +132,6 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
                     Refractory = _options.Refractory,
                 }
             ],
-        });
-    }
-
-    /// <summary>
-    /// NanoWakeWord loads <c>models/&lt;Model&gt;.onnx</c> relative to the current working
-    /// directory. It extracts its embedded mel and embedding models next to the app binary.
-    /// Copy the required models into the working directory when the two locations differ.
-    /// </summary>
-    private void EnsureModelFiles()
-    {
-        typeof(WakeWordRuntime).Assembly.ExtractModels();
-
-        var sourceDirectory = Path.Combine(AppContext.BaseDirectory, "models");
-        var targetDirectory = Path.Combine(Directory.GetCurrentDirectory(), "models");
-
-        foreach (var fileName in LibraryModelFiles.Append($"{_options.Model}.onnx"))
-        {
-            CopyIfNewer(Path.Combine(sourceDirectory, fileName), Path.Combine(targetDirectory, fileName));
-        }
-    }
-
-    private static void CopyIfNewer(string sourcePath, string destinationPath)
-    {
-        if (!File.Exists(sourcePath))
-        {
-            throw new FileNotFoundException(
-                $"NanoWakeWord model file '{sourcePath}' was not found. " +
-                "Build the node so the model is copied to the output models directory.",
-                sourcePath);
-        }
-
-        if (string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(destinationPath), StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-
-        if (!File.Exists(destinationPath) ||
-            File.GetLastWriteTimeUtc(sourcePath) > File.GetLastWriteTimeUtc(destinationPath))
-        {
-            File.Copy(sourcePath, destinationPath, overwrite: true);
-        }
+        }, modelDirectory);
     }
 }
