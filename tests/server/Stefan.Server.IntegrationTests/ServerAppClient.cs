@@ -111,6 +111,18 @@ public sealed class ServerAppClient : IDisposable
                ?? throw new InvalidOperationException("GetNodeDetails response body was null.");
     }
 
+    public async Task<HttpResponseMessage> ClearNodeStatusReportsAsync(
+        Guid nodeId,
+        int? olderThanDays = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = $"/api/nodes/{nodeId}/status-reports";
+        if (olderThanDays is not null)
+            path += $"?olderThanDays={olderThanDays}";
+
+        return await _httpClient.DeleteAsync(path, cancellationToken);
+    }
+
     public async Task<HttpResponseMessage> GetCommandToolsAsync(Guid commandId, CancellationToken cancellationToken = default) =>
         await _httpClient.GetAsync($"/api/commands/{commandId}/tools", cancellationToken);
 
@@ -167,6 +179,8 @@ public sealed record NodeDetailsDto(
     IReadOnlyList<NodeStatusReportDto> StatusReports);
 
 public sealed record NodeDetailsResult(NodeDetailsDto Node);
+
+public sealed record ClearNodeStatusReportsResult(int DeletedCount);
 
 public sealed record CommandToolDto(
     Guid Id,

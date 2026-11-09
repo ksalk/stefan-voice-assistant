@@ -10,6 +10,7 @@ public static class DashboardEndpoints
 
         group.MapGetNodesEndpoint();
         group.MapGetNodeDetailsEndpoint();
+        group.MapClearNodeStatusReportsEndpoint();
         group.MapPingNodeEndpoint();
         group.MapSpeakTextEndpoint();
         group.MapGetCommandsEndpoint();

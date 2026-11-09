@@ -36,6 +36,10 @@ export interface GetNodeDetailsResult {
 	node: Node;
 }
 
+export interface ClearNodeStatusReportsResult {
+	deletedCount: number;
+}
+
 export type CommandStatus =
 	| 'Received'
 	| 'SttFailed'

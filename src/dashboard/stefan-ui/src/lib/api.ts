@@ -1,4 +1,5 @@
 import type {
+	ClearNodeStatusReportsResult,
 	Command,
 	CommandsResult,
 	GetCommandLogsResult,
@@ -74,6 +75,17 @@ export const api = {
 
 	pingNode: (id: string, customFetch?: typeof fetch) =>
 		send({ method: 'POST', path: `nodes/${id}/ping`, fetch: customFetch }),
+
+	clearNodeStatusReports: (
+		id: string,
+		olderThanDays = 30,
+		customFetch?: typeof fetch
+	): Promise<ClearNodeStatusReportsResult> =>
+		send({
+			method: 'DELETE',
+			path: `nodes/${id}/status-reports?olderThanDays=${olderThanDays}`,
+			fetch: customFetch
+		}),
 
 	speakText: (nodeId: string, text: string, customFetch?: typeof fetch) =>
 		send({

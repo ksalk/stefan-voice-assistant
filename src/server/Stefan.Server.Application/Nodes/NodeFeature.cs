@@ -10,6 +10,7 @@ public static class NodeFeature
         services.AddScoped<RegisterNode>();
         services.AddScoped<GetNodes>();
         services.AddScoped<GetNodeDetails>();
+        services.AddScoped<ClearNodeStatusReports>();
         services.AddScoped<PingNode>();
         services.AddScoped<ScheduleNodePing>();
         services.AddScoped<RescheduleNodePings>();

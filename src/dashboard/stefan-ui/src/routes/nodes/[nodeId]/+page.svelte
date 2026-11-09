@@ -11,6 +11,7 @@
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Radio from '@lucide/svelte/icons/radio';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import { formatDateTime } from '$lib/utils/date';
 	import { api } from '$lib/api';
@@ -21,6 +22,7 @@
 	let node = $state<Node | null>(null);
 	let loading = $state(true);
 	let pinging = $state(false);
+	let clearing = $state(false);
 	let error: string | null = $state(null);
 	let audioText = $state('');
 	let sendingAudio = $state(false);
@@ -72,6 +74,36 @@
 			toast.error(`Failed to ping ${node.name}: ${msg}`);
 		} finally {
 			pinging = false;
+		}
+	}
+
+	async function clearOldReports() {
+		if (!node || clearing) return;
+		if (
+			!window.confirm(
+				'Delete status reports older than 30 days for this node? This cannot be undone.'
+			)
+		) {
+			return;
+		}
+
+		const id = node.id;
+		clearing = true;
+		try {
+			const result = await api.clearNodeStatusReports(id, 30);
+			await fetchNode(id);
+			if (result.deletedCount === 0) {
+				toast.info('No status reports older than 30 days');
+			} else {
+				toast.success(
+					`Cleared ${result.deletedCount} status report${result.deletedCount === 1 ? '' : 's'} older than 30 days`
+				);
+			}
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : 'Unknown error';
+			toast.error(`Failed to clear status reports: ${msg}`);
+		} finally {
+			clearing = false;
 		}
 	}
 
@@ -267,7 +299,19 @@
 	</div>
 
 	<!-- Status reports table -->
-	<div class="mt-4">
+	<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+		<h2 class="text-lg font-semibold">Status reports</h2>
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={clearOldReports}
+			disabled={clearing || statusReports.length === 0}
+		>
+			<Trash2 class="size-4" />
+			{clearing ? 'Clearing…' : 'Clear older than 30d'}
+		</Button>
+	</div>
+	<div class="mt-2">
 		<Table.Root>
 			<Table.Caption>
 				Showing {pagedReports.length} of {totalCount} status reports
