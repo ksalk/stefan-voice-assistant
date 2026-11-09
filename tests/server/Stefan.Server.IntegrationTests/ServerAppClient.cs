@@ -127,7 +127,7 @@ public sealed record HealthResponse(
     string SttProvider,
     string TtsProvider);
 
-public sealed record RegisterNodeRequestDto(string NodeName, string SessionId, int Port);
+public sealed record RegisterNodeRequestDto(string NodeName, string SessionId, int Port, string? Detector = null);
 
 public sealed record NodeSummaryDto(
     Guid Id,
@@ -138,7 +138,8 @@ public sealed record NodeSummaryDto(
     string Status,
     DateTime RegisteredAt,
     DateTime? LastSeenAt,
-    int RestartCount);
+    int RestartCount,
+    string? Detector);
 
 public sealed record GetNodesResult(IReadOnlyList<NodeSummaryDto> Nodes);
 
@@ -162,6 +163,7 @@ public sealed record NodeDetailsDto(
     DateTime RegisteredAt,
     DateTime? LastSeenAt,
     int RestartCount,
+    string? Detector,
     IReadOnlyList<NodeStatusReportDto> StatusReports);
 
 public sealed record NodeDetailsResult(NodeDetailsDto Node);

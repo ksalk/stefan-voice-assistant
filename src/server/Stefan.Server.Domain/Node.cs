@@ -16,7 +16,10 @@ public class Node
     public DateTime? LastSeenAt { get; private set; }
     public int RestartCount { get; private set; }
 
-    public static Node Create(string name, string sessionId, string ipAddress, int port)
+    /// <summary>Wake-word detector reported by the node at registration, for example <c>nanowakeword</c> or <c>sherpa</c>.</summary>
+    public string? Detector { get; private set; }
+
+    public static Node Create(string name, string sessionId, string ipAddress, int port, string? detector = null)
     {
         // TODO: validate inputs
         return new Node
@@ -29,11 +32,12 @@ public class Node
             Status = NodeStatus.Online,
             RegisteredAt = DateTime.UtcNow,
             LastSeenAt = DateTime.UtcNow,
-            RestartCount = 0
+            RestartCount = 0,
+            Detector = NormalizeDetector(detector)
         };
     }
 
-    public void Connect(string sessionId, string ipAddress, int port)
+    public void Connect(string sessionId, string ipAddress, int port, string? detector = null)
     {
         if (CurrentSessionId != sessionId)
         {
@@ -45,6 +49,12 @@ public class Node
         Port = port;
         LastSeenAt = DateTime.UtcNow;
         Status = NodeStatus.Online;
+
+        // Keep the last known value when an older node registers without a detector.
+        if (NormalizeDetector(detector) is { } normalizedDetector)
+        {
+            Detector = normalizedDetector;
+        }
     }
 
     public void MarkSeen()
@@ -57,4 +67,7 @@ public class Node
     {
         Status = NodeStatus.Offline;
     }
+
+    private static string? NormalizeDetector(string? detector) =>
+        string.IsNullOrWhiteSpace(detector) ? null : detector.Trim().ToLowerInvariant();
 }

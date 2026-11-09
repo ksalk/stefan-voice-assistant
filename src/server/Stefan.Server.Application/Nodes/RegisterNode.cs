@@ -10,6 +10,7 @@ public class RegisterNodeRequest
     public required string SessionId { get; set; }
     public string IpAddress { get; set; } = null!;
     public required int Port { get; set; }
+    public string? Detector { get; set; }
 }   
 
 public class RegisterNode(StefanDbContext dbContext, ScheduleNodePing scheduleNodePing)
@@ -19,12 +20,12 @@ public class RegisterNode(StefanDbContext dbContext, ScheduleNodePing scheduleNo
         var node = await dbContext.Nodes.FirstOrDefaultAsync(n => n.Name == request.NodeName, cancellationToken);
         if (node == null)
         {
-            node = Node.Create(request.NodeName, request.SessionId, request.IpAddress, request.Port);
+            node = Node.Create(request.NodeName, request.SessionId, request.IpAddress, request.Port, request.Detector);
             dbContext.Nodes.Add(node);
         }
         else
         {
-            node.Connect(request.SessionId, request.IpAddress, request.Port);
+            node.Connect(request.SessionId, request.IpAddress, request.Port, request.Detector);
             dbContext.Nodes.Update(node);
         }
 

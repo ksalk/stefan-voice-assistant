@@ -17,6 +17,7 @@ public class NodeSummaryDto
     public DateTime RegisteredAt { get; set; }
     public DateTime? LastSeenAt { get; set; }
     public int RestartCount { get; set; }
+    public string? Detector { get; set; }
 }
 
 public class GetNodesResult
@@ -42,6 +43,7 @@ public class GetNodes(StefanDbContext dbContext)
                 RegisteredAt = n.RegisteredAt,
                 LastSeenAt = n.LastSeenAt,
                 RestartCount = n.RestartCount,
+                Detector = n.Detector,
             })
             .ToListAsync(cancellationToken);
 

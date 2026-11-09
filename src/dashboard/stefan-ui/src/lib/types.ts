@@ -21,6 +21,7 @@ export interface NodeSummary {
 	registeredAt: string;
 	lastSeenAt: string | null;
 	restartCount: number;
+	detector: string | null;
 }
 
 export interface Node extends NodeSummary {

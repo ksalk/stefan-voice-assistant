@@ -16,6 +16,35 @@ public class NodeTests
         Assert.Equal(0, node.RestartCount);
         Assert.NotEqual(default, node.RegisteredAt);
         Assert.NotEqual(default, node.LastSeenAt);
+        Assert.Null(node.Detector);
+    }
+
+    [Fact]
+    public void Create_NormalizesDetector()
+    {
+        var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080, "  Sherpa ");
+
+        Assert.Equal("sherpa", node.Detector);
+    }
+
+    [Fact]
+    public void Connect_UpdatesDetector()
+    {
+        var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080, "nanowakeword");
+
+        node.Connect("session-2", "192.168.1.20", 9090, "sherpa");
+
+        Assert.Equal("sherpa", node.Detector);
+    }
+
+    [Fact]
+    public void Connect_KeepsDetector_WhenIncomingValueIsMissing()
+    {
+        var node = Node.Create("kitchen-node", "session-1", "192.168.1.10", 8080, "sherpa");
+
+        node.Connect("session-2", "192.168.1.20", 9090, null);
+
+        Assert.Equal("sherpa", node.Detector);
     }
 
     [Fact]

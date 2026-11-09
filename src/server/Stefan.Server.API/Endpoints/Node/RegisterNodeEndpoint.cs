@@ -9,6 +9,7 @@ public sealed class RegisterNodeBody
     public required string NodeName { get; set; }
     public required string SessionId { get; set; }
     public required int Port { get; set; }
+    public string? Detector { get; set; }
 }
 
 public static class RegisterNodeEndpoint
@@ -32,6 +33,7 @@ public static class RegisterNodeEndpoint
                 NodeName = body.NodeName,
                 SessionId = body.SessionId,
                 Port = body.Port,
+                Detector = body.Detector,
                 IpAddress = nodeIpAddress,
             }, cancellationToken);
 

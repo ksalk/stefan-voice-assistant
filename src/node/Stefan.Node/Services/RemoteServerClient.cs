@@ -10,6 +10,7 @@ public class RemoteServerClient(
     HttpClient httpClient,
     IOptions<NodeOptions> nodeOptions,
     IOptions<ServerOptions> serverOptions,
+    IOptions<WakeWordOptions> wakeWordOptions,
     ILogger<RemoteServerClient> logger)
 {
     private static readonly string _sessionId = Guid.NewGuid().ToString();
@@ -23,6 +24,7 @@ public class RemoteServerClient(
             ["NodeName"] = nodeOptions.Value.Name,
             ["SessionId"] = _sessionId,
             ["Port"] = port,
+            ["Detector"] = WakeWordOptions.Normalize(wakeWordOptions.Value.Detector),
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, "api/nodes/register")

@@ -13,7 +13,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         await using var app = await CreateServerApp();
 
         var res = await app.Client.PostRegisterNodeAsync(
-            NodeSecret, new RegisterNodeRequestDto("node-1", "s-1", 8080));
+            NodeSecret, new RegisterNodeRequestDto("node-1", "s-1", 8080, "sherpa"));
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
 
@@ -25,6 +25,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         Assert.Equal(8080, node.Port);
         Assert.Equal("Online", node.Status);
         Assert.Equal(0, node.RestartCount);
+        Assert.Equal("sherpa", node.Detector);
         Assert.NotEmpty(node.LastKnownIpAddress);
         Assert.NotEqual(default, node.RegisteredAt);
         Assert.NotNull(node.LastSeenAt);
@@ -39,7 +40,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         await using var app = await CreateServerApp();
 
         await app.Client.PostRegisterNodeAsync(
-            NodeSecret, new RegisterNodeRequestDto("node-2", "s-2", 9000));
+            NodeSecret, new RegisterNodeRequestDto("node-2", "s-2", 9000, "nanowakeword"));
 
         var nodes = await app.Client.GetNodesAsync();
         var nodeSummary = Assert.Single(nodes.Nodes);
@@ -52,7 +53,28 @@ public class NodeRegistrationTests : IntegrationTestBase
         Assert.Equal(9000, details.Node.Port);
         Assert.Equal("Online", details.Node.Status);
         Assert.Equal(0, details.Node.RestartCount);
+        Assert.Equal("nanowakeword", details.Node.Detector);
         Assert.Empty(details.Node.StatusReports);
+    }
+
+    [Fact]
+    public async Task NodeRegistration_SucceedsAndReportsNullDetector_WhenPayloadOmitsDetector()
+    {
+        await using var app = await CreateServerApp();
+
+        var res = await app.Client.PostRawRegisterAsync(
+            NodeSecret,
+            """{ "nodeName": "legacy-node", "sessionId": "s-legacy", "port": 8080 }""",
+            "application/json");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        var nodes = await app.Client.GetNodesAsync();
+        var node = Assert.Single(nodes.Nodes);
+        Assert.Null(node.Detector);
+
+        var details = await app.Client.GetNodeDetailsAsync(node.Id);
+        Assert.Null(details.Node.Detector);
     }
 
     [Fact]

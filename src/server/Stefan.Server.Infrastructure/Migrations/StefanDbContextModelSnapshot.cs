@@ -106,6 +106,9 @@ namespace Stefan.Server.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Detector")
+                        .HasColumnType("text");
+
                     b.Property<string>("LastKnownIpAddress")
                         .IsRequired()
                         .HasColumnType("text");

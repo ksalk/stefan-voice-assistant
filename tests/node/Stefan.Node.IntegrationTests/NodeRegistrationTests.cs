@@ -10,6 +10,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         public string NodeName { get; set; } = null!;
         public string SessionId { get; set; } = null!;
         public int Port { get; set; }
+        public string? Detector { get; set; }
     }
 
     [Fact]
@@ -93,6 +94,7 @@ public class NodeRegistrationTests : IntegrationTestBase
         // Arrange
         string? capturedSessionId = null;
         int? capturedPort = null;
+        string? capturedDetector = null;
 
         await using var app = await CreateNodeApp(
             configureServer: server =>
@@ -102,6 +104,7 @@ public class NodeRegistrationTests : IntegrationTestBase
                     var payload = await request.ReadFromJsonAsync<NodeRegistrationRequest>();
                     capturedSessionId = payload?.SessionId;
                     capturedPort = payload?.Port;
+                    capturedDetector = payload?.Detector;
                     return Results.Ok();
                 });
             });
@@ -112,5 +115,30 @@ public class NodeRegistrationTests : IntegrationTestBase
         Assert.NotNull(capturedSessionId);
         Assert.True(Guid.TryParse(capturedSessionId, out _));
         Assert.Equal(app.NodePort, capturedPort);
+        Assert.Equal("nanowakeword", capturedDetector);
+    }
+
+    [Fact]
+    public async Task NodeRegistersToServer_SendsConfiguredWakeWordDetector()
+    {
+        // Arrange
+        string? capturedDetector = null;
+
+        await using var app = await CreateNodeApp(
+            configureContainer: builder => builder.WithEnvironment("WakeWord__Detector", "sherpa"),
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", async (HttpRequest request) =>
+                {
+                    var payload = await request.ReadFromJsonAsync<NodeRegistrationRequest>();
+                    capturedDetector = payload?.Detector;
+                    return Results.Ok();
+                });
+            });
+
+        // Act — registration happens automatically on container start
+
+        // Assert
+        Assert.Equal("sherpa", capturedDetector);
     }
 }

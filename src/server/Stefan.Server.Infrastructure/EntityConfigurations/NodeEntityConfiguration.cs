@@ -17,5 +17,6 @@ public class NodeEntityConfiguration : IEntityTypeConfiguration<Node>
         builder.Property(n => n.Status).IsRequired();
         builder.Property(n => n.RegisteredAt).IsRequired();
         builder.Property(n => n.RestartCount).IsRequired();
+        builder.Property(n => n.Detector);
     }
 }

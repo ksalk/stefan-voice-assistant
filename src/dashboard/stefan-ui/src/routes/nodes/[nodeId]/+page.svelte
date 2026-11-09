@@ -229,6 +229,12 @@
 						</dd>
 					</div>
 					<div>
+						<dt class="text-xs font-medium text-muted-foreground">Wake Word Detector</dt>
+						<dd class="text-sm font-medium text-foreground">
+							{node.detector ?? '—'}
+						</dd>
+					</div>
+					<div>
 						<dt class="text-xs font-medium text-muted-foreground">Audio Volume</dt>
 						<dd class="text-sm font-medium text-foreground">
 							{latestReport?.audioVolume ?? '—'}
