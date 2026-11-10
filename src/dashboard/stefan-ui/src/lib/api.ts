@@ -151,6 +151,9 @@ export const api = {
 	): Promise<{ document: ToolDocumentDetails }> =>
 		send({ method: 'GET', path: `tool-documents/${id}`, fetch: customFetch }),
 
+	archiveToolDocument: (id: string, customFetch?: typeof fetch) =>
+		send({ method: 'POST', path: `tool-documents/${id}/archive`, fetch: customFetch }),
+
 	getCommandAudio: async (commandId: string, type: 'Request' | 'Response' | 'WakeWord') => {
 		const res = await fetch(`${BASE_URL}/commands/${commandId}/audio?type=${type}`);
 		if (!res.ok) {

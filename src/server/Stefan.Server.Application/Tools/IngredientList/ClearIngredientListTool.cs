@@ -26,7 +26,7 @@ public class ClearIngredientListTool(IToolDocumentStore documentStore) : ITool
         // entry. The next add re-creates the singleton row.
         var existing = await documentStore.GetAsync<IngredientListDocument>(IngredientListDocument.DocumentId, cancellationToken);
         if (existing is not null)
-            await documentStore.DeleteAsync<IngredientListDocument>(existing.Id, context.CommandId, cancellationToken);
+            await documentStore.DeleteAsync(existing.Id, context.CommandId, cancellationToken);
 
         return "Cleared all items from the ingredient list.";
     }

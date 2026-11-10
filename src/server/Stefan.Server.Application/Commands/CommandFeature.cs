@@ -13,6 +13,7 @@ public static class CommandFeature
         services.AddScoped<GetCommandTools>();
         services.AddScoped<GetToolDocuments>();
         services.AddScoped<GetToolDocument>();
+        services.AddScoped<ArchiveToolDocument>();
         return services;
     }
 }

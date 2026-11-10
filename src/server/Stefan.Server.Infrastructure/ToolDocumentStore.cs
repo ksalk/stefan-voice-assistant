@@ -38,7 +38,7 @@ public interface IToolDocumentStore
     /// Archives the document and removes it from the live table atomically.
     /// When <paramref name="commandId"/> is set, a "deleted" entry is recorded (and archived along with the document).
     /// </summary>
-    Task DeleteAsync<T>(Guid id, Guid? commandId = null, CancellationToken cancellationToken = default) where T : class, IToolDocument;
+    Task DeleteAsync(Guid id, Guid? commandId = null, CancellationToken cancellationToken = default);
 
     /// <summary>Raw documents of all types (live + archived) touched by the given command.</summary>
     Task<IReadOnlyList<ToolDocument>> ListDocumentsByCommandAsync(Guid commandId, CancellationToken cancellationToken = default);
@@ -107,12 +107,11 @@ public class ToolDocumentStore(IServiceScopeFactory scopeFactory) : IToolDocumen
             await SaveAsync(dbContext, cancellationToken);
         });
 
-    public Task DeleteAsync<T>(Guid id, Guid? commandId = null, CancellationToken cancellationToken = default) where T : class, IToolDocument
+    public Task DeleteAsync(Guid id, Guid? commandId = null, CancellationToken cancellationToken = default)
         => ExecuteAsync(async dbContext =>
         {
-            string documentType = T.DocumentType;
             var document = await dbContext.ToolDocuments
-                .FirstOrDefaultAsync(d => d.Id == id && d.Type == documentType, cancellationToken);
+                .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
             if (document == null)
                 return;
 

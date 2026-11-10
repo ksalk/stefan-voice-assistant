@@ -20,5 +20,6 @@ public static class DashboardEndpoints
         group.MapGetCommandLogsEndpoint();
         group.MapGetToolDocumentsEndpoint();
         group.MapGetToolDocumentEndpoint();
+        group.MapArchiveToolDocumentEndpoint();
     }
 }

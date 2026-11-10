@@ -30,6 +30,15 @@ public class FireTimerJob(
 
         logger.LogInformation("Timer {TimerId} fired for device {DeviceId}", timerId, deviceId);
 
+        // The document can be archived or cancelled while this job is pending.
+        // Only a live timer may alert the node.
+        var timer = await documentStore.GetAsync<TimerEntry>(timerId, context.CancellationToken);
+        if (timer == null)
+        {
+            logger.LogInformation("Timer {TimerId} is no longer live; skipping alert", timerId);
+            return;
+        }
+
         var message = string.IsNullOrEmpty(label)
             ? $"Timer {timerId} is done!"
             : $"Timer '{label}' is done!";
@@ -55,6 +64,6 @@ public class FireTimerJob(
         }
 
         // Remove the timer document from the store (archiving it). No command runs here, so no provenance is recorded.
-        await documentStore.DeleteAsync<TimerEntry>(timerId, commandId: null, context.CancellationToken);
+        await documentStore.DeleteAsync(timerId, commandId: null, context.CancellationToken);
     }
 }

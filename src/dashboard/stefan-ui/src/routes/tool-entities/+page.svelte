@@ -12,6 +12,8 @@
 	import TimeAgo from '$lib/components/TimeAgo.svelte';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Eye from '@lucide/svelte/icons/eye';
+	import Archive from '@lucide/svelte/icons/archive';
+	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';
 	import type { ToolDocument } from '$lib/types';
 
@@ -21,6 +23,7 @@
 	let pageSize = $state(20);
 	let loading = $state(true);
 	let refreshing = $state(false);
+	let archivingId: string | null = $state(null);
 	let error: string | null = $state(null);
 
 	let scope = $state<'live' | 'archived' | 'all'>('live');
@@ -166,6 +169,30 @@
 	async function openDetails(id: string) {
 		await goto(resolve(`/tool-entities/${id}`));
 	}
+
+	async function archiveDocument(doc: ToolDocument) {
+		if (doc.isArchived || archivingId) return;
+
+		if (!window.confirm(`Archive tool document ${doc.id}? It will move to the archive.`)) {
+			return;
+		}
+
+		archivingId = doc.id;
+		try {
+			await api.archiveToolDocument(doc.id);
+			toast.success('Tool document archived');
+			await fetchDocuments();
+			if (items.length === 0 && currentPage > 1) {
+				currentPage -= 1;
+				await fetchDocuments();
+			}
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : 'Unknown error';
+			toast.error(`Failed to archive tool document: ${msg}`);
+		} finally {
+			archivingId = null;
+		}
+	}
 </script>
 
 <h1>Tool Entities</h1>
@@ -258,7 +285,7 @@
 				<Table.Head>Summary</Table.Head>
 				<Table.Head class="w-[150px]">Created</Table.Head>
 				<Table.Head class="w-[110px]">Status</Table.Head>
-				<Table.Head class="w-[70px]">View</Table.Head>
+				<Table.Head class="w-[110px]">Actions</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -270,7 +297,7 @@
 						<Table.Cell><Skeleton class="h-4 w-40" /></Table.Cell>
 						<Table.Cell><Skeleton class="h-4 w-24" /></Table.Cell>
 						<Table.Cell><Skeleton class="h-5 w-20 rounded-full" /></Table.Cell>
-						<Table.Cell><Skeleton class="h-8 w-8 rounded-md" /></Table.Cell>
+						<Table.Cell><Skeleton class="h-8 w-16 rounded-md" /></Table.Cell>
 					</Table.Row>
 				{/each}
 			{:else if items.length === 0}
@@ -308,15 +335,32 @@
 							{/if}
 						</Table.Cell>
 						<Table.Cell>
-							<Button
-								variant="outline"
-								size="icon"
-								aria-label="View tool document"
-								href={`/tool-entities/${doc.id}`}
-								onclick={(e) => e.stopPropagation()}
-							>
-								<Eye class="size-4" />
-							</Button>
+							<div class="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="icon"
+									aria-label="View tool document"
+									href={`/tool-entities/${doc.id}`}
+									onclick={(e) => e.stopPropagation()}
+								>
+									<Eye class="size-4" />
+								</Button>
+								{#if !doc.isArchived}
+									<Button
+										variant="outline"
+										size="icon"
+										aria-label="Archive tool document"
+										title="Archive"
+										disabled={archivingId !== null}
+										onclick={(e) => {
+											e.stopPropagation();
+											archiveDocument(doc);
+										}}
+									>
+										<Archive class="size-4" />
+									</Button>
+								{/if}
+							</div>
 						</Table.Cell>
 					</Table.Row>
 				{/each}
