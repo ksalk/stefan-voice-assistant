@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Download from '@lucide/svelte/icons/download';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -31,6 +32,12 @@
 		Request: 'request',
 		Response: 'response',
 		WakeWord: 'wake word'
+	};
+
+	const TYPE_FILE_SUFFIXES: Record<AudioType, string> = {
+		Request: 'request',
+		Response: 'response',
+		WakeWord: 'wakeword'
 	};
 
 	const PEAK_COLUMNS = 800;
@@ -128,6 +135,17 @@
 			console.error('Failed to play audio:', error);
 			toast.error('Failed to play audio');
 		}
+	}
+
+	function downloadAudio() {
+		if (!audioUrl) return;
+
+		const anchor = document.createElement('a');
+		anchor.href = audioUrl;
+		anchor.download = `command_${commandId}_${TYPE_FILE_SUFFIXES[type]}.wav`;
+		document.body.append(anchor);
+		anchor.click();
+		anchor.remove();
 	}
 
 	function handlePlay() {
@@ -242,20 +260,31 @@
 {/if}
 
 <div class={cn('flex items-center gap-3', className)}>
-	<Button
-		variant="outline"
-		size="icon"
-		class="shrink-0"
-		aria-label={`${isPlaying ? 'Pause' : 'Play'} ${TYPE_LABELS[type]} audio`}
-		disabled={status !== 'ready'}
-		onclick={togglePlayback}
-	>
-		{#if isPlaying}
-			<Pause class="size-4" />
-		{:else}
-			<Play class="size-4" />
-		{/if}
-	</Button>
+	<div class="flex shrink-0 flex-col gap-2">
+		<Button
+			variant="outline"
+			size="icon"
+			aria-label={`${isPlaying ? 'Pause' : 'Play'} ${TYPE_LABELS[type]} audio`}
+			disabled={status !== 'ready'}
+			onclick={togglePlayback}
+		>
+			{#if isPlaying}
+				<Pause class="size-4" />
+			{:else}
+				<Play class="size-4" />
+			{/if}
+		</Button>
+
+		<Button
+			variant="outline"
+			size="icon"
+			aria-label={`Download ${TYPE_LABELS[type]} audio as WAV`}
+			disabled={status !== 'ready'}
+			onclick={downloadAudio}
+		>
+			<Download class="size-4" />
+		</Button>
+	</div>
 
 	<div class="min-w-0 flex-1">
 		{#if status === 'loading'}
