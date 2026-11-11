@@ -117,6 +117,10 @@ docker compose --profile full up --build
 
 Prebuilt server and edge-node deployments are defined in `docker-compose.server.yml` and `docker-compose.edge.yml`. They require their respective environment variables, API credentials, audio device access, and database network configuration.
 
+### Production data in OpenCode
+
+The local MCP server in `src/mcp/Stefan.Mcp` gives OpenCode read-only access to a running Stefan server. It calls the existing HTTP API and does not change the server. See [docs/mcp.md](docs/mcp.md) for setup and tools.
+
 ## Node Options and Configuration
 
 The node loads configuration from `appsettings.json`, optional `appsettings.Development.json`, environment variables, and command-line arguments. The following command-line options are available:

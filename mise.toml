@@ -54,6 +54,14 @@ run = "dotnet build src/server/Stefan.Server.API"
 description = "Run the server API locally"
 run = "dotnet run --project src/server/Stefan.Server.API"
 
+[tasks.build-mcp]
+description = "Build the Stefan MCP server"
+run = "dotnet build src/mcp/Stefan.Mcp -c Release"
+
+[tasks.run-mcp]
+description = "Run the Stefan MCP server over stdio"
+run = "dotnet run --project src/mcp/Stefan.Mcp -c Release"
+
 [tasks.tts-generate]
 description = "Synthesize a speech file from text (Stefan.Server.TtsGenerator)"
 usage = '''
@@ -250,6 +258,10 @@ run = [
   "dotnet test tests/server/Stefan.Server.IntegrationTests",
 ]
 
+[tasks.test-mcp]
+description = "Run Stefan MCP tests"
+run = "dotnet test tests/mcp/Stefan.Mcp.IntegrationTests"
+
 [tasks.test-node]
 description = "Run node tests"
 run = [
@@ -265,6 +277,7 @@ run = "pnpm --prefix src/dashboard/stefan-ui test"
 description = "Run all tests"
 run = [
   { task = "test-server" },
+  { task = "test-mcp" },
   { task = "test-node" },
   { task = "test-ui" },
 ]

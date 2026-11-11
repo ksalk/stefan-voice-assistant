@@ -1,0 +1,15 @@
+{
+  // Local read-only MCP bridge for production data.
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "stefan": {
+        "type": "local",
+        "command": ["bash", "scripts/run-stefan-mcp.sh"],
+        "timeout": {
+          "startup": 60000
+        }
+      }
+    }
+  }
+}
