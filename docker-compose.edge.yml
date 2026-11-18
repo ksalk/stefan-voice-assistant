@@ -1,6 +1,6 @@
 services:
   stefan-node:
-    image: git.harnas.top/ksalk/stefan-node:${VERSION:-latest}
+    image: ${STEFAN_REGISTRY:?STEFAN_REGISTRY is required}/stefan-node:${VERSION:-latest}
     restart: unless-stopped
     devices:
       - /dev/snd:/dev/snd

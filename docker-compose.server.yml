@@ -1,6 +1,6 @@
 services:
   stefan-server:
-    image: git.harnas.top/ksalk/stefan-server:${VERSION:-latest}
+    image: ${STEFAN_REGISTRY:?STEFAN_REGISTRY is required}/stefan-server:${VERSION:-latest}
     restart: unless-stopped
     ports:
       - "5285:8080"
@@ -15,7 +15,7 @@ services:
       - db-access
 
   stefan-dashboard:
-    image: git.harnas.top/ksalk/stefan-dashboard:${VERSION:-latest}
+    image: ${STEFAN_REGISTRY:?STEFAN_REGISTRY is required}/stefan-dashboard:${VERSION:-latest}
     restart: unless-stopped
     ports:
       - "5286:80"

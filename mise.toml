@@ -18,6 +18,9 @@ pnpm = "10"
 # Image tags default to the version Nerdbank.GitVersioning computes from
 # version.json + git history (see .config/dotnet-tools.json for the nbgv tool);
 # pass an explicit tag to override. Deploy compose files consume it via VERSION.
+# Publish tasks read the registry prefix (host plus namespace) from
+# STEFAN_REGISTRY in the gitignored .env file; deployment hosts set the same key
+# in their .env.
 [tasks.get-version]
 description = "Print the image version computed by Nerdbank.GitVersioning"
 run = '''
@@ -25,6 +28,32 @@ run = '''
 set -euo pipefail
 dotnet tool restore >/dev/null
 dotnet nbgv get-version -v SimpleVersion
+'''
+
+# Read a single key from .env without exporting the whole file. Docker compose
+# reads .env itself; mise deliberately does not (see note above).
+[tasks.get-env]
+description = "Print one variable from the .env file"
+usage = 'arg "<key>" help="Variable name"'
+hide = true
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+key="${usage_key:?}"
+file="${ENV_FILE:-.env}"
+[[ -f "$file" ]] || exit 1
+line="$(grep -E "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" "$file" | tail -n 1 || true)"
+[[ -n "$line" ]] || exit 1
+value="${line#*=}"
+value="${value%$'\r'}"
+value="${value#"${value%%[![:space:]]*}"}"
+value="${value%"${value##*[![:space:]]}"}"
+if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+  value="${value:1:-1}"
+elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+  value="${value:1:-1}"
+fi
+printf '%s' "$value"
 '''
 
 # Database
@@ -40,7 +69,7 @@ run = "dotnet ef migrations add ${usage_name?} --project src/server/Stefan.Serve
 [tasks.migrations-apply]
 description = "Apply pending EF Core migrations (mise run -E dev|prod migrations-apply)"
 run = [
-  'test -n "$ConnectionStrings__StefanDb" || { echo "ConnectionStrings__StefanDb is not set - run with -E dev / -E prod (values live in gitignored mise.dev.local.toml / mise.prod.local.toml)" >&2; false; }',
+  'test -n "$ConnectionStrings__StefanDb" || { echo "ConnectionStrings__StefanDb is not set - run with -E dev / -E prod (values live in gitignored mise.dev.toml / mise.prod.toml)" >&2; false; }',
   'echo "Applying migrations to $MISE_ENV environment (connection string redacted)"',
   'dotnet ef database update --connection "$ConnectionStrings__StefanDb" --project src/server/Stefan.Server.Infrastructure --context StefanDbContext'
 ]
@@ -84,9 +113,15 @@ usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" de
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
+registry="${STEFAN_REGISTRY:-$(mise run --quiet get-env STEFAN_REGISTRY 2>/dev/null || true)}"
+: "${registry:?STEFAN_REGISTRY is not set - add it to .env or export it}"
+registry="${registry%/}"
 version="${usage_version:-$(mise run get-version)}"
-echo "Publishing stefan-server:$version"
-docker buildx build --platform linux/amd64 --pull -t git.harnas.top/ksalk/stefan-server:"$version" -t git.harnas.top/ksalk/stefan-server:latest -f src/server/Dockerfile . --push
+echo "Publishing $registry/stefan-server:$version"
+docker buildx build --platform linux/amd64 --pull \
+  -t "$registry/stefan-server:$version" \
+  -t "$registry/stefan-server:latest" \
+  -f src/server/Dockerfile . --push
 '''
 
 [tasks.build-server-test-image]
@@ -112,9 +147,15 @@ usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" de
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
+registry="${STEFAN_REGISTRY:-$(mise run --quiet get-env STEFAN_REGISTRY 2>/dev/null || true)}"
+: "${registry:?STEFAN_REGISTRY is not set - add it to .env or export it}"
+registry="${registry%/}"
 version="${usage_version:-$(mise run get-version)}"
-echo "Publishing stefan-node:$version"
-docker buildx build --platform linux/arm64 --pull -t git.harnas.top/ksalk/stefan-node:"$version" -t git.harnas.top/ksalk/stefan-node:latest -f src/node/Dockerfile . --push
+echo "Publishing $registry/stefan-node:$version"
+docker buildx build --platform linux/arm64 --pull \
+  -t "$registry/stefan-node:$version" \
+  -t "$registry/stefan-node:latest" \
+  -f src/node/Dockerfile . --push
 '''
 
 [tasks.build-node]
@@ -241,12 +282,18 @@ usage = 'arg "<version>" help="Image version tag (default: computed by nbgv)" de
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
+registry="${STEFAN_REGISTRY:-$(mise run --quiet get-env STEFAN_REGISTRY 2>/dev/null || true)}"
+: "${registry:?STEFAN_REGISTRY is not set - add it to .env or export it}"
 # The URL is baked into the image at build time. Publishing without it would
 # ship a dashboard that calls the browser's own localhost, so fail fast.
 test -n "${VITE_API_URL:-}" || { echo "VITE_API_URL is not set - run with -E prod (values live in gitignored mise.prod.toml)" >&2; false; }
+registry="${registry%/}"
 version="${usage_version:-$(mise run get-version)}"
-echo "Publishing stefan-dashboard:$version with VITE_API_URL=$VITE_API_URL"
-docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="$VITE_API_URL" -t git.harnas.top/ksalk/stefan-dashboard:"$version" -t git.harnas.top/ksalk/stefan-dashboard:latest -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
+echo "Publishing $registry/stefan-dashboard:$version with VITE_API_URL=$VITE_API_URL"
+docker buildx build --platform linux/amd64 --pull --build-arg VITE_API_URL="$VITE_API_URL" \
+  -t "$registry/stefan-dashboard:$version" \
+  -t "$registry/stefan-dashboard:latest" \
+  -f src/dashboard/stefan-ui/Dockerfile src/dashboard/stefan-ui --push
 '''
 
 # Tests

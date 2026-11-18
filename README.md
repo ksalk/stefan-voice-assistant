@@ -117,6 +117,18 @@ docker compose --profile full up --build
 
 Prebuilt server and edge-node deployments are defined in `docker-compose.server.yml` and `docker-compose.edge.yml`. They require their respective environment variables, API credentials, audio device access, and database network configuration.
 
+Both deployment files read `STEFAN_REGISTRY` (registry host plus namespace, for example `registry.example.com/team`) and `VERSION` from the deployment `.env` file. The publish tasks read `STEFAN_REGISTRY` from the same `.env` file without exporting the other keys:
+
+```dotenv
+STEFAN_REGISTRY=registry.example.com/team
+```
+
+Then run `mise run publish-server` or `mise run publish-node`. `publish-dashboard` also needs the production `VITE_API_URL` from `mise.prod.toml`:
+
+```bash
+mise run -E prod publish-dashboard
+```
+
 ### Production data in OpenCode
 
 The local MCP server in `src/mcp/Stefan.Mcp` gives OpenCode read-only access to a running Stefan server. It calls the existing HTTP API and does not change the server. See [docs/mcp.md](docs/mcp.md) for setup and tools.
