@@ -92,6 +92,34 @@ public class ProcessCommandTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task PostCommand_ReturnsUnprocessableEntityAndRecordsNoSpeech_WhenSttReturnsEmptyTranscript()
+    {
+        await using var app = await CreateServerApp(
+            configureContainer: b => b.WithEnvironment("xAI__Endpoint", SttStub.Url));
+        await using var stt = await SttStub.StartAsync(app.Network);
+
+        var registration = await app.Client.PostRegisterNodeAsync(
+            TestSecret, new RegisterNodeRequestDto("test-node", "test-session", 8080));
+        Assert.Equal(HttpStatusCode.OK, registration.StatusCode);
+
+        var commandId = Guid.NewGuid();
+
+        var response = await app.Client.PostCommandAsync(
+            nodeSecret: TestSecret,
+            deviceId: "test-node",
+            sessionId: "test-session",
+            commandId: commandId.ToString("D"));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var status = await GetCommandStatusAsync(app.DbConnectionString, commandId);
+        Assert.Equal((int)CommandStatus.NoSpeech, status);
+
+        var errorMessage = await GetCommandErrorMessageAsync(app.DbConnectionString, commandId);
+        Assert.Contains("empty transcript", errorMessage ?? string.Empty);
+    }
+
+    [Fact]
     public async Task PostCommand_StoresWakeWordAudio_AndServesItFromAudioEndpoint()
     {
         await using var app = await CreateServerApp(

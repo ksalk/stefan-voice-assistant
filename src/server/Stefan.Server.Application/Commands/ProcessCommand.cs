@@ -250,8 +250,8 @@ public class ProcessCommand(
 
         if (string.IsNullOrWhiteSpace(result.Value.Transcript))
         {
-            logger.LogWarning("STT produced empty transcript");
-            return await RecordSttFailureAsync(record, "STT produced empty transcript", cancellationToken);
+            logger.LogWarning("STT produced an empty transcript; treating it as no speech");
+            return await RecordNoSpeechAsync(record, "STT produced an empty transcript.", cancellationToken);
         }
 
         record.SaveTranscriptionResult(result.Value.Transcript, result.Value.DurationMs);
@@ -271,6 +271,13 @@ public class ProcessCommand(
         record.SaveTranscriptionError(detail);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Result<SpeechToTextTranscription>.Failure(Error.External($"Speech recognition failed: {detail}"));
+    }
+
+    private async Task<Result<SpeechToTextTranscription>> RecordNoSpeechAsync(CommandRecord record, string detail, CancellationToken cancellationToken)
+    {
+        record.SaveNoSpeech(detail);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Result<SpeechToTextTranscription>.Failure(Error.NoSpeech(detail));
     }
 
     private async Task<Result<LlmCommandResult>> RunLlmAsync(
