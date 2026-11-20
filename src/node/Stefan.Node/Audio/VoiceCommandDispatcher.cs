@@ -286,15 +286,22 @@ public class VoiceCommandDispatcher(
         }
 
         var result = await remoteServerClient.SendCommandAsync(wavBytes, _currentCommandId, wakeWordWavBytes);
-        if (result.IsSuccess)
+        switch (result.Status)
         {
-            logger.LogInformation("[listener] Command sent successfully. Queuing response audio for playback.");
-            audioPlayer.Queue(result.Value.Audio);
-        }
-        else
-        {
-            logger.LogWarning("[listener] Failed to send command: {Error}", result.Error);
-            audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "command_failed.wav"));
+            case CommandDispatchStatus.Success:
+                logger.LogInformation("[listener] Command sent successfully. Queuing response audio for playback.");
+                audioPlayer.Queue(result.Response!.Audio);
+                break;
+
+            case CommandDispatchStatus.NoSpeech:
+                logger.LogInformation(
+                    "[listener] Server reported no speech in the command audio. Suppressing the failure sound.");
+                break;
+
+            default:
+                logger.LogWarning("[listener] Failed to send command: {Error}", result.Error);
+                audioPlayer.Queue(Path.Combine(AppContext.BaseDirectory, "Assets", "command_failed.wav"));
+                break;
         }
     }
 }

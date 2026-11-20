@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -44,7 +45,7 @@ public class RemoteServerClient(
         return Result.Success();
     }
 
-    public async Task<Result<CommandResponse>> SendCommandAsync(byte[] commandAudio, Guid commandId, byte[]? wakeWordAudio = null)
+    public async Task<CommandDispatchResult> SendCommandAsync(byte[] commandAudio, Guid commandId, byte[]? wakeWordAudio = null)
     {
         using var commandScope = logger.BeginScope(
             new Dictionary<string, object> { [Correlation.CommandIdProperty] = commandId });
@@ -78,7 +79,11 @@ public class RemoteServerClient(
 
         var result = await SendRequestAsync(request);
         if (!result.IsSuccess)
-            return Result<CommandResponse>.Failure(result.Error!);
+        {
+            return result.StatusCode == (int)HttpStatusCode.UnprocessableEntity
+                ? CommandDispatchResult.NoSpeech(result.Error)
+                : CommandDispatchResult.Failed(result.Error!);
+        }
 
         using var response = result.Value;
         var rawText = response.Headers.TryGetValues("X-Response-Text", out var values)
@@ -105,7 +110,7 @@ public class RemoteServerClient(
                 commandId, acknowledgedCommandId);
         }
 
-        return Result<CommandResponse>.Success(new CommandResponse(audio, responseText));
+        return CommandDispatchResult.Success(new CommandResponse(audio, responseText));
     }
 
     private async Task<Result<HttpResponseMessage>> SendRequestAsync(HttpRequestMessage request)
@@ -117,12 +122,22 @@ public class RemoteServerClient(
             if (response.IsSuccessStatusCode)
                 return Result<HttpResponseMessage>.Success(response);
 
+            var statusCode = (int)response.StatusCode;
             var body = await response.Content.ReadAsStringAsync();
-            var error = $"Server responded with {(int)response.StatusCode} status code" + (!string.IsNullOrWhiteSpace(body) ? $" - {body.Trim()}" : string.Empty);
-            logger.LogError("[http] Request to {Url} failed: {Error}", request.RequestUri, error);
+            var error = $"Server responded with {statusCode} status code" + (!string.IsNullOrWhiteSpace(body) ? $" - {body.Trim()}" : string.Empty);
+
+            if (statusCode == (int)HttpStatusCode.UnprocessableEntity)
+            {
+                logger.LogInformation("[http] Server reported no speech in the command audio.");
+            }
+            else
+            {
+                logger.LogError("[http] Request to {Url} failed: {Error}", request.RequestUri, error);
+            }
+
             response.Dispose();
 
-            return Result<HttpResponseMessage>.Failure(error);
+            return Result<HttpResponseMessage>.Failure(error, statusCode);
         }
         catch (HttpRequestException ex)
         {

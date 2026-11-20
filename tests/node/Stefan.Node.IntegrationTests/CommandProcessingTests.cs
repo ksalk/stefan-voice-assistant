@@ -79,6 +79,31 @@ public class CommandProcessingTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task CommandSentToServer_DoesNotPlayCommandFailedAudio_WhenServerReportsNoSpeech()
+    {
+        // Arrange
+        await using var app = await CreateNodeApp(
+            configureServer: server =>
+            {
+                server.MapPost("/api/nodes/register", () => Results.Ok());
+                server.MapPost("/api/commands", () => Results.StatusCode(422));
+            }
+        );
+
+        // Act
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+        await app.WriteAudioFileAsync("TestAudioFiles/stefan01.wav");
+        await app.WriteSilenceAsync(TimeSpan.FromSeconds(3));
+
+        await Task.Delay(TimeSpan.FromSeconds(5)); // Wait a moment for the audio to be processed
+
+        // Assert
+        var appLogs = await app.GetLogsAsync();
+        Assert.DoesNotContain("[audio] Playing audio: /app/Assets/command_failed.wav", appLogs.Stdout);
+        Assert.Contains("[listener] Server reported no speech in the command audio.", appLogs.Stdout);
+    }
+
+    [Fact]
     public async Task CommandSentToServer_GoesBackToListening_AfterResponse()
     {
         // Arrange

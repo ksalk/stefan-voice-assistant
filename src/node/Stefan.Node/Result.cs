@@ -21,16 +21,18 @@ public readonly record struct Result<T>
 {
     public T Value { get; }
     public string? Error { get; }
+    public int? StatusCode { get; }
     public bool IsSuccess => Error is null;
 
-    private Result(T value, string? error)
+    private Result(T value, string? error, int? statusCode)
     {
         Value = value;
         Error = error;
+        StatusCode = statusCode;
     }
 
-    public static Result<T> Success(T value) => new(value, null);
-    public static Result<T> Failure(string error) => new(default!, error);
+    public static Result<T> Success(T value) => new(value, null, null);
+    public static Result<T> Failure(string error, int? statusCode = null) => new(default!, error, statusCode);
 
     public static implicit operator Result<T>(T value) => Success(value);
 

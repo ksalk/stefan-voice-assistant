@@ -162,12 +162,19 @@ async Task<bool> TrySendTestCommand(WebApplication app, string filePath)
     Log.Information("[info] Sending file: {FilePath}", filePath);
     var audioBytes = await File.ReadAllBytesAsync(filePath!);
     var result = await remoteClient.SendCommandAsync(audioBytes, Guid.NewGuid());
-    if (result.IsSuccess)
+    if (result.Status == CommandDispatchStatus.Success)
     {
-        Log.Information("[info] File sent successfully. Response: {ResponseText}", result.Value.ResponseText);
-        await audioPlayer.PlayAsync(result.Value.Audio);
+        Log.Information("[info] File sent successfully. Response: {ResponseText}", result.Response!.ResponseText);
+        await audioPlayer.PlayAsync(result.Response.Audio);
         return true;
     }
+
+    if (result.Status == CommandDispatchStatus.NoSpeech)
+    {
+        Log.Information("[info] Server reported no speech in the command audio.");
+        return false;
+    }
+
     Log.Error("[error] Failed to send file: {Error}", result.Error);
     return false;
 }
