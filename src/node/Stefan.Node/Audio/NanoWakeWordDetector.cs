@@ -15,7 +15,10 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
     private readonly NanoWakeWordOptions _options;
     private readonly ILogger<NanoWakeWordDetector> _logger;
     private WakeWordRuntime? _runtime;
+    private float? _lastTriggerScore;
     private bool _disposed;
+
+    public float? LastTriggerScore => _lastTriggerScore;
 
     public NanoWakeWordDetector(
         IOptions<NanoWakeWordOptions> options,
@@ -68,6 +71,7 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
             return null;
         }
 
+        _lastTriggerScore = null;
         var runtime = _runtime ??= CreateRuntime();
         var detectedIndex = runtime.Process(monoSamples.Samples);
         if (detectedIndex < 0)
@@ -91,6 +95,7 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
 
         // Callers such as the benchmark reset before timing a clip. The runtime is already
         // loaded, so this only clears the streaming state.
+        _lastTriggerScore = null;
         _runtime ??= CreateRuntime();
         _runtime.Reset();
     }
@@ -122,6 +127,13 @@ public sealed class NanoWakeWordDetector : IWakeWordDetector
             IntraOpThreads = _options.IntraOpThreads,
             InterOpThreads = _options.InterOpThreads,
             AllowSpinning = _options.AllowSpinning,
+            DebugAction = (_, probability, isTrigger) =>
+            {
+                if (isTrigger)
+                {
+                    _lastTriggerScore = probability;
+                }
+            },
             WakeWords =
             [
                 new WakeWordConfig

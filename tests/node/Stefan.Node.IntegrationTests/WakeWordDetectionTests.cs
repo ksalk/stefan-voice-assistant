@@ -28,6 +28,7 @@ public class WakeWordDetectionTests : IntegrationTestBase
         // Assert
         var appLogs = await app.GetLogsAsync();
         Assert.Contains("[listener] Keyword detected: stefan", appLogs.Stdout);
+        Assert.Contains("(score: ", appLogs.Stdout);
     }
 
     [Fact]

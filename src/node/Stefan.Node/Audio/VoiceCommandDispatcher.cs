@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading.Channels;
 using Alsa.Net;
 using Microsoft.Extensions.Options;
@@ -55,7 +56,13 @@ public class VoiceCommandDispatcher(
                 keyword =>
                 {
                     using var scope = logger.BeginScope(CommandScope());
-                    logger.LogInformation("[listener] Keyword detected: {Keyword} \nStarting command recording...", keyword);
+                    var score = wakeWordDetector.LastTriggerScore is { } value
+                        ? value.ToString("F3", CultureInfo.InvariantCulture)
+                        : "n/a";
+                    logger.LogInformation(
+                        "[listener] Keyword detected: {Keyword} (score: {Score}) \nStarting command recording...",
+                        keyword,
+                        score);
                 },
                 cancellationToken);
 

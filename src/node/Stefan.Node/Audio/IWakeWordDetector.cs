@@ -7,4 +7,7 @@ public interface IWakeWordDetector : IDisposable
 
     /// <summary>Clears any audio and decoding state held by the detector.</summary>
     void Reset();
+
+    /// <summary>Score of the most recent detection, when the detector provides one.</summary>
+    float? LastTriggerScore => null;
 }
