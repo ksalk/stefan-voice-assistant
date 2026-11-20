@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Net;
 using System.Text;
 using Npgsql;
+using Stefan.Server.Domain;
 
 namespace Stefan.Server.IntegrationTests;
 
@@ -35,6 +36,59 @@ public class ProcessCommandTests : IntegrationTestBase
 
         var status = await GetCommandStatusAsync(app.DbConnectionString, commandId);
         Assert.Equal(SttFailed, status);
+    }
+
+    [Fact]
+    public async Task PostCommand_ReturnsUnprocessableEntityAndRecordsNoSpeech_WhenCommandAudioIsSilent()
+    {
+        await using var app = await CreateServerApp(
+            configureContainer: b => b.WithEnvironment("xAI__Endpoint", "http://127.0.0.1:1"));
+
+        var registration = await app.Client.PostRegisterNodeAsync(
+            TestSecret, new RegisterNodeRequestDto("test-node", "test-session", 8080));
+        Assert.Equal(HttpStatusCode.OK, registration.StatusCode);
+
+        var commandId = Guid.NewGuid();
+
+        var response = await app.Client.PostCommandAsync(
+            nodeSecret: TestSecret,
+            deviceId: "test-node",
+            sessionId: "test-session",
+            commandId: commandId.ToString("D"),
+            commandAudio: ServerAppClient.CreateSilentWav(TimeSpan.FromSeconds(1.5)));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var status = await GetCommandStatusAsync(app.DbConnectionString, commandId);
+        Assert.Equal((int)CommandStatus.NoSpeech, status);
+
+        var errorMessage = await GetCommandErrorMessageAsync(app.DbConnectionString, commandId);
+        Assert.Contains("No speech", errorMessage ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task PostCommand_ReturnsUnprocessableEntityAndRecordsNoSpeech_WhenSpeechIsTooShort()
+    {
+        await using var app = await CreateServerApp(
+            configureContainer: b => b.WithEnvironment("xAI__Endpoint", "http://127.0.0.1:1"));
+
+        var registration = await app.Client.PostRegisterNodeAsync(
+            TestSecret, new RegisterNodeRequestDto("test-node", "test-session", 8080));
+        Assert.Equal(HttpStatusCode.OK, registration.StatusCode);
+
+        var commandId = Guid.NewGuid();
+
+        var response = await app.Client.PostCommandAsync(
+            nodeSecret: TestSecret,
+            deviceId: "test-node",
+            sessionId: "test-session",
+            commandId: commandId.ToString("D"),
+            commandAudio: ServerAppClient.CreateSpeechWav(TimeSpan.FromMilliseconds(100)));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        var status = await GetCommandStatusAsync(app.DbConnectionString, commandId);
+        Assert.Equal((int)CommandStatus.NoSpeech, status);
     }
 
     [Fact]
@@ -84,6 +138,19 @@ public class ProcessCommandTests : IntegrationTestBase
 
         var result = await command.ExecuteScalarAsync();
         return Convert.ToInt32(result);
+    }
+
+    private static async Task<string?> GetCommandErrorMessageAsync(string connectionString, Guid commandId)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new NpgsqlCommand(
+            """SELECT "ErrorMessage" FROM "CommandRecords" WHERE "Id" = @id""", connection);
+        command.Parameters.AddWithValue("id", commandId);
+
+        var result = await command.ExecuteScalarAsync();
+        return result as string;
     }
 
     private static async Task<(byte[]? Audio, string? Format, double? DurationMs)> GetWakeWordAudioAsync(

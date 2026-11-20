@@ -8,6 +8,7 @@ using Stefan.Server.Application.AI;
 using Stefan.Server.Application.Commands;
 using Stefan.Server.Application.Logs;
 using Stefan.Server.Application.Nodes;
+using Stefan.Server.Application.Options;
 using Stefan.Server.Application.Scheduling;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Application.Tools;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddNodeFeatures();
         services.AddToolFeatures();
         services.AddLogFeatures(configuration);
+        services.Configure<SpeechDetectionOptions>(configuration.GetSection(SpeechDetectionOptions.SectionName));
 
         services.AddSpeechToTextServices(configuration);
 

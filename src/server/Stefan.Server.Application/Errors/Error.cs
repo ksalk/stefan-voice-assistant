@@ -7,6 +7,7 @@ public enum ErrorKind
     Unauthorized,
     Conflict,
     External,
+    NoSpeech,
 }
 
 public sealed record Error(ErrorKind Kind, string Message)
@@ -16,4 +17,5 @@ public sealed record Error(ErrorKind Kind, string Message)
     public static Error Unauthorized(string message) => new(ErrorKind.Unauthorized, message);
     public static Error Conflict(string message) => new(ErrorKind.Conflict, message);
     public static Error External(string message) => new(ErrorKind.External, message);
+    public static Error NoSpeech(string message) => new(ErrorKind.NoSpeech, message);
 }

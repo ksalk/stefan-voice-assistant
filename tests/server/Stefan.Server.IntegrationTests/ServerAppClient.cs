@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text;
@@ -54,6 +55,7 @@ public sealed class ServerAppClient : IDisposable
         string? sessionId,
         string? commandId,
         byte[]? wakeWordAudio = null,
+        byte[]? commandAudio = null,
         CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/commands");
@@ -66,7 +68,7 @@ public sealed class ServerAppClient : IDisposable
         if (commandId is not null)
             request.Headers.Add("X-Command-ID", commandId);
 
-        var audio = new byte[] { 82, 73, 70, 70, 36, 0, 0, 0, 87, 65, 86, 0x00 };
+        var audio = commandAudio ?? CreateSpeechWav(TimeSpan.FromSeconds(1));
         var content = new MultipartFormDataContent
         {
             {
@@ -133,6 +135,51 @@ public sealed class ServerAppClient : IDisposable
         await _httpClient.GetAsync($"/api/commands/{commandId}/logs", cancellationToken);
 
     public void Dispose() => _httpClient.Dispose();
+
+    /// <summary>Builds a 16 kHz mono PCM16 WAV with a constant tone.</summary>
+    public static byte[] CreateSpeechWav(
+        TimeSpan duration,
+        double amplitude = 0.25,
+        double frequencyHz = 440) =>
+        CreateWav(duration, sampleIndex =>
+            amplitude * Math.Sin(2 * Math.PI * frequencyHz * sampleIndex / 16_000.0));
+
+    /// <summary>Builds a 16 kHz mono PCM16 WAV with no signal.</summary>
+    public static byte[] CreateSilentWav(TimeSpan duration) => CreateWav(duration, _ => 0);
+
+    private static byte[] CreateWav(TimeSpan duration, Func<int, double> sample)
+    {
+        const int sampleRate = 16_000;
+        const int channels = 1;
+        const int bitsPerSample = 16;
+        const int bytesPerSample = bitsPerSample / 8;
+
+        var sampleCount = (int)(sampleRate * duration.TotalSeconds);
+        var dataSize = sampleCount * channels * bytesPerSample;
+        var wav = new byte[44 + dataSize];
+
+        "RIFF"u8.CopyTo(wav);
+        BinaryPrimitives.WriteInt32LittleEndian(wav.AsSpan(4), 36 + dataSize);
+        "WAVE"u8.CopyTo(wav.AsSpan(8));
+        "fmt "u8.CopyTo(wav.AsSpan(12));
+        BinaryPrimitives.WriteInt32LittleEndian(wav.AsSpan(16), 16);
+        BinaryPrimitives.WriteInt16LittleEndian(wav.AsSpan(20), 1);
+        BinaryPrimitives.WriteInt16LittleEndian(wav.AsSpan(22), channels);
+        BinaryPrimitives.WriteInt32LittleEndian(wav.AsSpan(24), sampleRate);
+        BinaryPrimitives.WriteInt32LittleEndian(wav.AsSpan(28), sampleRate * channels * bytesPerSample);
+        BinaryPrimitives.WriteInt16LittleEndian(wav.AsSpan(32), channels * bytesPerSample);
+        BinaryPrimitives.WriteInt16LittleEndian(wav.AsSpan(34), bitsPerSample);
+        "data"u8.CopyTo(wav.AsSpan(36));
+        BinaryPrimitives.WriteInt32LittleEndian(wav.AsSpan(40), dataSize);
+
+        for (var i = 0; i < sampleCount; i++)
+        {
+            var value = (double)Math.Clamp(sample(i) * short.MaxValue, short.MinValue, short.MaxValue);
+            BinaryPrimitives.WriteInt16LittleEndian(wav.AsSpan(44 + i * bytesPerSample), (short)value);
+        }
+
+        return wav;
+    }
 }
 
 public sealed record HealthResponse(

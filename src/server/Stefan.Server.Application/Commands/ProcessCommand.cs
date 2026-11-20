@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Stefan.Server.Application.Options;
 using Stefan.Server.Application.Services;
 using Stefan.Server.Common;
 using Stefan.Server.Domain;
@@ -25,6 +27,7 @@ public class ProcessCommand(
     ITextToSpeechService tts,
     AudioConverterService audioConverter,
     StefanDbContext dbContext,
+    IOptions<SpeechDetectionOptions> speechDetectionOptions,
     ILogger<ProcessCommand> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
@@ -65,6 +68,23 @@ public class ProcessCommand(
                 inputAudio.DurationMs,
                 wakeWordAudio,
                 cancellationToken);
+
+            var speechAnalysis = SpeechActivityDetector.Analyze(inputAudio.WavBytes, speechDetectionOptions.Value);
+            if (!speechAnalysis.HasSpeech)
+            {
+                logger.LogInformation(
+                    "No speech detected in command {CommandId}: input {InputDurationMs} ms, speech {SpeechDurationMs} ms, max frame {MaxFrameDbfs} dBFS. Treating it as a false wake word.",
+                    request.CommandId,
+                    inputAudio.DurationMs,
+                    speechAnalysis.SpeechDurationMs,
+                    speechAnalysis.MaxFrameDbfs);
+
+                commandRecord.SaveNoSpeech("No speech detected in the command audio.");
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                return Result<ProcessCommandResponse>.Failure(
+                    Error.NoSpeech("No speech detected in the command audio."));
+            }
 
             var sttResult = await RunSttAsync(commandRecord, inputAudio.WavBytes, cancellationToken);
             if (!sttResult.IsSuccess)

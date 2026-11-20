@@ -15,6 +15,7 @@ public static class ResultMapping
             ErrorKind.NotFound => Results.NotFound(error.Message),
             ErrorKind.Unauthorized => Results.Unauthorized(),
             ErrorKind.Conflict => Results.Conflict(error.Message),
+            ErrorKind.NoSpeech => Results.Problem(error.Message, statusCode: StatusCodes.Status422UnprocessableEntity),
             _ => Results.Problem(error.Message),
         };
 }
