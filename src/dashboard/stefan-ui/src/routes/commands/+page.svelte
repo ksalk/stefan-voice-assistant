@@ -105,6 +105,9 @@
 		if (statusGroup !== 'all' && nodeId) {
 			return 'No commands match the selected status and node.';
 		}
+		if (statusGroup === 'noSpeech') {
+			return 'No no-speech commands.';
+		}
 		if (statusGroup !== 'all') {
 			return `No ${statusGroup === 'inProgress' ? 'in progress' : statusGroup} commands.`;
 		}

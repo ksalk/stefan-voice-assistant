@@ -6,11 +6,13 @@ export const statusGroups: { value: StatusGroup; label: string }[] = [
 	{ value: 'all', label: 'All' },
 	{ value: 'inProgress', label: 'In Progress' },
 	{ value: 'completed', label: 'Completed' },
+	{ value: 'noSpeech', label: 'No Speech' },
 	{ value: 'failed', label: 'Failed' }
 ];
 
 const inProgressStatuses: CommandStatus[] = ['Received', 'SttSuccess', 'LlmSuccess'];
 const completedStatuses: CommandStatus[] = ['Completed', 'TtsSuccess']; // TtsSuccess: legacy rows
+const noSpeechStatuses: CommandStatus[] = ['NoSpeech'];
 const failedStatuses: CommandStatus[] = [
 	'SttFailed',
 	'LlmFailed',
@@ -21,6 +23,7 @@ const failedStatuses: CommandStatus[] = [
 ];
 
 export function getStatusGroup(status: CommandStatus): StatusGroup {
+	if (noSpeechStatuses.includes(status)) return 'noSpeech';
 	if (completedStatuses.includes(status)) return 'completed';
 	if (failedStatuses.includes(status)) return 'failed';
 	return 'inProgress';
@@ -32,15 +35,19 @@ export function getStatusesForGroup(group: StatusGroup): CommandStatus[] {
 			return inProgressStatuses;
 		case 'completed':
 			return completedStatuses;
+		case 'noSpeech':
+			return noSpeechStatuses;
 		case 'failed':
 			return failedStatuses;
 		case 'all':
 		default:
-			return [...inProgressStatuses, ...completedStatuses, ...failedStatuses];
+			return [...inProgressStatuses, ...completedStatuses, ...noSpeechStatuses, ...failedStatuses];
 	}
 }
 
 export function getStatusBadgeVariant(status: CommandStatus): BadgeVariant {
+	if (status === 'NoSpeech') return 'outline';
+
 	const group = getStatusGroup(status);
 	switch (group) {
 		case 'completed':

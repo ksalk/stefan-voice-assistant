@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getStatusGroup, getStatusesForGroup } from './commands';
+import { getStatusBadgeVariant, getStatusGroup, getStatusesForGroup } from './commands';
 
 describe('command status grouping', () => {
 	it('treats Completed as completed', () => {
@@ -12,6 +12,12 @@ describe('command status grouping', () => {
 
 	it('treats Canceled as failed', () => {
 		expect(getStatusGroup('Canceled')).toBe('failed');
+	});
+
+	it('groups NoSpeech separately', () => {
+		expect(getStatusGroup('NoSpeech')).toBe('noSpeech');
+		expect(getStatusesForGroup('noSpeech')).toEqual(['NoSpeech']);
+		expect(getStatusBadgeVariant('NoSpeech')).toBe('outline');
 	});
 
 	it('has no duplicate statuses in the all filter', () => {

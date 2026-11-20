@@ -51,9 +51,10 @@ export type CommandStatus =
 	| 'HttpFailed'
 	| 'Completed'
 	| 'Failed'
-	| 'Canceled';
+	| 'Canceled'
+	| 'NoSpeech';
 
-export type StatusGroup = 'all' | 'inProgress' | 'completed' | 'failed';
+export type StatusGroup = 'all' | 'inProgress' | 'completed' | 'noSpeech' | 'failed';
 
 export interface ToolCallRecord {
 	id: string;
