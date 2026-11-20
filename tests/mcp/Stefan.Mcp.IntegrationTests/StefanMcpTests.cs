@@ -65,7 +65,7 @@ public class StefanMcpTests
                 ["page"] = 1,
                 ["pageSize"] = 5,
                 ["nodeId"] = nodeId.ToString(),
-                ["status"] = new[] { "Completed", "Failed" }
+                ["status"] = new[] { "Completed", "Failed", "NoSpeech" }
             });
 
         Assert.Contains("\"items\":[]", Text(result));
@@ -78,6 +78,7 @@ public class StefanMcpTests
         Assert.Contains($"nodeId={nodeId:D}", request.Query);
         Assert.Contains("status=Completed", request.Query);
         Assert.Contains("status=Failed", request.Query);
+        Assert.Contains("status=NoSpeech", request.Query);
     }
 
     [Fact]

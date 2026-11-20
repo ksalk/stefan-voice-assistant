@@ -19,7 +19,8 @@ public sealed class StefanApiClient(HttpClient httpClient, ILogger<StefanApiClie
         "HttpFailed",
         "Completed",
         "Failed",
-        "Canceled"
+        "Canceled",
+        "NoSpeech"
     ];
 
     private static readonly string[] ToolDocumentScopes = ["live", "archived", "all"];

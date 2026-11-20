@@ -32,7 +32,7 @@ public sealed class StefanTools(StefanApiClient api)
         [Description("Page number, starting at 1.")] int page = 1,
         [Description("Page size from 1 to 100. Use 5 to 10 for quick inspection.")] int pageSize = 10,
         [Description("Optional node id filter.")] Guid? nodeId = null,
-        [Description("Optional status filters. Valid values: Received, SttFailed, SttSuccess, LlmFailed, LlmSuccess, TtsFailed, TtsSuccess, HttpFailed, Completed, Failed, Canceled.")] string[]? status = null,
+        [Description("Optional status filters. Valid values: Received, SttFailed, SttSuccess, LlmFailed, LlmSuccess, TtsFailed, TtsSuccess, HttpFailed, Completed, Failed, Canceled, NoSpeech.")] string[]? status = null,
         CancellationToken cancellationToken = default) =>
         Call(() => api.ListCommandsAsync(page, pageSize, nodeId, status, cancellationToken), cancellationToken);
 
