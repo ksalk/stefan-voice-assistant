@@ -26,6 +26,40 @@ public class CommandRecordTests
     }
 
     [Fact]
+    public void SaveNoSpeech_SetsStatusAndErrorMessage()
+    {
+        var record = new CommandRecord();
+
+        record.SaveNoSpeech("No speech detected");
+
+        Assert.Equal(CommandStatus.NoSpeech, record.Status);
+        Assert.Equal("No speech detected", record.ErrorMessage);
+    }
+
+    [Fact]
+    public void Fail_WhenNoSpeech_DoesNotChangeStatus()
+    {
+        var record = new CommandRecord();
+        record.SaveNoSpeech("No speech detected");
+
+        record.Fail("later failure");
+
+        Assert.Equal(CommandStatus.NoSpeech, record.Status);
+        Assert.Equal("No speech detected", record.ErrorMessage);
+    }
+
+    [Fact]
+    public void Cancel_WhenNoSpeech_DoesNotChangeStatus()
+    {
+        var record = new CommandRecord();
+        record.SaveNoSpeech("No speech detected");
+
+        record.Cancel("canceled");
+
+        Assert.Equal(CommandStatus.NoSpeech, record.Status);
+    }
+
+    [Fact]
     public void SaveLlmResult_SetsResponseTextAndConversationAndDurationAndStatus()
     {
         var record = new CommandRecord();

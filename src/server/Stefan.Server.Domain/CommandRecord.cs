@@ -44,6 +44,12 @@ public class CommandRecord
         ErrorMessage = errorMessage;
     }
 
+    public void SaveNoSpeech(string? errorMessage = null)
+    {
+        TransitionTo(CommandStatus.NoSpeech);
+        ErrorMessage = errorMessage;
+    }
+
     public void SaveLlmResult(string responseText, string llmConversationJson, double llmDurationMs)
     {
         TransitionTo(CommandStatus.LlmSuccess);
@@ -125,5 +131,6 @@ public enum CommandStatus
     HttpFailed,
     Completed,
     Failed,
-    Canceled
+    Canceled,
+    NoSpeech
 }

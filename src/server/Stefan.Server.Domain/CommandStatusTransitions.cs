@@ -8,6 +8,7 @@ internal static class CommandStatusTransitions
         [
             CommandStatus.SttSuccess,
             CommandStatus.SttFailed,
+            CommandStatus.NoSpeech,
             CommandStatus.Failed,
             CommandStatus.Canceled
         ],
@@ -40,7 +41,8 @@ internal static class CommandStatusTransitions
             or CommandStatus.TtsFailed
             or CommandStatus.HttpFailed
             or CommandStatus.Failed
-            or CommandStatus.Canceled;
+            or CommandStatus.Canceled
+            or CommandStatus.NoSpeech;
 
     public static void Ensure(CommandStatus from, CommandStatus to)
     {
