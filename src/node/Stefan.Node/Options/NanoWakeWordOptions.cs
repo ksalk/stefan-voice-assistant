@@ -8,8 +8,8 @@ public class NanoWakeWordOptions
 {
     public const string SectionName = "NanoWakeWord";
 
-    /// <summary>Model file name without the <c>.onnx</c> extension, e.g. <c>stefan_v0.2</c>.</summary>
-    public string Model { get; set; } = "stefan_v0.2";
+    /// <summary>Model file name without the <c>.onnx</c> extension, e.g. <c>stefan_v0.3</c>.</summary>
+    public string Model { get; set; } = "stefan_v0.3";
 
     /// <summary>Keyword returned when the model fires. Used in logs and command correlation.</summary>
     public string Keyword { get; set; } = "stefan";

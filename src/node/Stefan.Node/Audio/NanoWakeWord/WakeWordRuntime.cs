@@ -29,7 +29,7 @@ namespace Stefan.Node.Audio.NanoWakeWord;
 
 internal sealed class WakeWordConfig
 {
-    /// <summary>The name of the model file, e.g. "stefan_v0.2".</summary>
+    /// <summary>The name of the model file, e.g. "stefan_v0.3".</summary>
     // [PATCH] Upstream left this property uninitialized. The node enables nullable reference
     // types, so the default prevents a CS8618 warning without changing the runtime behavior.
     public string Model { get; set; } = string.Empty;

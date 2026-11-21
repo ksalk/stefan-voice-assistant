@@ -72,13 +72,13 @@ public sealed record BenchmarkOptions(
         // NanoWakeWord needs audio context before an early wake word. Sherpa keeps the old default.
         var leadMs = parser.GetInt("lead-ms", detector == "nanowakeword" ? 2000 : 0);
 
-        var nanoThresholds = parser.GetFloatList("nano-thresholds", "0.75");
+        var nanoThresholds = parser.GetFloatList("nano-thresholds", "0.9");
         var nanoWakeWordOptions = new NanoWakeWordOptions
         {
-            Model = parser.GetString("nano-model", "stefan_v0.2"),
+            Model = parser.GetString("nano-model", "stefan_v0.3"),
             Keyword = parser.GetString("nano-keyword", "stefan"),
             Threshold = nanoThresholds.First(),
-            TriggerLevel = parser.GetInt("nano-trigger-level", 1),
+            TriggerLevel = parser.GetInt("nano-trigger-level", 2),
             Refractory = parser.GetInt("nano-refractory", 60),
             StepFrames = parser.GetInt("nano-step-frames", 4),
         };

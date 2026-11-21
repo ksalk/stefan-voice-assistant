@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - (node) Capture mode: `Audio:Recording:Enabled` records raw and processed microphone input to WAV files and skips wake-word and command processing; files stay on the host through the `recordings` volume mount in the edge compose file
 
+### Changed
+- (node) Wake-word model updated to `stefan_v0.3`, threshold `0.9`, trigger level `2`; the deployed embedding model now matches the model's training embedding
+
 ### Fixed
 - (node) NanoWakeWord is vendored into the node and now uses one ONNX Runtime thread per session with thread spinning disabled, which removes the 100% CPU usage on Raspberry Pi Zero 2 W
 

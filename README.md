@@ -160,7 +160,9 @@ Important settings include:
 | `Audio:SilenceTimeoutMs` | `1000` | Silence duration before sending a command |
 | `Audio:MaxRecordingMs` | `10000` | Maximum command duration |
 | `WakeWord:Detector` | `nanowakeword` | Wake-word detector: `nanowakeword` or `sherpa`. Stop-keyword detection always uses Sherpa-ONNX |
-| `NanoWakeWord:Threshold` | `0.65` | NanoWakeWord detection threshold |
+| `NanoWakeWord:Model` | `stefan_v0.3` | NanoWakeWord model name without the `.onnx` extension |
+| `NanoWakeWord:Threshold` | `0.9` | NanoWakeWord detection threshold |
+| `NanoWakeWord:TriggerLevel` | `2` | Consecutive threshold crossings required |
 | `NanoWakeWord:StepFrames` | `4` | Audio frames per NanoWakeWord pipeline step |
 | `NanoWakeWord:IntraOpThreads` | `1` | ONNX Runtime intra-op threads per session |
 | `NanoWakeWord:InterOpThreads` | `1` | ONNX Runtime inter-op threads per session |

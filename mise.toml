@@ -236,9 +236,9 @@ description = "Run the wake-word replay benchmark with the NanoWakeWord detector
 usage = '''
 arg "<manifest>" help="Path to the corpus manifest" default="recordings/manifest.json"
 flag "-o --output <dir>" help="Base output directory" default="recordings/nanowakeword"
-flag "--nano-model <name>" help="NanoWakeWord model name without .onnx" default="stefan_v0.2"
-flag "--nano-thresholds <values>" help="Comma-separated probability thresholds" default="0.75"
-flag "--nano-trigger-level <n>" help="Consecutive threshold crossings required" default="1"
+flag "--nano-model <name>" help="NanoWakeWord model name without .onnx" default="stefan_v0.3"
+flag "--nano-thresholds <values>" help="Comma-separated probability thresholds" default="0.9"
+flag "--nano-trigger-level <n>" help="Consecutive threshold crossings required" default="2"
 flag "--nano-refractory <n>" help="Cooldown frames after a detection" default="60"
 flag "--nano-step-frames <n>" help="Audio frames per pipeline step" default="4"
 flag "--chunk-bytes <bytes>" help="PCM chunk size in bytes" default="4096"
